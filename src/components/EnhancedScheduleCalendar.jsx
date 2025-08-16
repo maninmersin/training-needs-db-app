@@ -314,15 +314,15 @@ const EnhancedScheduleCalendar = ({
     return matchingAssignments;
   }, [loadAllAssignments]);
 
-  // Load assignments when schedule changes
+  // Load assignments when schedule changes or when assignments are updated
   useEffect(() => {
     if (currentSchedule?.id) {
-      // Clear cache and loading promise when schedule changes
+      // Clear cache and loading promise when schedule changes or is updated
       assignmentsCacheRef.current = null;
       loadingPromiseRef.current = null;
       loadAllAssignments();
     }
-  }, [currentSchedule?.id, loadAllAssignments]);
+  }, [currentSchedule?.id, currentSchedule?._lastUpdated, assignments?.length, loadAllAssignments]);
 
   const getCapacityInfo = useCallback((session) => {
     // Calculate assigned users directly instead of calling the callback to avoid dependency chain

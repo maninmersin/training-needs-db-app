@@ -181,14 +181,33 @@ const DragDropAssignmentPage = () => {
     setCurrentSchedule(schedule);
   };
 
-  const handleAssignmentUpdate = () => {
+  const handleAssignmentUpdate = async () => {
     debugLog('🔄 Assignment update triggered - forcing refresh');
+    
     // Force a re-render by updating the current schedule timestamp
     if (currentSchedule) {
       setCurrentSchedule(prev => ({
         ...prev,
         _lastUpdated: Date.now()
       }));
+    }
+    
+    // Also trigger a reload of the current schedule to pick up new assignment data
+    if (currentSchedule?.id) {
+      try {
+        debugLog('🔄 Reloading schedule data to pick up assignment changes...');
+        const sessions = await loadTrainingSessionsForSchedule(currentSchedule.id);
+        
+        setCurrentSchedule(prev => ({
+          ...prev,
+          sessions: sessions,
+          _lastUpdated: Date.now()
+        }));
+        
+        debugLog('✅ Schedule data reloaded successfully');
+      } catch (err) {
+        debugError('❌ Error reloading schedule data:', err);
+      }
     }
   };
 
