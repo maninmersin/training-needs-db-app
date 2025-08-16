@@ -1,0 +1,819 @@
+import { useMemo } from 'react';
+import { ClassroomOccupancyTracker } from '../utils/classroomCalculations';
+
+/**
+ * Custom hook for training session scheduling algorithms
+ * Provides both group-complete and course-complete scheduling modes
+ */
+export const useSchedulingEngine = () => {
+  
+  const createSchedulingEngine = useMemo(() => {
+    
+    /**
+     * Group-Complete Scheduling Mode
+     * Schedules all sessions for each group independently before moving to the next group
+     */
+    const scheduleByGroupComplete = async (
+      groupedEndUsers, courses, currentCriteria, sessionsGrouped,
+      functionalArea, locationClassroomReqs, classroomTracker,
+      schedulingPreference, amStartHour, amStartMin, pmStartHour, pmStartMin,
+      amBlockHours, pmBlockHours, dayNames
+    ) => {
+      console.log('🎯 Starting Group-Complete scheduling mode');
+      
+      for (const locationName in groupedEndUsers) {
+        const usersInLocation = groupedEndUsers[locationName];
+        const maxClassrooms = locationClassroomReqs.get(locationName)?.numberOfClassrooms || 1;
+        
+        console.log(`📍 Processing location: ${locationName} with ${maxClassrooms} classrooms`);
+        
+        // Create groups for each course based on max_attendees
+        const groupsByLocation = [];
+        
+        // Find the maximum number of groups needed across all courses
+        let maxGroupsNeeded = 0;
+        const courseGroupData = {};
+        
+        for (const course of courses) {
+          const courseUsers = usersInGroup.filter(user => user.course_id === course.course_id);
+          const attendees = courseUsers.length;
+          
+          if (attendees > 0) {
+            const sessionsNeeded = Math.ceil(attendees / currentCriteria.max_attendees);
+            
+            for (let sessionNum = 1; sessionNum <= sessionsNeeded; sessionNum++) {
+              const sessionUsers = courseUsers.slice(
+                (sessionNum - 1) * currentCriteria.max_attendees,
+                sessionNum * currentCriteria.max_attendees
+              );
+              
+              sessionGroupsForLocation.push({
+                course,
+                sessionNumber: sessionNum,
+                users: sessionUsers,
+                userCount: sessionUsers.length,
+                enhancedGroupName: groupName,
+                userRange: `${((sessionNum - 1) * currentCriteria.max_attendees) + 1}-${sessionNum * currentCriteria.max_attendees}`
+              });
+            }
+          }
+        }
+        
+        // Sort session groups to prioritize by course priority
+        sessionGroupsForLocation.sort((a, b) => {
+          const courseAPriority = a.course.priority || 999;
+          const courseBPriority = b.course.priority || 999;
+          return courseAPriority - courseBPriority;
+        });
+        
+        // Distribute session groups across available classrooms
+        const classroomSessionGroups = [];
+        for (let classroomNum = 1; classroomNum <= maxClassrooms; classroomNum++) {
+          classroomSessionGroups.push({
+            classroomNum,
+            sessionGroups: []
+          });
+        }
+        
+        // Group sessions by course to keep course sessions together
+        const sessionsByCourse = {};
+        sessionGroupsForLocation.forEach(sessionGroup => {
+          const courseId = sessionGroup.course.course_id;
+          if (!sessionsByCourse[courseId]) {
+            sessionsByCourse[courseId] = [];
+          }
+          sessionsByCourse[courseId].push(sessionGroup);
+        });
+        
+        // Distribute complete courses across classrooms using round-robin
+        let classroomIndex = 0;
+        Object.keys(sessionsByCourse).forEach(courseId => {
+          const courseSessions = sessionsByCourse[courseId];
+          
+          // All sessions for this course go to the same classroom
+          const targetClassroom = classroomIndex % maxClassrooms;
+          courseSessions.forEach(sessionGroup => {
+            classroomSessionGroups[targetClassroom].sessionGroups.push(sessionGroup);
+          });
+          
+          console.log(`📚 Assigned ${courseSessions.length} sessions of ${courseSessions[0].course.course_name} to Classroom ${targetClassroom + 1}`);
+          
+          // Move to next classroom for next course
+          classroomIndex++;
+        });
+        
+        // Schedule sessions for each classroom
+        for (const classroom of classroomSessionGroups) {
+          const classroomKey = `Classroom ${classroom.classroomNum}`;
+          
+          // Initialize current session start time for this classroom
+          let currentSessionStartTime = new Date(currentCriteria.start_date);
+          
+          // Find first valid scheduling day
+          while (!currentCriteria.scheduling_days.includes(dayNames[currentSessionStartTime.getDay()])) {
+            currentSessionStartTime.setDate(currentSessionStartTime.getDate() + 1);
+          }
+          
+          // Set initial time based on preference
+          if (schedulingPreference === 'pm_only') {
+            currentSessionStartTime.setHours(pmStartHour, pmStartMin, 0, 0);
+          } else {
+            currentSessionStartTime.setHours(amStartHour, amStartMin, 0, 0);
+          }
+          
+          // Ensure the structure exists for this group
+          if (!sessionsGrouped[functionalArea]) {
+            sessionsGrouped[functionalArea] = {};
+          }
+          if (!sessionsGrouped[functionalArea][groupName]) {
+            sessionsGrouped[functionalArea][groupName] = {};
+          }
+          // Note: We'll create specific classroom keys dynamically when sessions are assigned
+          
+          // Track failed sessions for retry
+          const failedSessions = [];
+          
+          // Schedule each session group
+          for (const sessionGroup of classroom.sessionGroups) {
+            const { course, sessionNumber } = sessionGroup;
+            const duration = Number(course.duration_hrs);
+            
+            // Handle AM/PM scheduling and session splitting (updated with Course-Complete logic)
+            let sessionParts = [];
+            
+            if (duration === 8 && schedulingPreference === 'both') {
+              // Split 8-hour session into AM (4 hours) + PM (4 hours)
+              const amStart = new Date(currentSessionStartTime);
+              amStart.setHours(amStartHour, amStartMin, 0, 0);
+              const amEnd = new Date(amStart.getTime() + (4 * 60 * 60 * 1000)); // 4 hours
+              
+              const pmStart = new Date(currentSessionStartTime);
+              pmStart.setHours(pmStartHour, pmStartMin, 0, 0);
+              const pmEnd = new Date(pmStart.getTime() + (4 * 60 * 60 * 1000)); // 4 hours
+              
+              sessionParts.push(
+                {
+                  start: amStart,
+                  end: amEnd,
+                  duration: 4,
+                  part: 1,
+                  partSuffix: 'AM'
+                },
+                {
+                  start: pmStart,
+                  end: pmEnd,
+                  duration: 4,
+                  part: 2,
+                  partSuffix: 'PM'
+                }
+              );
+              
+              console.log(`🔄 GROUP: Splitting 8-hour session into AM (${amStart.toLocaleString('en-GB')}) + PM (${pmStart.toLocaleString('en-GB')})`);
+            } else {
+              // Regular session (4 hours or less) - check if we can fit in current time slot
+              const currentHour = currentSessionStartTime.getHours();
+              let sessionStart, sessionEnd, partSuffix;
+              
+              if (schedulingPreference === 'both') {
+                // For 4-hour courses, try AM first, then PM
+                if (currentHour < 12) {
+                  // Try AM slot (08:00-12:00)
+                  sessionStart = new Date(currentSessionStartTime);
+                  sessionStart.setHours(amStartHour, amStartMin, 0, 0);
+                  sessionEnd = new Date(sessionStart.getTime() + (duration * 60 * 60 * 1000));
+                  partSuffix = 'AM';
+                } else {
+                  // Try PM slot (13:00-17:00)
+                  sessionStart = new Date(currentSessionStartTime);
+                  sessionStart.setHours(pmStartHour, pmStartMin, 0, 0);
+                  sessionEnd = new Date(sessionStart.getTime() + (duration * 60 * 60 * 1000));
+                  partSuffix = 'PM';
+                }
+              } else {
+                // Single time preference
+                sessionStart = new Date(currentSessionStartTime);
+                sessionEnd = new Date(currentSessionStartTime.getTime() + (duration * 60 * 60 * 1000));
+                partSuffix = schedulingPreference === 'am_only' ? 'AM' : schedulingPreference === 'pm_only' ? 'PM' : '';
+              }
+              
+              sessionParts.push({
+                start: sessionStart,
+                end: sessionEnd,
+                duration: duration,
+                part: 1,
+                partSuffix: partSuffix
+              });
+            }
+            
+            // Check if all parts can be scheduled before creating any sessions
+            let allPartsAvailable = true;
+            for (const part of sessionParts) {
+              const maxClassrooms = locationClassroomReqs.get(groupName)?.numberOfClassrooms || 1;
+              const isAvailable = classroomTracker.isClassroomAvailable(groupName, part.start, part.end, maxClassrooms);
+              
+              if (!isAvailable) {
+                console.log(`     ⏭️ Part ${part.part} ${part.partSuffix} not available for ${course.course_name} Session ${sessionNumber} at ${groupName}`);
+                allPartsAvailable = false;
+                break;
+              }
+            }
+            
+            if (allPartsAvailable) {
+              // Create session objects for each part with proper classroom reservation
+              for (const part of sessionParts) {
+                const sessionId = `${course.course_id}-${sessionNumber}-part${part.part}-${part.start.getTime()}`;
+                const partTitle = sessionParts.length > 1 ?
+                  `${course.course_name} - Group ${sessionNumber} Part ${part.part} ${part.partSuffix} (${sessionGroup.enhancedGroupName})` :
+                  `${course.course_name} - Group ${sessionNumber} (${sessionGroup.enhancedGroupName})`;
+                
+                // Reserve classroom
+                const maxClassrooms = locationClassroomReqs.get(groupName)?.numberOfClassrooms || 1;
+                const assignedClassroom = classroomTracker.reserveClassroom(
+                  groupName, 
+                  part.start, 
+                  part.end, 
+                  sessionId, 
+                  maxClassrooms
+                );
+              
+              if (assignedClassroom === null) {
+                console.error(`❌ Failed to reserve classroom for ${sessionId} despite availability check`);
+                console.log(`🔄 Adding to retry queue due to reservation failure`);
+                
+                // Add this session to failed sessions for retry
+                failedSessions.push({
+                  sessionGroup: sessionGroup,
+                  part: part,
+                  sessionId: sessionId,
+                  partTitle: partTitle
+                });
+                continue; // Skip this session part for now, will retry later
+              }
+              
+              console.log(`🏫 GROUP-COMPLETE RESERVED: Assigned classroom ${assignedClassroom} for ${sessionId}`);
+              
+              const classroomKey = `Classroom ${assignedClassroom}`;
+              
+              const sessionObj = {
+                sessionId: sessionId,
+                title: partTitle,
+                start: part.start,
+                end: part.end,
+                course,
+                sessionNumber: sessionNumber,
+                sessionPartNumber: part.part,
+                partSuffix: part.partSuffix,
+                groupType: ['training_location'],
+                groupName: sessionGroup.enhancedGroupName,
+                duration: part.duration,
+                functional_area: functionalArea,
+                location: groupName,
+                classroomNumber: assignedClassroom,
+                userCount: sessionGroup.userCount,
+                userRange: sessionGroup.userRange
+              };
+              
+              // Ensure the structure exists
+              if (!sessionsGrouped[functionalArea]) {
+                sessionsGrouped[functionalArea] = {};
+              }
+              if (!sessionsGrouped[functionalArea][groupName]) {
+                sessionsGrouped[functionalArea][groupName] = {};
+              }
+              if (!sessionsGrouped[functionalArea][groupName][classroomKey]) {
+                sessionsGrouped[functionalArea][groupName][classroomKey] = [];
+              }
+              
+              sessionsGrouped[functionalArea][groupName][classroomKey].push(sessionObj);
+            }
+            
+            // Advance time for next session (improved time advancement)
+            if (schedulingPreference === 'both') {
+              const currentHour = currentSessionStartTime.getHours();
+              if (currentHour < pmStartHour) {
+                // Move from AM to PM on same day
+                currentSessionStartTime.setHours(pmStartHour, pmStartMin, 0, 0);
+                console.log(`🔄 GROUP: Moving to PM slot: ${currentSessionStartTime.toLocaleString('en-GB')}`);
+              } else {
+                // Move to next day
+                do {
+                  currentSessionStartTime.setDate(currentSessionStartTime.getDate() + 1);
+                } while (!currentCriteria.scheduling_days.includes(dayNames[currentSessionStartTime.getDay()]));
+                currentSessionStartTime.setHours(amStartHour, amStartMin, 0, 0);
+                console.log(`🔄 GROUP: Moving to next day: ${currentSessionStartTime.toLocaleString('en-GB')}`);
+              }
+            } else {
+              // Single time preference - move to next day
+              do {
+                currentSessionStartTime.setDate(currentSessionStartTime.getDate() + 1);
+              } while (!currentCriteria.scheduling_days.includes(dayNames[currentSessionStartTime.getDay()]));
+              currentSessionStartTime.setHours(
+                schedulingPreference === 'am_only' ? amStartHour : pmStartHour,
+                schedulingPreference === 'am_only' ? amStartMin : pmStartMin,
+                0, 0
+              );
+              console.log(`🔄 GROUP: Moving to next day: ${currentSessionStartTime.toLocaleString('en-GB')}`);
+            }
+          } else {
+            // Sessions couldn't be scheduled, add to failed queue for retry
+            console.log(`⏭️ GROUP: Adding ${course.course_name} Session ${sessionNumber} to retry queue`);
+          }
+          
+          }
+          
+          // Handle retry for failed sessions
+          for (const failedSession of failedSessions) {
+            console.log(`🔄 GROUP: Retrying failed session: ${failedSession.sessionGroup.course.course_name} Session ${failedSession.sessionGroup.sessionNumber}`);
+            
+            // Use current session start time for retry
+            const retryStart = new Date(currentSessionStartTime);
+            const retryEnd = new Date(retryStart.getTime() + (failedSession.part.duration * 60 * 60 * 1000));
+            
+            const maxClassrooms = locationClassroomReqs.get(groupName)?.numberOfClassrooms || 1;
+            const isAvailable = classroomTracker.isClassroomAvailable(groupName, retryStart, retryEnd, maxClassrooms);
+            
+            if (isAvailable) {
+              const assignedClassroom = classroomTracker.reserveClassroom(
+                groupName, 
+                retryStart, 
+                retryEnd, 
+                failedSession.sessionId, 
+                maxClassrooms
+              );
+              
+              if (assignedClassroom !== null) {
+                const retryClassroomKey = `Classroom ${assignedClassroom}`;
+                
+                if (!sessionsGrouped[functionalArea][groupName][retryClassroomKey]) {
+                  sessionsGrouped[functionalArea][groupName][retryClassroomKey] = [];
+                }
+                
+                const sessionObj = {
+                  sessionId: failedSession.sessionId,
+                  title: failedSession.partTitle,
+                  start: retryStart,
+                  end: retryEnd,
+                  course: failedSession.sessionGroup.course,
+                  sessionNumber: failedSession.sessionGroup.sessionNumber,
+                  sessionPartNumber: failedSession.part.part,
+                  partSuffix: failedSession.part.partSuffix,
+                  groupType: ['training_location'],
+                  groupName: failedSession.sessionGroup.enhancedGroupName,
+                  duration: failedSession.part.duration,
+                  functional_area: functionalArea,
+                  location: groupName,
+                  classroomNumber: assignedClassroom,
+                  userCount: failedSession.sessionGroup.userCount,
+                  userRange: failedSession.sessionGroup.userRange
+                };
+                
+                sessionsGrouped[functionalArea][groupName][retryClassroomKey].push(sessionObj);
+                
+                console.log(`✅ GROUP: Retry successful for ${failedSession.partTitle} in ${retryClassroomKey}`);
+                
+                // Advance time for next retry session
+                if (schedulingPreference === 'both') {
+                  const currentHour = currentSessionStartTime.getHours();
+                  if (currentHour < pmStartHour) {
+                    currentSessionStartTime.setHours(pmStartHour, pmStartMin, 0, 0);
+                  } else {
+                    do {
+                      currentSessionStartTime.setDate(currentSessionStartTime.getDate() + 1);
+                    } while (!currentCriteria.scheduling_days.includes(dayNames[currentSessionStartTime.getDay()]));
+                    currentSessionStartTime.setHours(amStartHour, amStartMin, 0, 0);
+                  }
+                } else {
+                  do {
+                    currentSessionStartTime.setDate(currentSessionStartTime.getDate() + 1);
+                  } while (!currentCriteria.scheduling_days.includes(dayNames[currentSessionStartTime.getDay()]));
+                  currentSessionStartTime.setHours(
+                    schedulingPreference === 'am_only' ? amStartHour : pmStartHour,
+                    schedulingPreference === 'am_only' ? amStartMin : pmStartMin,
+                    0, 0
+                  );
+                }
+              } else {
+                console.error(`❌ GROUP: Retry failed - Could not reserve classroom for ${failedSession.sessionId}`);
+              }
+            } else {
+              console.error(`❌ GROUP: Retry failed - No classroom available for ${failedSession.sessionId}`);
+            }
+          }
+        }
+      }
+      
+      console.log('✅ Group-Complete scheduling completed');
+    };
+
+    /**
+     * Course-Complete Scheduling Mode  
+     * Schedules the same course across all locations before moving to the next course
+     */
+    const scheduleByCourseComplete = async (
+      groupedEndUsers, courses, currentCriteria, sessionsGrouped,
+      functionalAreaParam, locationClassroomReqs, classroomTracker,
+      schedulingPreference, amStartHour, amStartMin, pmStartHour, pmStartMin,
+      amBlockHours, pmBlockHours, dayNames
+    ) => {
+      console.log('🎯 Starting Course-Complete scheduling mode');
+      
+      // Sort courses by priority/ID for consistent ordering
+      const sortedCourses = [...courses].sort((a, b) => (a.course_id || '').localeCompare(b.course_id || ''));
+      
+      let globalCurrentTime = new Date(currentCriteria.start_date);
+      
+      // Find first valid scheduling day
+      while (!currentCriteria.scheduling_days.includes(dayNames[globalCurrentTime.getDay()])) {
+        globalCurrentTime.setDate(globalCurrentTime.getDate() + 1);
+      }
+      
+      // Set initial time based on scheduling preference
+      if (schedulingPreference === 'pm_only') {
+        globalCurrentTime.setHours(pmStartHour, pmStartMin, 0, 0);
+      } else {
+        globalCurrentTime.setHours(amStartHour, amStartMin, 0, 0);
+      }
+      
+      // Process each course across all locations synchronously
+      for (const course of sortedCourses) {
+        console.log(`📚 Processing course: ${course.course_name} across all locations`);
+        
+        // Collect all sessions needed for this course across all locations
+        const courseLocationSessions = [];
+        
+        for (const groupName in groupedEndUsers) {
+          const usersInGroup = groupedEndUsers[groupName];
+          const attendees = usersInGroup.filter(user => user.course_id === course.course_id).length;
+          
+          if (attendees > 0) {
+            const sessionsNeeded = Math.ceil(attendees / currentCriteria.max_attendees);
+            const maxClassrooms = locationClassroomReqs.get(groupName)?.numberOfClassrooms || 1;
+            
+            console.log(`📍 Location ${groupName}: ${attendees} attendees, ${sessionsNeeded} sessions, ${maxClassrooms} classrooms`);
+            
+            courseLocationSessions.push({
+              groupName,
+              attendees,
+              sessionsNeeded,
+              maxClassrooms,
+              sessions: Array.from({ length: sessionsNeeded }, (_, i) => ({
+                sessionNum: i + 1,
+                scheduled: false
+              }))
+            });
+          }
+        }
+        
+        if (courseLocationSessions.length === 0) {
+          console.log(`⚠️ No attendees for course ${course.course_name}, skipping`);
+          continue;
+        }
+        
+        // Flatten all sessions needed for this course across all locations
+        const allCourseSessionsFlat = [];
+        
+        for (const locationInfo of courseLocationSessions) {
+          const { groupName, maxClassrooms, sessionsNeeded } = locationInfo;
+          
+          for (let sessionNum = 1; sessionNum <= sessionsNeeded; sessionNum++) {
+            allCourseSessionsFlat.push({
+              groupName,
+              sessionNum,
+              maxClassrooms,
+              scheduled: false,
+              courseId: course.course_id,
+              courseName: course.course_name,
+              duration: Number(course.duration_hrs)
+            });
+          }
+        }
+        
+        console.log(`📊 Total sessions to schedule for ${course.course_name}: ${allCourseSessionsFlat.length}`);
+        
+        // Schedule all sessions for this course using round-robin across ALL available classrooms
+        let courseStartTime = new Date(globalCurrentTime);
+        let allSessionsScheduled = false;
+        let maxIterations = 100;
+        let iterationCount = 0;
+        
+        while (!allSessionsScheduled && iterationCount < maxIterations) {
+          iterationCount++;
+          let sessionScheduledThisRound = false;
+          
+          console.log(`\n--- Course ${course.course_name} Round ${iterationCount} at ${courseStartTime.toLocaleString('en-GB')} ---`);
+          
+          // Try to schedule sessions across ALL available classrooms simultaneously
+          const availableClassrooms = [];
+          
+          // Build list of all available classrooms across all locations
+          for (const session of allCourseSessionsFlat) {
+            if (session.scheduled) continue;
+            
+            for (let classroomNum = 1; classroomNum <= session.maxClassrooms; classroomNum++) {
+              availableClassrooms.push({
+                groupName: session.groupName,
+                classroomNum,
+                session
+              });
+            }
+          }
+          
+          console.log(`🏫 Available classroom slots: ${availableClassrooms.length}`);
+          
+          // Schedule sessions in parallel across available classrooms
+          let classroomIndex = 0;
+          
+          for (const session of allCourseSessionsFlat) {
+            if (session.scheduled) continue;
+            
+            // Find next available classroom for this session
+            let foundClassroom = false;
+            
+            for (let attempt = 0; attempt < availableClassrooms.length && !foundClassroom; attempt++) {
+              const classroomSlot = availableClassrooms[(classroomIndex + attempt) % availableClassrooms.length];
+              
+              // Check if this classroom belongs to the same location as the session
+              if (classroomSlot.groupName !== session.groupName) continue;
+              
+              // Determine if we need to split the session for 8-hour courses
+              const sessionParts = [];
+              
+              if (session.duration === 8 && schedulingPreference === 'both') {
+                // Split 8-hour session into AM (4 hours) + PM (4 hours)
+                const amStart = new Date(courseStartTime);
+                amStart.setHours(amStartHour, amStartMin, 0, 0);
+                const amEnd = new Date(amStart.getTime() + (4 * 60 * 60 * 1000)); // 4 hours
+                
+                const pmStart = new Date(courseStartTime);
+                pmStart.setHours(pmStartHour, pmStartMin, 0, 0);
+                const pmEnd = new Date(pmStart.getTime() + (4 * 60 * 60 * 1000)); // 4 hours
+                
+                sessionParts.push(
+                  {
+                    start: amStart,
+                    end: amEnd,
+                    duration: 4,
+                    part: 1,
+                    partSuffix: 'AM'
+                  },
+                  {
+                    start: pmStart,
+                    end: pmEnd,
+                    duration: 4,
+                    part: 2,
+                    partSuffix: 'PM'
+                  }
+                );
+                
+                console.log(`🔄 Splitting 8-hour session into AM (${amStart.toLocaleString('en-GB')}) + PM (${pmStart.toLocaleString('en-GB')})`);
+              } else {
+                // Regular session (4 hours or less) - check if we can fit in current time slot
+                const currentHour = courseStartTime.getHours();
+                let sessionStart, sessionEnd, partSuffix;
+                
+                if (schedulingPreference === 'both') {
+                  // For 4-hour courses, try AM first, then PM
+                  if (currentHour < 12) {
+                    // Try AM slot (08:00-12:00)
+                    sessionStart = new Date(courseStartTime);
+                    sessionStart.setHours(amStartHour, amStartMin, 0, 0);
+                    sessionEnd = new Date(sessionStart.getTime() + (session.duration * 60 * 60 * 1000));
+                    partSuffix = 'AM';
+                  } else {
+                    // Try PM slot (13:00-17:00)
+                    sessionStart = new Date(courseStartTime);
+                    sessionStart.setHours(pmStartHour, pmStartMin, 0, 0);
+                    sessionEnd = new Date(sessionStart.getTime() + (session.duration * 60 * 60 * 1000));
+                    partSuffix = 'PM';
+                  }
+                } else {
+                  // Single time preference
+                  sessionStart = new Date(courseStartTime);
+                  sessionEnd = new Date(courseStartTime.getTime() + (session.duration * 60 * 60 * 1000));
+                  partSuffix = schedulingPreference === 'am_only' ? 'AM' : schedulingPreference === 'pm_only' ? 'PM' : '';
+                }
+                
+                sessionParts.push({
+                  start: sessionStart,
+                  end: sessionEnd,
+                  duration: session.duration,
+                  part: 1,
+                  partSuffix: partSuffix
+                });
+              }
+              
+              // Check if all parts can be scheduled
+              let allPartsAvailable = true;
+              for (const part of sessionParts) {
+                const isAvailable = classroomTracker.isClassroomAvailable(
+                  session.groupName, 
+                  part.start, 
+                  part.end, 
+                  session.maxClassrooms
+                );
+                
+                if (!isAvailable) {
+                  allPartsAvailable = false;
+                  console.log(`     ⏭️ Part ${part.part} ${part.partSuffix} not available for ${course.course_name} Session ${session.sessionNum} at ${session.groupName}`);
+                  break;
+                }
+              }
+              
+              if (allPartsAvailable) {
+                // Schedule all parts
+                for (const part of sessionParts) {
+                  const sessionId = `${course.course_id}-${session.sessionNum}-part${part.part}-${part.start.getTime()}`;
+                  const assignedClassroom = classroomTracker.reserveClassroom(
+                    session.groupName, 
+                    part.start, 
+                    part.end, 
+                    sessionId, 
+                    session.maxClassrooms
+                  );
+                  
+                  if (assignedClassroom !== null) {
+                    // Create session structure
+                    if (!sessionsGrouped[functionalAreaParam]) {
+                      sessionsGrouped[functionalAreaParam] = {};
+                    }
+                    if (!sessionsGrouped[functionalAreaParam][session.groupName]) {
+                      sessionsGrouped[functionalAreaParam][session.groupName] = {};
+                    }
+                    
+                    const classroomKey = `Classroom ${assignedClassroom}`;
+                    if (!sessionsGrouped[functionalAreaParam][session.groupName][classroomKey]) {
+                      sessionsGrouped[functionalAreaParam][session.groupName][classroomKey] = [];
+                    }
+                    
+                    const partTitle = sessionParts.length > 1 ?
+                      `${course.course_name} - Group ${session.sessionNum} Part ${part.part} ${part.partSuffix} (${session.groupName})` :
+                      `${course.course_name} - Group ${session.sessionNum} (${session.groupName})`;
+                    
+                    const sessionObj = {
+                      sessionId: sessionId,
+                      title: partTitle,
+                      course_id: course.course_id,
+                      course_name: course.course_name,
+                      duration_hrs: part.duration,
+                      attendees: session.attendees,
+                      start_datetime: part.start.toISOString(),
+                      end_datetime: part.end.toISOString(),
+                      classroom_number: assignedClassroom,
+                      session_part_number: part.part,
+                      part_suffix: part.partSuffix || null,
+                      start: part.start,
+                      end: part.end,
+                      course,
+                      sessionNumber: session.sessionNum,
+                      sessionPartNumber: part.part,
+                      partSuffix: part.partSuffix,
+                      groupType: ['training_location'],
+                      groupName: session.groupName,
+                      duration: part.duration,
+                      functional_area: functionalAreaParam,
+                      location: session.groupName,
+                      classroomNumber: assignedClassroom
+                    };
+                    
+                    sessionsGrouped[functionalAreaParam][session.groupName][classroomKey].push(sessionObj);
+                    
+                    console.log(`     ✅ SCHEDULED: ${partTitle}`);
+                    console.log(`        📍 Location: ${session.groupName}`);
+                    console.log(`        🏫 Classroom: ${assignedClassroom}`);
+                    console.log(`        ⏰ Time: ${part.start.toLocaleString('en-GB')} - ${part.end.toLocaleString('en-GB')}`);
+                  } else {
+                    console.error(`❌ Failed to reserve classroom for part ${part.part}`);
+                    allPartsAvailable = false;
+                    break;
+                  }
+                }
+                
+                if (allPartsAvailable) {
+                  // Mark session as scheduled
+                  session.scheduled = true;
+                  sessionScheduledThisRound = true;
+                  foundClassroom = true;
+                  
+                  // Move to next classroom for better distribution
+                  classroomIndex = (classroomIndex + 1) % availableClassrooms.length;
+                }
+              }
+            }
+            
+            if (!foundClassroom) {
+              console.log(`     ⏭️ No classroom available for ${course.course_name} Session ${session.sessionNum} at ${session.groupName}`);
+            }
+          }
+          
+          // Check if all sessions for this course are completed
+          allSessionsScheduled = allCourseSessionsFlat.every(session => session.scheduled);
+          
+          if (allSessionsScheduled) {
+            console.log(`✅ All sessions for ${course.course_name} have been scheduled`);
+            break;
+          }
+          
+          if (!sessionScheduledThisRound) {
+            // No sessions could be scheduled in current time slot, try next time slot
+            if (schedulingPreference === 'both') {
+              const currentHour = courseStartTime.getHours();
+              if (currentHour < pmStartHour) {
+                // Move from AM to PM on same day
+                courseStartTime.setHours(pmStartHour, pmStartMin, 0, 0);
+                console.log(`⏰ No sessions scheduled in AM, moving to PM: ${courseStartTime.toLocaleString('en-GB')}`);
+              } else {
+                // Move to next day
+                do {
+                  courseStartTime.setDate(courseStartTime.getDate() + 1);
+                } while (!currentCriteria.scheduling_days.includes(dayNames[courseStartTime.getDay()]));
+                courseStartTime.setHours(amStartHour, amStartMin, 0, 0);
+                console.log(`⏰ No sessions scheduled in PM, moving to next day: ${courseStartTime.toLocaleString('en-GB')}`);
+              }
+            } else {
+              // Single time preference - move to next day
+              do {
+                courseStartTime.setDate(courseStartTime.getDate() + 1);
+              } while (!currentCriteria.scheduling_days.includes(dayNames[courseStartTime.getDay()]));
+              courseStartTime.setHours(
+                schedulingPreference === 'am_only' ? amStartHour : pmStartHour,
+                schedulingPreference === 'am_only' ? amStartMin : pmStartMin,
+                0, 0
+              );
+              console.log(`⏰ No sessions scheduled, moving to next day: ${courseStartTime.toLocaleString('en-GB')}`);
+            }
+          } else {
+            // Sessions were scheduled, check if we can schedule more in PM slot
+            if (schedulingPreference === 'both') {
+              const currentHour = courseStartTime.getHours();
+              if (currentHour < pmStartHour) {
+                // Move from AM to PM on same day to try more sessions
+                courseStartTime.setHours(pmStartHour, pmStartMin, 0, 0);
+                console.log(`✅ Sessions scheduled in AM, trying PM slot: ${courseStartTime.toLocaleString('en-GB')}`);
+              } else {
+                // Already in PM or sessions span full day, move to next day
+                do {
+                  courseStartTime.setDate(courseStartTime.getDate() + 1);
+                } while (!currentCriteria.scheduling_days.includes(dayNames[courseStartTime.getDay()]));
+                courseStartTime.setHours(amStartHour, amStartMin, 0, 0);
+                console.log(`✅ Sessions scheduled for current day, moving to next day: ${courseStartTime.toLocaleString('en-GB')}`);
+              }
+            } else {
+              // Single time preference - move to next day
+              do {
+                courseStartTime.setDate(courseStartTime.getDate() + 1);
+              } while (!currentCriteria.scheduling_days.includes(dayNames[courseStartTime.getDay()]));
+              courseStartTime.setHours(
+                schedulingPreference === 'am_only' ? amStartHour : pmStartHour,
+                schedulingPreference === 'am_only' ? amStartMin : pmStartMin,
+                0, 0
+              );
+              console.log(`✅ Sessions scheduled, moving to next day: ${courseStartTime.toLocaleString('en-GB')}`);
+            }
+          }
+        }
+        
+        if (iterationCount >= maxIterations) {
+          console.error(`❌ Maximum iterations reached for course ${course.course_name}`);
+        }
+        
+        // Log final summary of what was scheduled for this course
+        console.log(`\n📋 FINAL SCHEDULE SUMMARY FOR ${course.course_name}:`);
+        const scheduledSessions = allCourseSessionsFlat.filter(s => s.scheduled);
+        scheduledSessions.forEach(session => {
+          // Find the actual session object in sessionsGrouped to get timing details
+          if (sessionsGrouped[functionalAreaParam] && sessionsGrouped[functionalAreaParam][session.groupName]) {
+            for (const [classroomKey, sessions] of Object.entries(sessionsGrouped[functionalAreaParam][session.groupName])) {
+              const matchingSession = sessions.find(s => s.sessionNumber === session.sessionNum && s.course.course_id === session.courseId);
+              if (matchingSession) {
+                console.log(`   ✅ Session ${session.sessionNum}: ${session.groupName} ${classroomKey} at ${matchingSession.start.toLocaleString('en-GB')}`);
+              }
+            }
+          }
+        });
+        
+        const unscheduledSessions = allCourseSessionsFlat.filter(s => !s.scheduled);
+        if (unscheduledSessions.length > 0) {
+          console.log(`   ❌ ${unscheduledSessions.length} sessions NOT scheduled`);
+          unscheduledSessions.forEach(session => {
+            console.log(`      - Session ${session.sessionNum} at ${session.groupName}`);
+          });
+        }
+        
+        // Update global time to start next course immediately after this one (no gaps)
+        // Use the courseStartTime which tracks where we left off
+        globalCurrentTime = new Date(courseStartTime);
+        
+        console.log(`🔄 Course ${course.course_name} completed, next course starts: ${globalCurrentTime.toLocaleString('en-GB')}`);
+      }
+      
+      console.log('✅ Course-Complete scheduling completed');
+    };
+
+    return {
+      scheduleByGroupComplete,
+      scheduleByCourseComplete
+    };
+  }, []);
+
+  return createSchedulingEngine;
+};

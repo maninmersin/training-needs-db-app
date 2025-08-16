@@ -1,0 +1,133 @@
+/* UserAssignmentManager.css */
+.user-assignment-manager {
+  padding: 20px;
+  width: 100%;
+  /* Remove max-width to use full available space */
+}
+
+.assignment-manager-header {
+  text-align: center;
+  margin-bottom: 30px;
+  padding: 20px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border-radius: 10px;
+}
+
+.assignment-manager-header h1 {
+  margin: 0 0 10px 0;
+  font-size: 2.5em;
+}
+
+.assignment-manager-header p {
+  margin: 0;
+  font-size: 1.1em;
+  opacity: 0.9;
+}
+
+.loading-state, .error-state {
+  text-align: center;
+  padding: 40px;
+  border-radius: 8px;
+  margin: 20px 0;
+}
+
+.loading-state {
+  background-color: #f8f9fa;
+  border: 1px solid #dee2e6;
+}
+
+.error-state {
+  background-color: #f8d7da;
+  border: 1px solid #f5c6cb;
+  color: #721c24;
+}
+
+.error-state button {
+  margin-top: 15px;
+  padding: 10px 20px;
+  background-color: #dc3545;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.error-state button:hover {
+  background-color: #c82333;
+}
+
+.assignment-workspace-container {
+  margin-top: 20px;
+}
+
+.assignment-level-selector {
+  background: white;
+  border: 1px solid #dee2e6;
+  border-radius: 8px;
+  padding: 20px;
+  margin-bottom: 20px;
+}
+
+.assignment-level-selector h3 {
+  margin: 0 0 15px 0;
+  color: #333;
+}
+
+.level-options {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.level-options label {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 15px;
+  border: 2px solid #e9ecef;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.level-options label:hover {
+  border-color: #007bff;
+  background-color: #f8f9ff;
+}
+
+.level-options label.active {
+  border-color: #007bff;
+  background-color: #e7f3ff;
+}
+
+.level-options input[type="radio"] {
+  margin-top: 2px;
+}
+
+.level-option {
+  flex: 1;
+}
+
+.level-option strong {
+  display: block;
+  font-size: 1.1em;
+  color: #333;
+  margin-bottom: 5px;
+}
+
+.level-option span {
+  color: #666;
+  font-size: 0.95em;
+}
+
+/* Responsive design */
+@media (min-width: 768px) {
+  .level-options {
+    flex-direction: row;
+  }
+  
+  .level-options label {
+    flex: 1;
+  }
+}

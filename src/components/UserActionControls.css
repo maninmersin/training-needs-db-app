@@ -1,0 +1,263 @@
+/* User Action Controls - Guided action buttons for each user */
+
+.user-action-controls {
+  border-top: 1px solid #e9ecef;
+  padding-top: 12px;
+}
+
+/* Action Selection Buttons */
+.action-buttons {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.action-btn {
+  flex: 1;
+  padding: 8px 12px;
+  border: 1px solid #ced4da;
+  border-radius: 6px;
+  background: white;
+  color: #495057;
+  cursor: pointer;
+  font-size: 0.85em;
+  font-weight: 500;
+  transition: all 0.2s;
+  text-align: center;
+}
+
+.action-btn:hover {
+  border-color: #007bff;
+  background: #f8f9fa;
+}
+
+.action-btn.active {
+  border-color: #007bff;
+  background: #007bff;
+  color: white;
+}
+
+.keep-btn.active {
+  background: #28a745;
+  border-color: #28a745;
+}
+
+.remove-btn.active {
+  background: #dc3545;
+  border-color: #dc3545;
+}
+
+.move-btn.active {
+  background: #ffc107;
+  border-color: #ffc107;
+  color: #212529;
+}
+
+/* Destination Selection */
+.destination-selection {
+  background: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: 6px;
+  padding: 12px;
+  margin-top: 8px;
+}
+
+.destination-header h5 {
+  margin: 0 0 12px 0;
+  color: #495057;
+  font-size: 0.9em;
+  font-weight: 600;
+}
+
+.destination-group {
+  margin-bottom: 15px;
+}
+
+.destination-group:last-child {
+  margin-bottom: 12px;
+}
+
+.destination-group h6 {
+  margin: 0 0 8px 0;
+  color: #6c757d;
+  font-size: 0.8em;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.destination-select {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid #ced4da;
+  border-radius: 4px;
+  font-size: 0.85em;
+  background: white;
+}
+
+.destination-select:focus {
+  outline: none;
+  border-color: #007bff;
+  box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+}
+
+.course-group {
+  margin-bottom: 10px;
+}
+
+.course-header {
+  background: #e9ecef;
+  padding: 6px 10px;
+  border-radius: 4px;
+  margin-bottom: 6px;
+}
+
+.course-header strong {
+  font-size: 0.85em;
+  color: #495057;
+}
+
+/* Action Buttons for Destination */
+.destination-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.confirm-move-btn {
+  flex: 1;
+  background: #28a745;
+  color: white;
+  border: none;
+  padding: 8px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.85em;
+  font-weight: 500;
+  transition: background-color 0.2s;
+}
+
+.confirm-move-btn:hover:not(:disabled) {
+  background: #218838;
+}
+
+.confirm-move-btn:disabled {
+  background: #6c757d;
+  cursor: not-allowed;
+}
+
+.cancel-move-btn {
+  flex: 1;
+  background: #6c757d;
+  color: white;
+  border: none;
+  padding: 8px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.85em;
+  font-weight: 500;
+  transition: background-color 0.2s;
+}
+
+.cancel-move-btn:hover {
+  background: #545b62;
+}
+
+/* Capacity Warning */
+.capacity-warning {
+  background: #fff3cd;
+  border: 1px solid #ffeaa7;
+  border-radius: 4px;
+  padding: 8px;
+  margin-top: 8px;
+}
+
+.warning-text {
+  margin: 0;
+  font-size: 0.8em;
+  color: #856404;
+  text-align: center;
+}
+
+/* No Alternatives Message */
+.no-alternatives {
+  background: #f8d7da;
+  border: 1px solid #f5c6cb;
+  border-radius: 4px;
+  padding: 12px;
+  text-align: center;
+  margin-top: 8px;
+}
+
+.no-alternatives p {
+  margin: 0 0 10px 0;
+  font-size: 0.85em;
+  color: #721c24;
+}
+
+.back-to-keep-btn {
+  background: #6c757d;
+  color: white;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.8em;
+  font-weight: 500;
+  transition: background-color 0.2s;
+}
+
+.back-to-keep-btn:hover {
+  background: #545b62;
+}
+
+/* Action Status */
+.action-status {
+  margin-top: 10px;
+  padding: 8px;
+  border-radius: 4px;
+  text-align: center;
+  font-size: 0.8em;
+  font-weight: 500;
+}
+
+.status-keep {
+  background: #d4edda;
+  color: #155724;
+  border: 1px solid #c3e6cb;
+}
+
+.status-remove {
+  background: #f8d7da;
+  color: #721c24;
+  border: 1px solid #f5c6cb;
+}
+
+.status-move {
+  background: #fff3cd;
+  color: #856404;
+  border: 1px solid #ffeaa7;
+}
+
+.status-pending {
+  background: #e2e3e5;
+  color: #383d41;
+  border: 1px solid #d1d3d4;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .action-buttons {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .destination-actions {
+    flex-direction: column;
+  }
+
+  .action-btn {
+    padding: 12px;
+    font-size: 0.9em;
+  }
+}

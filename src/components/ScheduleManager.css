@@ -1,0 +1,757 @@
+/* Schedule Manager Styles */
+.schedule-manager {
+  position: fixed !important;
+  top: 0 !important;
+  left: 250px !important; /* Start after sidebar */
+  right: 0 !important;
+  bottom: 0 !important;
+  width: auto !important;
+  margin: 0 !important;
+  padding: 30px;
+  min-height: 100vh;
+  background: #f8f9fa;
+  box-sizing: border-box;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  overflow-y: auto;
+  z-index: 998;
+}
+
+.schedule-manager-header {
+  margin-bottom: 30px;
+  text-align: center;
+}
+
+.schedule-manager-header h1 {
+  color: #2c3e50;
+  margin-bottom: 10px;
+}
+
+.schedule-manager-header p {
+  color: #7f8c8d;
+  font-size: 16px;
+}
+
+/* Loading and Error States */
+.loading-state, .error-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  border: 2px dashed #dee2e6;
+}
+
+.error-state h3 {
+  color: #e74c3c;
+  margin-bottom: 10px;
+}
+
+/* Schedule Controls */
+.schedule-controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  padding: 15px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  border: 1px solid #dee2e6;
+}
+
+.search-controls {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.search-input, .date-filter {
+  padding: 8px 12px;
+  border: 1px solid #ced4da;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+.search-input {
+  min-width: 250px;
+}
+
+.clear-filters-btn {
+  padding: 8px 12px;
+  background: #6c757d;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.clear-filters-btn:hover {
+  background: #5a6268;
+}
+
+.action-controls {
+  display: flex;
+  gap: 10px;
+}
+
+.action-controls button {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.export-btn {
+  background: #28a745;
+  color: white;
+}
+
+.export-btn:hover:not(:disabled) {
+  background: #218838;
+}
+
+.import-btn {
+  background: #007bff;
+  color: white;
+}
+
+.import-btn:hover {
+  background: #0056b3;
+}
+
+.delete-btn {
+  background: #dc3545;
+  color: white;
+}
+
+.delete-btn:hover:not(:disabled) {
+  background: #c82333;
+}
+
+.action-controls button:disabled {
+  background: #6c757d;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+/* Schedule List */
+.schedule-list {
+  background: white;
+  border-radius: 8px;
+  border: 1px solid #dee2e6;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 300px);
+  min-height: 400px;
+}
+
+.schedule-table {
+  width: 100%;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.table-header {
+  background: #f8f9fa;
+  border-bottom: 2px solid #dee2e6;
+  flex-shrink: 0;
+}
+
+.header-row, .table-row {
+  display: grid;
+  grid-template-columns: 50px 2fr minmax(140px, 160px) minmax(140px, 160px) minmax(90px, 120px) minmax(120px, 150px) minmax(100px, 120px);
+  align-items: center;
+  padding: 0;
+  gap: 4px;
+}
+
+.table-body {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.header-cell, .table-cell {
+  padding: 12px 8px;
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.header-cell {
+  font-weight: 600;
+  color: #495057;
+  font-size: 14px;
+}
+
+.checkbox-cell {
+  text-align: center;
+}
+
+.name-cell {
+  font-weight: 500;
+}
+
+.table-row {
+  border-bottom: 1px solid #dee2e6;
+  transition: background-color 0.2s;
+}
+
+.table-row:hover {
+  background: #f8f9fa;
+}
+
+.table-row.selected {
+  background: #e3f2fd;
+}
+
+.schedule-name {
+  color: #2c3e50;
+  font-weight: 500;
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+  line-height: 1.3;
+  word-break: break-word;
+}
+
+.session-count {
+  color: #6c757d;
+  font-size: 14px;
+}
+
+.version-badge {
+  background: #e9ecef;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  color: #495057;
+}
+
+.edit-btn {
+  background: #ffc107;
+  color: #212529;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.edit-btn:hover {
+  background: #e0a800;
+}
+
+.list-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  background: #f8f9fa;
+  border-top: 1px solid #dee2e6;
+  flex-shrink: 0;
+}
+
+.list-stats {
+  color: #6c757d;
+  font-size: 14px;
+}
+
+.selection-info {
+  color: #007bff;
+  font-weight: 500;
+}
+
+.refresh-btn {
+  background: #6c757d;
+  color: white;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.refresh-btn:hover {
+  background: #5a6268;
+}
+
+/* Empty State */
+.empty-state {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 300px;
+  background: white;
+  border-radius: 8px;
+  border: 1px solid #dee2e6;
+}
+
+.empty-state-content {
+  text-align: center;
+  color: #6c757d;
+}
+
+.empty-state-content h3 {
+  margin-bottom: 10px;
+  color: #495057;
+}
+
+/* Excel Export Dialog */
+.excel-export-dialog {
+  background: white;
+  padding: 30px;
+  border-radius: 8px;
+  border: 1px solid #dee2e6;
+  margin: 0 auto;
+  max-width: 600px;
+}
+
+.dialog-header {
+  text-align: center;
+  margin-bottom: 30px;
+}
+
+.dialog-header h2 {
+  color: #2c3e50;
+  margin-bottom: 10px;
+}
+
+.export-options {
+  margin-bottom: 30px;
+}
+
+.option-group {
+  margin-bottom: 20px;
+}
+
+.option-group label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 8px;
+  color: #495057;
+}
+
+.radio-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.radio-group label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: normal;
+  margin-bottom: 0;
+  cursor: pointer;
+}
+
+.dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 30px;
+}
+
+.cancel-btn {
+  background: #6c757d;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.cancel-btn:hover:not(:disabled) {
+  background: #5a6268;
+}
+
+/* Schedule Editor */
+.schedule-editor {
+  background: white;
+  border-radius: 8px;
+  border: 1px solid #dee2e6;
+  overflow: hidden;
+}
+
+.editor-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px;
+  background: #f8f9fa;
+  border-bottom: 1px solid #dee2e6;
+}
+
+.header-info h2 {
+  color: #2c3e50;
+  margin-bottom: 5px;
+}
+
+.schedule-metadata {
+  color: #6c757d;
+  font-size: 14px;
+}
+
+.schedule-metadata span {
+  margin-right: 8px;
+}
+
+.changes-indicator {
+  color: #dc3545;
+  font-weight: 500;
+}
+
+.header-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.save-btn {
+  background: #28a745;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.save-btn:hover:not(:disabled) {
+  background: #218838;
+}
+
+.save-btn:disabled {
+  background: #6c757d;
+  cursor: not-allowed;
+}
+
+.editor-instructions {
+  padding: 15px 20px;
+  background: #e7f3ff;
+  border-bottom: 1px solid #dee2e6;
+}
+
+.editor-instructions p {
+  margin: 0;
+  color: #0c5460;
+  font-size: 14px;
+}
+
+.editor-content {
+  padding: 20px;
+  min-height: 400px;
+}
+
+.empty-schedule {
+  text-align: center;
+  color: #6c757d;
+  padding: 60px 20px;
+}
+
+.editor-footer {
+  padding: 15px 20px;
+  background: #f8f9fa;
+  border-top: 1px solid #dee2e6;
+}
+
+.session-stats {
+  display: flex;
+  gap: 30px;
+}
+
+.stat-item {
+  color: #495057;
+  font-size: 14px;
+}
+
+/* Excel Import Wizard */
+.excel-import-wizard {
+  background: white;
+  border-radius: 8px;
+  border: 1px solid #dee2e6;
+  overflow: hidden;
+  margin: 0 auto;
+  max-width: 900px;
+}
+
+.wizard-header {
+  padding: 20px;
+  background: #f8f9fa;
+  border-bottom: 1px solid #dee2e6;
+  text-align: center;
+}
+
+.wizard-header h2 {
+  color: #2c3e50;
+  margin-bottom: 20px;
+}
+
+.wizard-steps {
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+}
+
+.step {
+  padding: 8px 16px;
+  background: #e9ecef;
+  color: #6c757d;
+  border-radius: 20px;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.step.active {
+  background: #007bff;
+  color: white;
+}
+
+.wizard-content {
+  padding: 30px;
+}
+
+.upload-step, .validate-step, .preview-step, .import-step {
+  text-align: center;
+}
+
+.upload-step h3, .validate-step h3, .preview-step h3, .import-step h3 {
+  color: #2c3e50;
+  margin-bottom: 15px;
+}
+
+.upload-step ul {
+  text-align: left;
+  max-width: 300px;
+  margin: 20px auto;
+}
+
+.import-type-selection {
+  margin: 20px 0;
+  text-align: left;
+  max-width: 400px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.file-upload {
+  margin: 20px 0;
+}
+
+.file-upload input[type="file"] {
+  padding: 10px;
+  border: 2px dashed #dee2e6;
+  border-radius: 4px;
+  width: 100%;
+  max-width: 400px;
+}
+
+.validate-btn, .proceed-btn, .import-btn {
+  background: #007bff;
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: 500;
+  margin: 20px 0;
+}
+
+.validate-btn:hover, .proceed-btn:hover, .import-btn:hover {
+  background: #0056b3;
+}
+
+.validation-summary {
+  margin-bottom: 20px;
+}
+
+.summary-stats {
+  display: flex;
+  justify-content: center;
+  gap: 30px;
+  margin-bottom: 20px;
+}
+
+.stat {
+  padding: 10px 20px;
+  border-radius: 4px;
+  font-weight: 500;
+}
+
+.stat.valid {
+  background: #d4edda;
+  color: #155724;
+}
+
+.stat.errors {
+  background: #f8d7da;
+  color: #721c24;
+}
+
+.stat.total {
+  background: #e2e3e5;
+  color: #383d41;
+}
+
+.validation-results {
+  text-align: left;
+  max-height: 400px;
+  overflow-y: auto;
+  border: 1px solid #dee2e6;
+  border-radius: 4px;
+}
+
+.result-row {
+  padding: 15px;
+  border-bottom: 1px solid #dee2e6;
+}
+
+.result-row.valid {
+  background: #f8fff9;
+}
+
+.result-row.invalid {
+  background: #fff5f5;
+}
+
+.row-header {
+  font-weight: 600;
+  margin-bottom: 8px;
+  color: #2c3e50;
+}
+
+.errors, .warnings {
+  margin-top: 8px;
+}
+
+.error {
+  color: #e74c3c;
+  font-size: 14px;
+  margin-bottom: 4px;
+}
+
+.warning {
+  color: #f39c12;
+  font-size: 14px;
+  margin-bottom: 4px;
+}
+
+.more-results {
+  padding: 15px;
+  text-align: center;
+  color: #6c757d;
+  font-style: italic;
+}
+
+.wizard-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 20px;
+  background: #f8f9fa;
+  border-top: 1px solid #dee2e6;
+}
+
+.wizard-actions button {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.wizard-actions button:first-child {
+  background: #6c757d;
+  color: white;
+}
+
+.wizard-actions button:first-child:hover:not(:disabled) {
+  background: #5a6268;
+}
+
+.wizard-actions button:last-child {
+  background: #007bff;
+  color: white;
+}
+
+.wizard-actions button:last-child:hover:not(:disabled) {
+  background: #0056b3;
+}
+
+.wizard-actions button:disabled {
+  background: #6c757d;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+/* Handle sidebar states and responsive design */
+@media (min-width: 1025px) {
+  .schedule-manager {
+    left: var(--sidebar-width, 250px) !important;
+  }
+}
+
+/* Medium screens - adjust grid layout */
+@media (max-width: 1200px) {
+  .header-row, .table-row {
+    grid-template-columns: 40px 2fr minmax(120px, 140px) minmax(120px, 140px) minmax(80px, 100px) minmax(100px, 130px) minmax(90px, 110px);
+    gap: 2px;
+  }
+  
+  .header-cell, .table-cell {
+    padding: 10px 6px;
+    font-size: 13px;
+  }
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .schedule-manager {
+    left: 0 !important;
+    padding: 20px;
+  }
+  
+  .schedule-controls {
+    flex-direction: column;
+    gap: 15px;
+  }
+  
+  .search-controls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .search-input {
+    min-width: auto;
+    width: 100%;
+  }
+  
+  .action-controls {
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+  
+  .header-row, .table-row {
+    grid-template-columns: 40px 2fr minmax(100px, 120px) minmax(80px, 100px);
+    font-size: 14px;
+  }
+  
+  .header-cell, .table-cell {
+    padding: 10px 6px;
+  }
+  
+  .excel-import-wizard {
+    max-width: none;
+    margin: 0;
+  }
+}

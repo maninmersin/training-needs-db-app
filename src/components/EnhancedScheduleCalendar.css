@@ -1,0 +1,522 @@
+/* Enhanced Schedule Calendar Styles */
+
+.enhanced-schedule-calendar {
+  height: 100%;
+  overflow: auto;
+}
+
+/* Force FullCalendar to be taller */
+.enhanced-schedule-calendar .fc-view-harness {
+  min-height: 1000px !important;
+}
+
+.enhanced-schedule-calendar .fc-timegrid-body {
+  min-height: 900px !important;
+}
+
+.enhanced-schedule-calendar .fc-scroller {
+  height: auto !important;
+  max-height: none !important;
+}
+
+.enhanced-schedule-calendar.drag-mode {
+  /* Add subtle visual indication that drag mode is active */
+  background: linear-gradient(45deg, #f8f9fa 25%, transparent 25%), 
+              linear-gradient(-45deg, #f8f9fa 25%, transparent 25%), 
+              linear-gradient(45deg, transparent 75%, #f8f9fa 75%), 
+              linear-gradient(-45deg, transparent 75%, #f8f9fa 75%);
+  background-size: 20px 20px;
+  background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+}
+
+/* Calendar Groups and Blocks - preserve existing styles */
+.calendar-group {
+  margin-bottom: 30px;
+}
+
+.calendar-group h3 {
+  background: #007bff;
+  color: white;
+  padding: 10px 15px;
+  margin: 0 0 20px 0;
+  border-radius: 6px 6px 0 0;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.calendar-block {
+  background: white;
+  border: 1px solid #dee2e6;
+  border-radius: 6px;
+  margin-bottom: 20px;
+  overflow: visible; /* Changed from hidden to allow expansion */
+  min-height: 1000px; /* Force minimum height for calendar blocks */
+}
+
+.calendar-block h4 {
+  background: #f8f9fa;
+  color: #495057;
+  padding: 8px 15px;
+  margin: 0;
+  border-bottom: 1px solid #dee2e6;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+/* Droppable Event Enhancements */
+.droppable-event {
+  position: relative;
+  height: 100%;
+}
+
+.droppable-event.drag-over {
+  /* Visual feedback when dragging over */
+  box-shadow: inset 0 0 0 2px #007bff;
+  background: rgba(0, 123, 255, 0.1) !important;
+}
+
+.droppable-event.at-capacity {
+  /* Visual indication for full groups */
+  opacity: 0.7;
+}
+
+.droppable-event.at-capacity.drag-over {
+  box-shadow: inset 0 0 0 2px #dc3545;
+  background: rgba(220, 53, 69, 0.1) !important;
+}
+
+/* Custom Event Content - Enhanced */
+.custom-event-content {
+  height: 100%;
+  min-height: 230px; /* Ensure content container is also tall */
+  position: relative;
+  padding: 6px 8px; /* Increased padding */
+  font-size: 11px; /* Base font size for event content */
+  line-height: 1.3; /* Better line spacing */
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+}
+
+.event-table {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  height: 100%; /* Use full height */
+}
+
+.event-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1px; /* Reduced spacing */
+  gap: 4px;
+  flex-shrink: 0; /* Don't shrink basic info rows */
+}
+
+/* Make sure non-user rows are compact */
+.event-row:not(.event-assigned-users-row) {
+  flex-shrink: 0; /* Keep info rows compact */
+}
+
+.event-title-row .event-title {
+  font-weight: 700; /* Increased from 600 to make it bolder */
+  font-size: 11px; /* Reduced from 12px to match table users */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.event-label {
+  font-weight: 500;
+  white-space: nowrap;
+  opacity: 1.0; /* Match event title opacity */
+}
+
+.event-value {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: right;
+}
+
+/* Enhanced Capacity Indicators */
+.event-capacity-row .event-value.capacity-indicator {
+  font-weight: 600;
+  padding: 2px 4px;
+  border-radius: 3px;
+  font-size: 10px;
+}
+
+.capacity-indicator.available {
+  background: rgba(40, 167, 69, 0.2);
+  /* Inherit text color from event instead of overriding */
+}
+
+.capacity-indicator.near-capacity {
+  background: rgba(255, 193, 7, 0.2);
+  /* Inherit text color from event instead of overriding */
+}
+
+.capacity-indicator.at-capacity {
+  background: rgba(220, 53, 69, 0.2);
+  /* Inherit text color from event instead of overriding */
+}
+
+/* Assigned Users Row - Expand to fill remaining space */
+.event-assigned-users-row {
+  flex: 1; /* Take up remaining space in the event */
+  display: flex;
+  flex-direction: column;
+  min-height: 120px; /* Minimum height to ensure consistency */
+}
+
+/* Assigned Users List */
+.assigned-users-list {
+  flex: 1; /* Expand to fill all available space in the user row */
+  overflow-y: auto; /* Allow scrolling for all users */
+  font-size: 11px !important; /* Same size as event title */
+  margin-top: 4px;
+  padding-right: 4px; /* Add space for scrollbar */
+}
+
+/* Custom scrollbar for user list */
+.assigned-users-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.assigned-users-list::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+}
+
+.assigned-users-list::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 3px;
+}
+
+.assigned-users-list::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.5);
+}
+
+/* Assigned Users Table */
+.assigned-users-table {
+  width: 100%;
+  font-size: 11px !important; /* Same size as event title */
+  border-collapse: collapse;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background: transparent;
+}
+
+/* Table Headers */
+.assigned-users-table thead {
+  background: rgba(255, 255, 255, 0.9); /* White background with high opacity */
+}
+
+.user-id-header,
+.user-name-header,
+.user-actions-header {
+  font-size: 9px;
+  font-weight: 600;
+  padding: 1px 2px;
+  text-align: left;
+  color: rgba(0, 0, 0, 0.8) !important; /* Force dark color for visibility */
+  opacity: 1.0;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.user-id-header {
+  width: 45px;
+  text-align: left;
+}
+
+.user-actions-header {
+  width: 30px;
+  text-align: center;
+}
+
+/* Table Rows */
+.assigned-user-row {
+  background: rgba(0, 0, 0, 0.02);
+  transition: background-color 0.2s ease;
+}
+
+.assigned-user-row:nth-child(even) {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.assigned-user-row:hover {
+  background: rgba(0, 0, 0, 0.1);
+  cursor: context-menu;
+}
+
+/* User action button styling */
+.user-actions {
+  width: 30px;
+  text-align: center;
+  padding: 1px 2px;
+}
+
+.user-menu-button {
+  background: none;
+  border: none;
+  font-size: 12px;
+  font-weight: bold;
+  color: rgba(0, 0, 0, 0.5);
+  cursor: pointer;
+  padding: 1px 2px;
+  border-radius: 3px;
+  transition: all 0.2s ease;
+  line-height: 1;
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.user-menu-button:hover {
+  background: rgba(0, 0, 0, 0.1);
+  color: rgba(0, 0, 0, 0.8);
+  transform: scale(1.1);
+}
+
+.user-menu-button:active {
+  transform: scale(0.95);
+}
+
+/* Table Cells */
+.user-id {
+  width: 45px;
+  text-align: left;
+  padding: 1px 2px;
+  font-weight: 600;
+  font-size: 11px !important; /* Same size as event title */
+  color: rgba(0, 0, 0, 0.8) !important; /* Force consistent dark color */
+  border-right: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.user-name {
+  text-align: left;
+  padding: 1px 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-weight: 600;
+  font-size: 11px !important; /* Same size as event title */
+  color: rgba(0, 0, 0, 0.8) !important; /* Force consistent dark color */
+}
+
+.user-count-indicator {
+  color: inherit; /* Inherit color from event instead of hardcoded blue */
+  font-weight: 600;
+  font-size: 10px;
+  padding: 2px 0; /* Reduced padding */
+  margin-top: 2px; /* Reduced margin */
+  border-top: 1px solid rgba(255, 255, 255, 0.2);
+  text-align: center;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 2px;
+  flex-shrink: 0; /* Don't shrink when space is tight */
+}
+
+/* Removed .more-users styles since we now show all users with scrollbar */
+
+/* Drop Zone Overlay */
+.drop-zone-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.2s;
+  pointer-events: none;
+  border-radius: 4px;
+}
+
+.droppable-event.drag-over .drop-zone-overlay {
+  opacity: 1;
+}
+
+.drop-enabled {
+  background: rgba(40, 167, 69, 0.9);
+  color: white;
+  font-weight: 600;
+  font-size: 12px;
+  text-align: center;
+  padding: 8px;
+  border-radius: 4px;
+}
+
+.drop-disabled {
+  background: rgba(220, 53, 69, 0.9);
+  color: white;
+  font-weight: 600;
+  font-size: 12px;
+  text-align: center;
+  padding: 8px;
+  border-radius: 4px;
+}
+
+/* FullCalendar Customizations */
+.enhanced-schedule-calendar .fc-event {
+  border-radius: 4px;
+  margin: 1px;
+  padding: 4px; /* Increased padding */
+  min-height: 240px !important; /* Much larger minimum height */
+  height: auto !important; /* Allow height expansion if needed */
+  transition: all 0.2s;
+  overflow: visible !important; /* Ensure content isn't clipped */
+}
+
+/* Force FullCalendar to respect our minimum heights */
+.enhanced-schedule-calendar .fc-timegrid-event .fc-event-main {
+  min-height: 240px !important;
+  overflow: visible !important;
+}
+
+.enhanced-schedule-calendar .fc-timegrid-event {
+  min-height: 240px !important;
+}
+
+/* Remove dynamic sizing classes as they don't work well with FullCalendar */
+
+.enhanced-schedule-calendar.drag-mode .fc-event {
+  cursor: pointer;
+  border: 2px dashed transparent;
+}
+
+.enhanced-schedule-calendar.drag-mode .fc-event:hover {
+  transform: scale(1.02);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+}
+
+/* Scrollbar Styling */
+.enhanced-schedule-calendar::-webkit-scrollbar {
+  width: 8px;
+}
+
+.enhanced-schedule-calendar::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+.enhanced-schedule-calendar::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 4px;
+}
+
+.enhanced-schedule-calendar::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .custom-event-content {
+    font-size: 10px;
+    padding: 2px 4px;
+  }
+  
+  .event-title-row .event-title {
+    font-size: 10px; /* Match table users on mobile */
+    font-weight: 700; /* Ensure bold on mobile too */
+  }
+  
+  .event-label,
+  .event-value {
+    font-size: 9px;
+  }
+  
+  .event-assigned-users-row {
+    height: 100px; /* Smaller fixed height for mobile */
+  }
+
+  .assigned-users-list {
+    font-size: 9px; /* Smaller font for mobile table */
+  }
+  
+  /* Mobile table styles */
+  .assigned-users-table {
+    font-size: 9px; /* Smaller than mobile title (10px) */
+  }
+  
+  .user-id-header,
+  .user-name-header,
+  .user-actions-header {
+    font-size: 8px;
+    padding: 1px 3px;
+    color: rgba(0, 0, 0, 0.8) !important; /* Force dark color for mobile visibility too */
+  }
+  
+  .user-id-header {
+    width: 35px; /* Narrower on mobile */
+  }
+  
+  .user-actions-header {
+    width: 25px;
+  }
+  
+  .user-id {
+    width: 35px;
+    padding: 1px 3px;
+    font-size: 9px !important; /* Force smaller than mobile title */
+    text-align: left; /* Ensure left alignment on mobile too */
+    color: rgba(0, 0, 0, 0.8) !important; /* Force consistent dark color on mobile */
+  }
+  
+  .user-actions {
+    width: 25px;
+  }
+  
+  .user-menu-button {
+    width: 18px;
+    height: 18px;
+    font-size: 12px;
+  }
+  
+  .user-name {
+    padding: 1px 3px;
+    font-size: 9px !important; /* Force smaller than mobile title */
+    font-weight: 600; /* Match user-id font weight */
+    color: rgba(0, 0, 0, 0.8) !important; /* Force consistent dark color on mobile */
+  }
+  
+  .drop-enabled,
+  .drop-disabled {
+    font-size: 11px;
+    padding: 6px;
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .droppable-event.drag-over {
+    box-shadow: inset 0 0 0 3px #000;
+  }
+  
+  .drop-enabled {
+    background: #006600;
+    border: 2px solid #fff;
+  }
+  
+  .drop-disabled {
+    background: #cc0000;
+    border: 2px solid #fff;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .droppable-event,
+  .drop-zone-overlay,
+  .enhanced-schedule-calendar.drag-mode .fc-event {
+    transition: none;
+  }
+  
+  .enhanced-schedule-calendar.drag-mode .fc-event:hover {
+    transform: none;
+  }
+}

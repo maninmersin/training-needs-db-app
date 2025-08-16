@@ -1,0 +1,260 @@
+/* Calendar Day Controls Styles */
+
+.calendar-day-controls {
+  margin-bottom: 20px;
+  border-bottom: 1px solid #dee2e6;
+}
+
+/* Header */
+.day-controls-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  padding: 8px 12px;
+  background: #f8f9fa;
+  border: 1px solid #dee2e6;
+  border-radius: 6px;
+  margin-bottom: 10px;
+  transition: background-color 0.2s ease;
+}
+
+.day-controls-header:hover {
+  background: #e9ecef;
+}
+
+.day-controls-header h3 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #333;
+}
+
+.day-controls-summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.visible-count {
+  font-size: 11px;
+  color: #666;
+  font-weight: 500;
+}
+
+.expand-icon {
+  font-size: 12px;
+  color: #666;
+  transition: transform 0.2s ease;
+  user-select: none;
+}
+
+.expand-icon.expanded {
+  transform: rotate(0deg);
+}
+
+.expand-icon.collapsed {
+  transform: rotate(0deg);
+}
+
+/* Content */
+.day-controls-content {
+  padding: 15px;
+  background: white;
+  border: 1px solid #dee2e6;
+  border-radius: 6px;
+  margin-bottom: 15px;
+}
+
+/* Presets */
+.day-presets {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 15px;
+  flex-wrap: wrap;
+}
+
+.preset-btn {
+  padding: 4px 8px;
+  border: 1px solid #dee2e6;
+  border-radius: 4px;
+  background: white;
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  flex: 1;
+  min-width: 70px;
+}
+
+.preset-btn:hover {
+  background: #f8f9fa;
+  border-color: #adb5bd;
+}
+
+.preset-btn.business-days {
+  color: #0066cc;
+  border-color: #0066cc;
+}
+
+.preset-btn.business-days:hover {
+  background: #e7f3ff;
+}
+
+.preset-btn.all-days {
+  color: #28a745;
+  border-color: #28a745;
+}
+
+.preset-btn.all-days:hover {
+  background: #d4edda;
+}
+
+.preset-btn.weekends-only {
+  color: #6f42c1;
+  border-color: #6f42c1;
+}
+
+.preset-btn.weekends-only:hover {
+  background: #e2d9f3;
+}
+
+/* Day Toggles */
+.day-toggles {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+}
+
+.day-toggle {
+  border: 1px solid #dee2e6;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+}
+
+.day-toggle.visible {
+  background: #e7f3ff;
+  border-color: #0066cc;
+}
+
+.day-toggle.hidden {
+  background: #f8f9fa;
+  border-color: #dee2e6;
+  opacity: 0.7;
+}
+
+.day-toggle-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  cursor: pointer;
+  margin: 0;
+  user-select: none;
+}
+
+.day-checkbox {
+  display: none; /* Hidden, we use custom styling */
+}
+
+.day-name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+}
+
+.day-short {
+  font-weight: 600;
+  font-size: 12px;
+  color: #333;
+  min-width: 28px;
+}
+
+.day-full {
+  font-size: 11px;
+  color: #666;
+}
+
+.checkmark {
+  font-size: 14px;
+  color: #28a745;
+  font-weight: bold;
+  min-width: 16px;
+  text-align: center;
+}
+
+.day-toggle.hidden .checkmark {
+  color: transparent;
+}
+
+.day-toggle.hidden .day-short {
+  color: #999;
+}
+
+.day-toggle.hidden .day-full {
+  color: #aaa;
+}
+
+/* Warning */
+.warning-message {
+  background: #fff3cd;
+  border: 1px solid #ffeaa7;
+  border-radius: 4px;
+  padding: 8px 12px;
+  margin: 10px 0;
+  font-size: 12px;
+  color: #856404;
+  text-align: center;
+}
+
+/* Help Text */
+.help-text {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid #f0f0f0;
+}
+
+.help-text small {
+  color: #666;
+  font-size: 10px;
+  line-height: 1.3;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .day-presets {
+    flex-direction: column;
+  }
+  
+  .preset-btn {
+    min-width: auto;
+  }
+  
+  .day-controls-summary {
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 2px;
+  }
+  
+  .visible-count {
+    font-size: 10px;
+  }
+}
+
+/* Hover Effects */
+.day-toggle:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.day-toggle.visible:hover {
+  background: #cce7ff;
+  border-color: #0052a3;
+}
+
+.day-toggle.hidden:hover {
+  background: #e9ecef;
+  border-color: #adb5bd;
+  opacity: 0.9;
+}

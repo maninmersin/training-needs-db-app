@@ -1,0 +1,259 @@
+/* CalendarSidebar.css */
+.calendar-sidebar {
+  position: fixed;
+  top: 0;
+  right: 0;
+  height: 100vh;
+  width: 450px;
+  background: white;
+  border-left: 1px solid #dee2e6;
+  box-shadow: -2px 0 10px rgba(0, 0, 0, 0.1);
+  transform: translateX(100%);
+  transition: transform 0.3s ease-in-out;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+}
+
+.calendar-sidebar.open {
+  transform: translateX(0);
+}
+
+.sidebar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border-bottom: 1px solid #dee2e6;
+}
+
+.sidebar-header h2 {
+  margin: 0;
+  font-size: 1.4em;
+}
+
+.sidebar-close-btn {
+  background: none;
+  border: none;
+  color: white;
+  font-size: 20px;
+  cursor: pointer;
+  padding: 5px;
+  border-radius: 3px;
+  transition: background-color 0.2s ease;
+}
+
+.sidebar-close-btn:hover {
+  background-color: rgba(255, 255, 255, 0.2);
+}
+
+.sidebar-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0;
+}
+
+.sidebar-loading,
+.sidebar-error {
+  padding: 20px;
+  text-align: center;
+}
+
+.sidebar-error {
+  color: #721c24;
+  background-color: #f8d7da;
+  border: 1px solid #f5c6cb;
+  margin: 20px;
+  border-radius: 5px;
+}
+
+.sidebar-error button {
+  margin-top: 10px;
+  padding: 8px 16px;
+  background-color: #dc3545;
+  color: white;
+  border: none;
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+.sidebar-error button:hover {
+  background-color: #c82333;
+}
+
+.sidebar-schedule-selector {
+  padding: 20px;
+}
+
+.sidebar-schedule-selector p {
+  margin: 0 0 15px 0;
+  color: #666;
+}
+
+.sidebar-assignment-workspace {
+  padding: 0;
+}
+
+/* Override Assignment Level Selector for sidebar */
+.sidebar-assignment-workspace .assignment-level-selector {
+  background: #f8f9fa;
+  border: none;
+  border-radius: 0;
+  border-bottom: 1px solid #dee2e6;
+  padding: 20px;
+  margin-bottom: 0;
+}
+
+.sidebar-assignment-workspace .assignment-level-selector h3 {
+  margin: 0 0 15px 0;
+  color: #333;
+  font-size: 1.1em;
+}
+
+.sidebar-assignment-workspace .level-options {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.sidebar-assignment-workspace .level-options label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid #e9ecef;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 0.9em;
+}
+
+.sidebar-assignment-workspace .level-options label:hover {
+  border-color: #007bff;
+  background-color: #f8f9ff;
+}
+
+.sidebar-assignment-workspace .level-options label.active {
+  border-color: #007bff;
+  background-color: #e7f3ff;
+}
+
+.sidebar-assignment-workspace .level-options input[type="radio"] {
+  margin: 0;
+}
+
+.sidebar-assignment-workspace .level-option {
+  flex: 1;
+}
+
+.sidebar-assignment-workspace .level-option strong {
+  display: block;
+  font-size: 0.95em;
+  color: #333;
+  margin-bottom: 2px;
+}
+
+.sidebar-assignment-workspace .level-option span {
+  color: #666;
+  font-size: 0.85em;
+}
+
+/* Override Assignment Workspace styles for sidebar */
+.sidebar-assignment-workspace .assignment-workspace {
+  background: none;
+  border-radius: 0;
+  padding: 0;
+}
+
+.sidebar-assignment-workspace .workspace-header {
+  display: none; /* Hide back button in sidebar */
+}
+
+.sidebar-assignment-workspace .assignment-panels {
+  display: flex;
+  flex-direction: column;
+  height: auto;
+  gap: 15px;
+  padding: 20px;
+}
+
+.sidebar-assignment-workspace .eligible-users-panel,
+.sidebar-assignment-workspace .current-assignments-panel {
+  height: 300px;
+}
+
+.sidebar-assignment-workspace .users-list,
+.sidebar-assignment-workspace .assignments-list {
+  max-height: 220px;
+}
+
+/* Override selectors for sidebar */
+.sidebar-assignment-workspace .course-selector,
+.sidebar-assignment-workspace .group-selector,
+.sidebar-assignment-workspace .session-selector {
+  margin: 0 20px 20px 20px;
+  padding: 15px;
+  background: #f8f9fa;
+  border-radius: 6px;
+}
+
+.sidebar-assignment-workspace .course-selector h3,
+.sidebar-assignment-workspace .group-selector h3,
+.sidebar-assignment-workspace .session-selector h3 {
+  margin: 0 0 12px 0;
+  font-size: 1em;
+}
+
+.sidebar-assignment-workspace .course-grid,
+.sidebar-assignment-workspace .group-grid,
+.sidebar-assignment-workspace .session-grid {
+  grid-template-columns: 1fr;
+  gap: 10px;
+}
+
+.sidebar-assignment-workspace .course-card,
+.sidebar-assignment-workspace .group-card,
+.sidebar-assignment-workspace .session-card {
+  padding: 12px;
+  font-size: 0.9em;
+}
+
+.sidebar-assignment-workspace .course-card h4,
+.sidebar-assignment-workspace .group-card h4,
+.sidebar-assignment-workspace .session-card h4 {
+  margin: 0 0 6px 0;
+  font-size: 1em;
+}
+
+.sidebar-assignment-workspace .course-card p,
+.sidebar-assignment-workspace .group-card p,
+.sidebar-assignment-workspace .session-card p {
+  margin: 2px 0;
+  font-size: 0.85em;
+}
+
+/* Responsive adjustments */
+@media (max-width: 1200px) {
+  .calendar-sidebar {
+    width: 380px;
+  }
+}
+
+@media (max-width: 768px) {
+  .calendar-sidebar {
+    width: 100vw;
+    left: 0;
+    right: 0;
+  }
+  
+  .sidebar-assignment-workspace .assignment-panels {
+    padding: 15px;
+  }
+  
+  .sidebar-assignment-workspace .eligible-users-panel,
+  .sidebar-assignment-workspace .current-assignments-panel {
+    height: 250px;
+  }
+}

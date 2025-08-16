@@ -1,0 +1,379 @@
+/* Stakeholder Calendar Editor - Professional interface for external users */
+
+.stakeholder-calendar-editor {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background-color: #f8f9fa;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+}
+
+/* Loading & Error States */
+.stakeholder-calendar-editor.loading,
+.stakeholder-calendar-editor.error {
+  justify-content: center;
+  align-items: center;
+}
+
+.loading-content,
+.error-content {
+  text-align: center;
+  padding: 40px;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  max-width: 500px;
+  width: 90%;
+}
+
+.loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid #e3e3e3;
+  border-top: 4px solid #007bff;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin: 0 auto 20px auto;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.error-content h2 {
+  color: #dc3545;
+  margin-bottom: 15px;
+}
+
+.error-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  margin-top: 20px;
+}
+
+/* Header */
+.editor-header {
+  background: white;
+  border-bottom: 2px solid #e9ecef;
+  padding: 20px 30px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.header-info h1 {
+  margin: 0 0 5px 0;
+  color: #2c3e50;
+  font-size: 1.8em;
+  font-weight: 600;
+}
+
+.header-info h2 {
+  margin: 0 0 8px 0;
+  color: #34495e;
+  font-size: 1.3em;
+  font-weight: 500;
+}
+
+.schedule-description {
+  margin: 0;
+  color: #6c757d;
+  font-size: 0.95em;
+}
+
+.header-actions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.changes-summary-btn {
+  background: #ffc107;
+  color: #212529;
+  border: none;
+  padding: 10px 16px;
+  border-radius: 6px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.changes-summary-btn:hover {
+  background: #e0a800;
+  transform: translateY(-1px);
+}
+
+.apply-changes-btn {
+  background: #28a745;
+  color: white;
+  border: none;
+  padding: 10px 16px;
+  border-radius: 6px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.apply-changes-btn:hover:not(:disabled) {
+  background: #218838;
+  transform: translateY(-1px);
+}
+
+.apply-changes-btn:disabled {
+  background: #6c757d;
+  cursor: not-allowed;
+}
+
+.close-editor-btn {
+  background: #dc3545;
+  color: white;
+  border: none;
+  padding: 10px 16px;
+  border-radius: 6px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.close-editor-btn:hover {
+  background: #c82333;
+  transform: translateY(-1px);
+}
+
+/* Main Content */
+.editor-content {
+  flex: 1;
+  display: flex;
+  position: relative;
+  overflow: hidden;
+}
+
+.calendar-container {
+  flex: 1;
+  padding: 20px;
+  overflow-y: auto;
+}
+
+/* Session Edit Panel - slides in from right */
+.session-edit-panel {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 450px;
+  height: 100%;
+  background: white;
+  border-left: 2px solid #e9ecef;
+  box-shadow: -4px 0 12px rgba(0, 0, 0, 0.1);
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  animation: slideInFromRight 0.3s ease-out;
+}
+
+@keyframes slideInFromRight {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .editor-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 15px;
+    padding: 15px 20px;
+  }
+
+  .header-actions {
+    width: 100%;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+  }
+
+  .session-edit-panel {
+    width: 100%;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 2000;
+  }
+
+  .calendar-container {
+    padding: 15px;
+  }
+}
+
+/* Professional styling for stakeholder use */
+.stakeholder-calendar-editor .fc {
+  font-family: inherit;
+}
+
+.stakeholder-calendar-editor .fc-event {
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.stakeholder-calendar-editor .fc-event:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+/* Button styles */
+.retry-btn,
+.close-btn {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 6px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.retry-btn {
+  background: #007bff;
+  color: white;
+  margin-right: 10px;
+}
+
+.retry-btn:hover {
+  background: #0056b3;
+}
+
+.close-btn {
+  background: #6c757d;
+  color: white;
+}
+
+.close-btn:hover {
+  background: #545b62;
+}
+
+/* Generate Calendar Button */
+.generate-calendar-btn {
+  background: #17a2b8;
+  color: white;
+  border: none;
+  padding: 10px 16px;
+  border-radius: 6px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.generate-calendar-btn:hover:not(:disabled) {
+  background: #138496;
+  transform: translateY(-1px);
+}
+
+.generate-calendar-btn:disabled {
+  background: #6c757d;
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+/* Calendar Generation Messages */
+.calendar-message {
+  margin: 15px 30px;
+  padding: 12px 16px;
+  border-radius: 6px;
+  font-weight: 500;
+  text-align: center;
+  animation: slideDown 0.3s ease-out;
+}
+
+.calendar-message.success {
+  background: #d4edda;
+  color: #155724;
+  border: 1px solid #c3e6cb;
+}
+
+.calendar-message.error {
+  background: #f8d7da;
+  color: #721c24;
+  border: 1px solid #f1aeb5;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Update header actions for better wrapping */
+.header-actions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+/* Ensure consistent button styling */
+.changes-summary-btn,
+.apply-changes-btn,
+.generate-calendar-btn,
+.export-calendar-btn,
+.close-editor-btn {
+  font-size: 14px;
+  min-height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Mobile responsive improvements */
+@media (max-width: 968px) {
+  .header-actions {
+    gap: 8px;
+  }
+  
+  .generate-calendar-btn,
+  .export-calendar-btn,
+  .apply-changes-btn,
+  .changes-summary-btn {
+    font-size: 13px;
+    padding: 8px 12px;
+  }
+}
+
+/* Export calendar button styling */
+.export-calendar-btn {
+  background: linear-gradient(135deg, #28a745, #34ce57);
+  color: white;
+  border: none;
+  padding: 12px 20px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(40, 167, 69, 0.2);
+}
+
+.export-calendar-btn:hover:not(:disabled) {
+  background: linear-gradient(135deg, #218838, #28a745);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(40, 167, 69, 0.3);
+}
+
+.export-calendar-btn:disabled {
+  background: #6c757d;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}

@@ -1,0 +1,63 @@
+/* Navigation styles */
+nav {
+  background-color: #2c3e50;
+  padding: 1rem;
+  margin-bottom: 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.nav-link {
+  color: white;
+  text-decoration: none;
+  margin: 0 1rem;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  transition: background-color 0.3s ease;
+}
+
+.nav-link:hover {
+  background-color: #34495e;
+}
+
+.nav-link.active {
+  background-color: #1abc9c;
+}
+
+/* Logout button styles */
+.logout-button {
+  background-color: #e74c3c;
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.logout-button:hover {
+  background-color: #c0392b;
+}
+
+/* Form container styles */
+.dynamic-user-form {
+  padding: 2rem;
+}
+
+/* Loading indicator */
+.loading-indicator {
+  text-align: center;
+  padding: 2rem;
+  color: #666;
+}
+
+/* Error messages */
+.error-message {
+  color: #e74c3c;
+  padding: 1rem;
+  margin: 1rem 0;
+  border: 1px solid #e74c3c;
+  border-radius: 4px;
+  background-color: #f8d7da;
+}

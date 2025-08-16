@@ -1,0 +1,244 @@
+/* Drag & Drop Assignment Panel Styles */
+
+.drag-drop-assignment-panel {
+  min-height: 100vh;
+  background-color: #f8f9fa;
+  display: flex;
+  flex-direction: column;
+  position: fixed !important;
+  top: 0 !important;
+  left: 250px !important; /* Start after sidebar */
+  right: 0 !important;
+  bottom: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  z-index: 999 !important;
+  width: auto !important;
+}
+
+.drag-drop-assignment-panel.loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.loading-message {
+  font-size: 18px;
+  color: #666;
+  text-align: center;
+}
+
+/* Header */
+.assignment-panel-header {
+  background: white;
+  border-bottom: 1px solid #dee2e6;
+  padding: 15px 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.header-title h2 {
+  margin: 0;
+  color: #333;
+  font-size: 24px;
+}
+
+.schedule-name {
+  font-size: 14px;
+  color: #666;
+  font-weight: normal;
+  margin-left: 10px;
+}
+
+.header-controls {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.auto-assign-btn {
+  background: #28a745;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 6px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.auto-assign-btn:hover:not(:disabled) {
+  background: #218838;
+}
+
+.auto-assign-btn:disabled {
+  background: #6c757d;
+  cursor: not-allowed;
+}
+
+.remove-all-btn {
+  background: #dc3545;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 6px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 14px;
+}
+
+.remove-all-btn:hover:not(:disabled) {
+  background: #c82333;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(220, 53, 69, 0.3);
+}
+
+.remove-all-btn:disabled {
+  background: #6c757d;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.export-assignments-btn {
+  background: #17a2b8;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 6px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 14px;
+}
+
+.export-assignments-btn:hover:not(:disabled) {
+  background: #138496;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(23, 162, 184, 0.3);
+}
+
+.export-assignments-btn:disabled {
+  background: #6c757d;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.drag-mode-toggle {
+  background: #6c757d;
+  color: white;
+  border: none;
+  padding: 10px 15px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.drag-mode-toggle.active {
+  background: #007bff;
+}
+
+.drag-mode-toggle:hover {
+  background: #5a6268;
+}
+
+.drag-mode-toggle.active:hover {
+  background: #0056b3;
+}
+
+.close-btn {
+  background: #dc3545;
+  color: white;
+  border: none;
+  padding: 8px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 16px;
+}
+
+.close-btn:hover {
+  background: #c82333;
+}
+
+/* Error Message */
+.error-message {
+  background: #f8d7da;
+  color: #721c24;
+  padding: 10px 20px;
+  border-bottom: 1px solid #f5c6cb;
+  margin: 0;
+}
+
+/* Main Content Layout */
+.assignment-panel-content {
+  flex: 1;
+  display: flex;
+  min-height: 0; /* Important for flex children with overflow */
+  height: calc(100vh - 60px); /* Account for header height */
+}
+
+.user-pool-section {
+  flex: 0 0 350px;
+  background: white;
+  border-right: 1px solid #dee2e6;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto; /* Enable vertical scrolling */
+  max-height: 100%; /* Constrain to parent height */
+}
+
+.calendar-section {
+  flex: 1;
+  overflow: auto;
+  background: #f8f9fa;
+}
+
+/* Drag Preview */
+.drag-preview {
+  background: white;
+  border: 2px solid #007bff;
+  border-radius: 8px;
+  padding: 10px 15px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  font-weight: 500;
+  color: #333;
+  z-index: 1001;
+}
+
+/* Responsive Design */
+@media (max-width: 1200px) {
+  .user-pool-section {
+    flex: 0 0 300px;
+  }
+}
+
+@media (max-width: 768px) {
+  .assignment-panel-header {
+    flex-direction: column;
+    gap: 10px;
+    align-items: flex-start;
+  }
+  
+  .header-controls {
+    width: 100%;
+    justify-content: space-between;
+  }
+  
+  .assignment-panel-content {
+    flex-direction: column;
+  }
+  
+  .user-pool-section {
+    flex: 0 0 300px;
+    border-right: none;
+    border-bottom: 1px solid #dee2e6;
+  }
+  
+  .calendar-section {
+    flex: 1;
+  }
+}
