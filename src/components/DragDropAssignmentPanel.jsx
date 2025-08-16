@@ -3013,10 +3013,12 @@ const DragDropAssignmentPanel = ({
       }
       
       // Set success message in state
+      console.log('🎯 Setting success message:', message);
       setError(message); // Using error state for success message (will show as green)
       
       // Auto-clear the message after 5 seconds
       setTimeout(() => {
+        console.log('🎯 Auto-clearing success message');
         setError(null);
       }, 5000);
       
