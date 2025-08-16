@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { DndContext, DragOverlay, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { sortableKeyboardCoordinates } from '@dnd-kit/sortable';
 import { saveAs } from 'file-saver';
@@ -435,8 +435,8 @@ const DragDropAssignmentPanel = ({
     }
   };
 
-  // Memoized version of getAllSessionsFlat to prevent infinite re-renders
-  const flattenedSessions = useMemo(() => {
+  // Function to get all sessions flattened - regenerates on each call to ensure fresh data
+  const getAllSessionsFlat = () => {
     console.log('🔍 getAllSessionsFlat called');
     console.log('📋 Schedule exists:', !!schedule);
     console.log('📋 Schedule.sessions exists:', !!schedule?.sessions);
@@ -488,11 +488,6 @@ const DragDropAssignmentPanel = ({
     
     console.log('✅ Sessions already flat, returning as-is');
     return schedule.sessions;
-  }, [schedule?.sessions]);
-
-  // Keep the function version for existing code that calls it
-  const getAllSessionsFlat = () => {
-    return flattenedSessions;
   };
 
   const initializeCapacityTracking = async () => {
@@ -3134,7 +3129,7 @@ const DragDropAssignmentPanel = ({
           {/* Right: Enhanced Calendar */}
           <div className="calendar-section">
             <EnhancedScheduleCalendar
-              sessions={flattenedSessions}
+              sessions={getAllSessionsFlat()}
               onSessionUpdated={() => {}} // Would connect to existing handler
               criteria={schedule?.criteria}
               dragMode={dragMode}
