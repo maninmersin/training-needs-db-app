@@ -24,7 +24,11 @@
       "Bash(move setup-user-management.js setup-user-management.cjs)",
       "Bash(git init:*)",
       "Bash(vercel:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git branch:*)",
+      "Bash(git remote add:*)",
+      "Bash(git push:*)"
     ],
     "deny": []
   }

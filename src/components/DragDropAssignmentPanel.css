@@ -173,6 +173,16 @@
   margin: 0;
 }
 
+/* Success message styling */
+.success-message {
+  background: #d4edda;
+  color: #155724;
+  padding: 10px 20px;
+  border-bottom: 1px solid #c3e6cb;
+  margin: 0;
+  border-left: 4px solid #28a745;
+}
+
 /* Main Content Layout */
 .assignment-panel-content {
   flex: 1;

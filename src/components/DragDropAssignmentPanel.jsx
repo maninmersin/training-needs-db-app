@@ -1726,7 +1726,13 @@ const DragDropAssignmentPanel = ({
         onAssignmentUpdate();
       }
 
-      alert(`✅ Successfully removed all ${currentAssignmentCount} assignments from the schedule.`);
+      // Show success message in state
+      setError(`✅ Successfully removed all ${currentAssignmentCount} assignments from the schedule.`);
+      
+      // Auto-clear the message after 5 seconds
+      setTimeout(() => {
+        setError(null);
+      }, 5000);
 
     } catch (err) {
       console.error('❌ Error removing all assignments:', err);
@@ -2988,23 +2994,34 @@ const DragDropAssignmentPanel = ({
   const handleAutoAssign = async () => {
     try {
       setLoading(true);
+      setError(null); // Clear any previous errors
       
       const results = await performAutoAssignment();
       
-      // Show results to user
+      // Show results to user via state instead of blocking alert
       const successCount = results.successful.length;
       const failedCount = results.failed.length;
-      const message = `Auto-assignment completed: ${successCount} users assigned successfully` + 
+      const message = `✅ Auto-assignment completed: ${successCount} users assigned successfully` + 
                      (failedCount > 0 ? `, ${failedCount} failed` : '');
       
-      alert(message);
-      
-      // Refresh data
+      // Refresh data and notify parent component
       await initializeAssignmentData();
       
+      // Trigger calendar update callback
+      if (onAssignmentUpdate) {
+        onAssignmentUpdate();
+      }
+      
+      // Set success message in state
+      setError(message); // Using error state for success message (will show as green)
+      
+      // Auto-clear the message after 5 seconds
+      setTimeout(() => {
+        setError(null);
+      }, 5000);
+      
     } catch (err) {
-      debugError('❌ Error in auto-assignment:', err);
-      setError(`Auto-assignment failed: ${err.message}`);
+      setError(`❌ Auto-assignment failed: ${err.message}`);
     } finally {
       setLoading(false);
     }
@@ -3085,8 +3102,8 @@ const DragDropAssignmentPanel = ({
         </div>
 
         {error && (
-          <div className="error-message">
-            ❌ {error}
+          <div className={error.startsWith('✅') ? 'success-message' : 'error-message'}>
+            {error}
           </div>
         )}
 
