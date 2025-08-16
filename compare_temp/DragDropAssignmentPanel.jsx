@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { DndContext, DragOverlay, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { sortableKeyboardCoordinates } from '@dnd-kit/sortable';
 import { saveAs } from 'file-saver';
@@ -435,8 +435,8 @@ const DragDropAssignmentPanel = ({
     }
   };
 
-  // Function to get all sessions flattened - regenerates on each call to ensure fresh data
-  const getAllSessionsFlat = () => {
+  // Memoized version of getAllSessionsFlat to prevent infinite re-renders
+  const flattenedSessions = useMemo(() => {
     console.log('🔍 getAllSessionsFlat called');
     console.log('📋 Schedule exists:', !!schedule);
     console.log('📋 Schedule.sessions exists:', !!schedule?.sessions);
@@ -488,6 +488,11 @@ const DragDropAssignmentPanel = ({
     
     console.log('✅ Sessions already flat, returning as-is');
     return schedule.sessions;
+  }, [schedule?.sessions]);
+
+  // Keep the function version for existing code that calls it
+  const getAllSessionsFlat = () => {
+    return flattenedSessions;
   };
 
   const initializeCapacityTracking = async () => {
@@ -1721,13 +1726,7 @@ const DragDropAssignmentPanel = ({
         onAssignmentUpdate();
       }
 
-      // Show success message in state
-      setError(`✅ Successfully removed all ${currentAssignmentCount} assignments from the schedule.`);
-      
-      // Auto-clear the message after 5 seconds
-      setTimeout(() => {
-        setError(null);
-      }, 5000);
+      alert(`✅ Successfully removed all ${currentAssignmentCount} assignments from the schedule.`);
 
     } catch (err) {
       console.error('❌ Error removing all assignments:', err);
@@ -2989,31 +2988,23 @@ const DragDropAssignmentPanel = ({
   const handleAutoAssign = async () => {
     try {
       setLoading(true);
-      setError(null); // Clear any previous errors
       
       const results = await performAutoAssignment();
       
-      // Show results to user via state instead of blocking alert
+      // Show results to user
       const successCount = results.successful.length;
       const failedCount = results.failed.length;
-      const message = `✅ Auto-assignment completed: ${successCount} users assigned successfully` + 
+      const message = `Auto-assignment completed: ${successCount} users assigned successfully` + 
                      (failedCount > 0 ? `, ${failedCount} failed` : '');
+      
+      alert(message);
       
       // Refresh data
       await initializeAssignmentData();
       
-      // Set success message in state
-      console.log('🎯 Setting success message:', message);
-      setError(message); // Using error state for success message (will show as green)
-      
-      // Auto-clear the message after 5 seconds
-      setTimeout(() => {
-        console.log('🎯 Auto-clearing success message');
-        setError(null);
-      }, 5000);
-      
     } catch (err) {
-      setError(`❌ Auto-assignment failed: ${err.message}`);
+      debugError('❌ Error in auto-assignment:', err);
+      setError(`Auto-assignment failed: ${err.message}`);
     } finally {
       setLoading(false);
     }
@@ -3094,8 +3085,8 @@ const DragDropAssignmentPanel = ({
         </div>
 
         {error && (
-          <div className={error.startsWith('✅') ? 'success-message' : 'error-message'}>
-            {error}
+          <div className="error-message">
+            ❌ {error}
           </div>
         )}
 
@@ -3124,7 +3115,7 @@ const DragDropAssignmentPanel = ({
           {/* Right: Enhanced Calendar */}
           <div className="calendar-section">
             <EnhancedScheduleCalendar
-              sessions={getAllSessionsFlat()}
+              sessions={flattenedSessions}
               onSessionUpdated={() => {}} // Would connect to existing handler
               criteria={schedule?.criteria}
               dragMode={dragMode}
