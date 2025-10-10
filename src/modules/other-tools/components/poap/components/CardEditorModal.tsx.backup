@@ -1,0 +1,545 @@
+import { useState, useEffect } from 'react';
+import type { Card, CardStatus, MilestoneData } from '../types';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+
+interface CardEditorModalProps {
+  isOpen: boolean;
+  card: Card | null;
+  onSave: (updates: Partial<Card>) => void;
+  onCancel: () => void;
+}
+
+export default function CardEditorModal({ 
+  isOpen, 
+  card, 
+  onSave, 
+  onCancel 
+}: CardEditorModalProps) {
+  // Form state
+  const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [status, setStatus] = useState<CardStatus>('not-started');
+  const [row, setRow] = useState(0);
+  const [color, setColor] = useState('#3B82F6');
+  const [backgroundColor, setBackgroundColor] = useState('#FFFFFF');
+  const [textColor, setTextColor] = useState('#1F2937');
+  const [fontSize, setFontSize] = useState(14);
+  const [fontWeight, setFontWeight] = useState<'normal' | 'medium' | 'semibold' | 'bold'>('normal');
+  const [fontFamily, setFontFamily] = useState('Inter');
+
+  // Milestone state
+  const [hasMilestone, setHasMilestone] = useState(false);
+  const [milestoneTitle, setMilestoneTitle] = useState('');
+  const [milestoneDate, setMilestoneDate] = useState('');
+  const [milestoneColor, setMilestoneColor] = useState('#F59E0B');
+
+  // Predefined color options
+  const colorOptions = [
+    { name: 'Blue', value: '#3B82F6' },
+    { name: 'Green', value: '#10B981' },
+    { name: 'Amber', value: '#F59E0B' },
+    { name: 'Red', value: '#EF4444' },
+    { name: 'Violet', value: '#8B5CF6' },
+    { name: 'Pink', value: '#EC4899' },
+    { name: 'Gray', value: '#6B7280' },
+    { name: 'Teal', value: '#14B8A6' }
+  ];
+
+  const backgroundColorOptions = [
+    { name: 'White', value: '#FFFFFF' },
+    { name: 'Light Gray', value: '#F9FAFB' },
+    { name: 'Light Blue', value: '#EFF6FF' },
+    { name: 'Light Green', value: '#F0FDF4' },
+    { name: 'Light Yellow', value: '#FEFCE8' },
+    { name: 'Light Red', value: '#FEF2F2' },
+    { name: 'Light Purple', value: '#FAF5FF' },
+    { name: 'Light Pink', value: '#FDF2F8' }
+  ];
+
+  const textColorOptions = [
+    { name: 'Dark Gray', value: '#1F2937' },
+    { name: 'Black', value: '#000000' },
+    { name: 'Blue', value: '#1E40AF' },
+    { name: 'White', value: '#FFFFFF' }
+  ];
+
+  const fontOptions = [
+    { value: 'Inter', label: 'Inter' },
+    { value: 'Roboto', label: 'Roboto' },
+    { value: 'Arial', label: 'Arial' },
+    { value: 'system-ui', label: 'System UI' },
+    { value: 'Helvetica Neue', label: 'Helvetica Neue' }
+  ];
+
+  const fontWeightOptions = [
+    { value: 'normal' as const, label: 'Normal' },
+    { value: 'medium' as const, label: 'Medium' },
+    { value: 'semibold' as const, label: 'Semi-Bold' },
+    { value: 'bold' as const, label: 'Bold' }
+  ];
+
+  const milestoneColorOptions = [
+    { name: 'Amber', value: '#F59E0B' },
+    { name: 'Blue', value: '#3B82F6' },
+    { name: 'Green', value: '#10B981' },
+    { name: 'Red', value: '#EF4444' },
+    { name: 'Purple', value: '#8B5CF6' },
+    { name: 'Pink', value: '#EC4899' },
+    { name: 'Gray', value: '#6B7280' },
+    { name: 'Teal', value: '#14B8A6' }
+  ];
+
+  const statusOptions: CardStatus[] = [
+    'not-started',
+    'in-progress',
+    'completed',
+    'blocked'
+  ];
+
+  const statusLabels = {
+    'not-started': 'Not Started',
+    'in-progress': 'In Progress',
+    'completed': 'Completed',
+    'blocked': 'Blocked'
+  };
+
+  // Initialize form when modal opens
+  useEffect(() => {
+    if (isOpen && card) {
+      setTitle(card.title);
+      setDescription(card.description || '');
+      setStartDate(card.startDate.toISOString().split('T')[0]);
+      setEndDate(card.endDate.toISOString().split('T')[0]);
+      setStatus(card.status);
+      setRow(card.row || 0);
+      setColor(card.color);
+      setBackgroundColor(card.backgroundColor || '#FFFFFF');
+      setTextColor(card.textColor || '#1F2937');
+      setFontSize(card.fontSize || 14);
+      setFontWeight(card.fontWeight || 'normal');
+      setFontFamily(card.fontFamily || 'Inter');
+      
+      // Initialize milestone data
+      if (card.milestone) {
+        setHasMilestone(true);
+        setMilestoneTitle(card.milestone.title);
+        setMilestoneDate(card.milestone.date.toISOString().split('T')[0]);
+        setMilestoneColor(card.milestone.color);
+      } else {
+        setHasMilestone(false);
+        setMilestoneTitle('');
+        setMilestoneDate(new Date().toISOString().split('T')[0]);
+        setMilestoneColor('#F59E0B');
+      }
+    }
+  }, [isOpen, card]);
+
+  // Handle save
+  const handleSave = () => {
+    if (!title.trim()) return;
+
+    // Prepare milestone data
+    let milestoneData: MilestoneData | undefined = undefined;
+    if (hasMilestone && milestoneTitle.trim()) {
+      milestoneData = {
+        title: milestoneTitle.trim(),
+        date: new Date(milestoneDate),
+        color: milestoneColor
+      };
+    }
+
+    const updates: Partial<Card> = {
+      title: title.trim(),
+      description: description.trim() || undefined,
+      startDate: new Date(startDate),
+      endDate: new Date(endDate),
+      status,
+      row,
+      color,
+      backgroundColor,
+      textColor,
+      fontSize,
+      fontWeight,
+      fontFamily,
+      milestone: milestoneData
+    };
+
+    onSave(updates);
+  };
+
+  // Reset form and close
+  const handleCancel = () => {
+    if (card) {
+      setTitle(card.title);
+      setDescription(card.description || '');
+      setStartDate(card.startDate.toISOString().split('T')[0]);
+      setEndDate(card.endDate.toISOString().split('T')[0]);
+      setStatus(card.status);
+      setRow(card.row || 0);
+      setColor(card.color);
+      setBackgroundColor(card.backgroundColor || '#FFFFFF');
+      setTextColor(card.textColor || '#1F2937');
+      setFontSize(card.fontSize || 14);
+      setFontWeight(card.fontWeight || 'normal');
+      setFontFamily(card.fontFamily || 'Inter');
+      
+      // Reset milestone data
+      if (card.milestone) {
+        setHasMilestone(true);
+        setMilestoneTitle(card.milestone.title);
+        setMilestoneDate(card.milestone.date.toISOString().split('T')[0]);
+        setMilestoneColor(card.milestone.color);
+      } else {
+        setHasMilestone(false);
+        setMilestoneTitle('');
+        setMilestoneDate(new Date().toISOString().split('T')[0]);
+        setMilestoneColor('#F59E0B');
+      }
+    }
+    onCancel();
+  };
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onCancel}>
+      <DialogContent 
+        className="max-h-[80vh] overflow-y-auto"
+        style={{ maxWidth: '42rem', width: 'min(90vw, 42rem)' }}
+      >
+        <DialogHeader>
+          <DialogTitle className="text-2xl font-bold">Edit Card</DialogTitle>
+          <DialogDescription className="text-sm mt-1">
+            Customize the card appearance and details
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-6 mt-6">
+          {/* Basic Info */}
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold text-gray-700 border-b border-gray-200 pb-2">Basic Information</h3>
+            
+            {/* Title */}
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Title</label>
+              <Input
+                type="text"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="Card title..."
+              />
+            </div>
+
+
+            {/* Status */}
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Status</label>
+              <select
+                value={status}
+                onChange={(e) => setStatus(e.target.value as CardStatus)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                {statusOptions.map((statusOption) => (
+                  <option key={statusOption} value={statusOption}>{statusLabels[statusOption]}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Row/Track Selection */}
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                Row/Track in Swimlane
+              </label>
+              <div className="flex items-center space-x-4">
+                <select
+                  value={row}
+                  onChange={(e) => setRow(Number(e.target.value))}
+                  className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  {[0, 1, 2, 3, 4].map((rowOption) => (
+                    <option key={rowOption} value={rowOption}>
+                      Row {rowOption + 1} {rowOption === 0 ? '(Top)' : rowOption === 1 ? '(Second)' : ''}
+                    </option>
+                  ))}
+                </select>
+                <div className="text-xs text-gray-500 flex-shrink-0">
+                  <p>Choose which row this card should appear in within the swimlane.</p>
+                  <p>Higher rows allow cards to overlap in timeline without covering each other.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Dates */}
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold text-gray-700 border-b border-gray-200 pb-2">Dates</h3>
+            
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Start Date</label>
+                <Input
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">End Date</label>
+                <Input
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Appearance */}
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold text-gray-700 border-b border-gray-200 pb-2">Appearance</h3>
+            
+            {/* Border Color */}
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Border Color</label>
+              <div className="flex flex-wrap gap-3 mb-4">
+                {colorOptions.map((colorOption) => (
+                  <button
+                    key={colorOption.value}
+                    onClick={() => setColor(colorOption.value)}
+                    className={`rounded-lg transition-all hover:scale-105 ${
+                      color === colorOption.value ? 'shadow-lg' : 'hover:shadow-md'
+                    }`}
+                    style={{ 
+                      backgroundColor: colorOption.value,
+                      width: '24px',
+                      height: '24px',
+                      border: color === colorOption.value ? '2px solid #374151' : '1px solid #d1d5db'
+                    }}
+                    title={colorOption.name}
+                  />
+                ))}
+              </div>
+              <input
+                type="color"
+                value={color}
+                onChange={(e) => setColor(e.target.value)}
+                className="w-full h-12 rounded-lg border-2 border-gray-300 cursor-pointer"
+              />
+            </div>
+
+            {/* Background Color */}
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Background Color</label>
+              <div className="flex flex-wrap gap-3 mb-4">
+                {backgroundColorOptions.map((bgColor) => (
+                  <button
+                    key={bgColor.value}
+                    onClick={() => setBackgroundColor(bgColor.value)}
+                    className={`rounded-lg transition-all hover:scale-105 ${
+                      backgroundColor === bgColor.value ? 'shadow-lg' : 'hover:shadow-md'
+                    }`}
+                    style={{ 
+                      backgroundColor: bgColor.value,
+                      width: '24px',
+                      height: '24px',
+                      border: backgroundColor === bgColor.value ? '2px solid #374151' : '1px solid #d1d5db'
+                    }}
+                    title={bgColor.name}
+                  />
+                ))}
+              </div>
+              <input
+                type="color"
+                value={backgroundColor}
+                onChange={(e) => setBackgroundColor(e.target.value)}
+                className="w-full h-12 rounded-lg border-2 border-gray-300 cursor-pointer"
+              />
+            </div>
+
+            {/* Text Color */}
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Text Color</label>
+              <div className="flex flex-wrap gap-3 mb-4">
+                {textColorOptions.map((txtColor) => (
+                  <button
+                    key={txtColor.value}
+                    onClick={() => setTextColor(txtColor.value)}
+                    className={`rounded-lg transition-all hover:scale-105 ${
+                      textColor === txtColor.value ? 'shadow-lg' : 'hover:shadow-md'
+                    }`}
+                    style={{ 
+                      backgroundColor: txtColor.value,
+                      width: '24px',
+                      height: '24px',
+                      border: textColor === txtColor.value ? '2px solid #3b82f6' : '1px solid #d1d5db'
+                    }}
+                    title={txtColor.name}
+                  />
+                ))}
+              </div>
+              <input
+                type="color"
+                value={textColor}
+                onChange={(e) => setTextColor(e.target.value)}
+                className="w-full h-12 rounded-lg border-2 border-gray-300 cursor-pointer"
+              />
+            </div>
+
+            {/* Typography Settings */}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Font Family</label>
+                <select
+                  value={fontFamily}
+                  onChange={(e) => setFontFamily(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  {fontOptions.map((font) => (
+                    <option key={font.value} value={font.value}>{font.label}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Font Weight</label>
+                <select
+                  value={fontWeight}
+                  onChange={(e) => setFontWeight(e.target.value as any)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  {fontWeightOptions.map((weight) => (
+                    <option key={weight.value} value={weight.value}>{weight.label}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* Font Size */}
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                Font Size: {fontSize}px
+              </label>
+              <input
+                type="range"
+                min="12"
+                max="20"
+                value={fontSize}
+                onChange={(e) => setFontSize(Number(e.target.value))}
+                className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+              />
+            </div>
+          </div>
+
+          {/* Milestone Section */}
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold text-gray-700 border-b border-gray-200 pb-2">Card Milestone</h3>
+            
+            {/* Milestone Toggle */}
+            <div className="flex items-center space-x-3">
+              <input
+                type="checkbox"
+                id="hasMilestone"
+                checked={hasMilestone}
+                onChange={(e) => setHasMilestone(e.target.checked)}
+                className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+              />
+              <label htmlFor="hasMilestone" className="text-sm font-medium text-gray-700">
+                Add milestone to this card
+              </label>
+            </div>
+
+            {/* Milestone Fields - only show when enabled */}
+            {hasMilestone && (
+              <div className="space-y-4 pl-7">
+                {/* Milestone Title */}
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Milestone Title</label>
+                  <Input
+                    type="text"
+                    value={milestoneTitle}
+                    onChange={(e) => setMilestoneTitle(e.target.value)}
+                    placeholder="Enter milestone name..."
+                  />
+                </div>
+
+                {/* Milestone Date */}
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Milestone Date</label>
+                  <Input
+                    type="date"
+                    value={milestoneDate}
+                    onChange={(e) => setMilestoneDate(e.target.value)}
+                  />
+                </div>
+
+                {/* Milestone Color */}
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Milestone Color</label>
+                  <div className="flex flex-wrap gap-3 mb-4">
+                    {milestoneColorOptions.map((colorOption) => (
+                      <button
+                        key={colorOption.value}
+                        type="button"
+                        onClick={() => setMilestoneColor(colorOption.value)}
+                        className={`rounded-lg transition-all hover:scale-105 ${
+                          milestoneColor === colorOption.value ? 'shadow-lg ring-2 ring-gray-400' : 'hover:shadow-md'
+                        }`}
+                        style={{ 
+                          backgroundColor: colorOption.value,
+                          width: '32px',
+                          height: '32px',
+                          border: milestoneColor === colorOption.value ? '2px solid #374151' : '1px solid #d1d5db'
+                        }}
+                        title={colorOption.name}
+                      />
+                    ))}
+                  </div>
+                  
+                  {/* Custom color picker */}
+                  <input
+                    type="color"
+                    value={milestoneColor}
+                    onChange={(e) => setMilestoneColor(e.target.value)}
+                    className="w-full h-12 rounded-lg border-2 border-gray-300 cursor-pointer"
+                  />
+                </div>
+
+                {/* Milestone Preview */}
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Preview</label>
+                  <div className="flex items-center gap-3 p-4 bg-gray-50 border border-gray-200 rounded-lg">
+                    <div className="milestone-marker" style={{ borderTopColor: milestoneColor }}>
+                      <div className="milestone-label" style={{ backgroundColor: milestoneColor }}>
+                        {milestoneTitle || 'Milestone Title'}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+        </div>
+
+        <DialogFooter className="gap-3 mt-6">
+          <Button onClick={handleCancel} variant="outline">
+            Cancel
+          </Button>
+          <Button onClick={handleSave}>
+            Save Changes
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}

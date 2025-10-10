@@ -1,0 +1,1175 @@
+import { create } from 'zustand';
+import { devtools, persist } from 'zustand/middleware';
+import { supabase } from '../utils/supabaseClient';
+import type { 
+  Plan, 
+  TimelineConfig, 
+  Swimlane, 
+  Card, 
+  Milestone, 
+  TextElement,
+  CardStatus,
+  Position,
+  ElementType,
+  PlanState
+} from '../types';
+
+// Helper function to generate UUID
+const generateId = () => crypto.randomUUID();
+
+// Helper function to create a new plan
+const createNewPlan = (title: string, timelineConfig?: Partial<TimelineConfig>): Plan => {
+  const now = new Date();
+  const sixMonthsFromNow = new Date();
+  sixMonthsFromNow.setMonth(now.getMonth() + 6);
+  
+  const defaultTimeline: TimelineConfig = {
+    startDate: now,
+    endDate: sixMonthsFromNow, // 6 months from now
+    scale: 'weeks',
+    showGrid: true,
+    snapToGrid: true,
+    ...timelineConfig
+  };
+  
+  // Generate IDs for main categories
+  const technicalId = generateId();
+  const commsId = generateId();
+  const trainingId = generateId();
+  const bauId = generateId();
+  
+  // Generate IDs for sub-categories
+  const systemAvailabilityId = generateId();
+  const testingId = generateId();
+  const releasesId = generateId();
+  const awarenessId = generateId();
+  const invitesId = generateId();
+  const analysisId = generateId();
+  const designId = generateId();
+  const deliverId = generateId();
+  const evaluationId = generateId();
+  const bauDesignId = generateId();
+  const handoverId = generateId();
+  
+  return {
+    id: generateId(),
+    title,
+    createdAt: now,
+    updatedAt: now,
+    ownerId: '', // Will be set after authentication
+    sharedWith: [],
+    timeline: defaultTimeline,
+    swimlanes: [
+        // Main Categories
+        {
+          id: technicalId,
+          planId: '',
+          title: 'Technical',
+          order: 0,
+          isCollapsed: false,
+          level: 0,
+          isMainCategory: true,
+          hasChildren: true,
+          backgroundColor: '#4A90A4',
+          textColor: '#FFFFFF',
+          fontWeight: 'bold' as const,
+          fontFamily: 'Inter'
+        },
+        {
+          id: commsId,
+          planId: '',
+          title: 'Communications',
+          order: 1,
+          isCollapsed: false,
+          level: 0,
+          isMainCategory: true,
+          hasChildren: true,
+          backgroundColor: '#5C8A5C',
+          textColor: '#FFFFFF',
+          fontWeight: 'bold' as const,
+          fontFamily: 'Inter'
+        },
+        {
+          id: trainingId,
+          planId: '',
+          title: 'Training',
+          order: 2,
+          isCollapsed: false,
+          level: 0,
+          isMainCategory: true,
+          hasChildren: true,
+          backgroundColor: '#7C3AED',
+          textColor: '#FFFFFF',
+          fontWeight: 'bold' as const,
+          fontFamily: 'Inter'
+        },
+        {
+          id: bauId,
+          planId: '',
+          title: 'BAU',
+          order: 3,
+          isCollapsed: false,
+          level: 0,
+          isMainCategory: true,
+          hasChildren: true,
+          backgroundColor: '#EA580C',
+          textColor: '#FFFFFF',
+          fontWeight: 'bold' as const,
+          fontFamily: 'Inter'
+        },
+        // Sub-Categories - Technical
+        {
+          id: systemAvailabilityId,
+          planId: '',
+          title: 'System Availability',
+          order: 4,
+          isCollapsed: false,
+          level: 1,
+          parentId: technicalId,
+          isMainCategory: false,
+          backgroundColor: '#E1F1F5',
+          textColor: '#2C5F6B',
+          fontWeight: 'medium' as const,
+          fontFamily: 'Inter'
+        },
+        {
+          id: testingId,
+          planId: '',
+          title: 'Testing',
+          order: 5,
+          isCollapsed: false,
+          level: 1,
+          parentId: technicalId,
+          isMainCategory: false,
+          backgroundColor: '#E1F1F5',
+          textColor: '#2C5F6B',
+          fontWeight: 'medium' as const,
+          fontFamily: 'Inter'
+        },
+        {
+          id: releasesId,
+          planId: '',
+          title: 'Releases',
+          order: 6,
+          isCollapsed: false,
+          level: 1,
+          parentId: technicalId,
+          isMainCategory: false,
+          backgroundColor: '#E1F1F5',
+          textColor: '#2C5F6B',
+          fontWeight: 'medium' as const,
+          fontFamily: 'Inter'
+        },
+        // Sub-Categories - Communications
+        {
+          id: awarenessId,
+          planId: '',
+          title: 'Awareness',
+          order: 7,
+          isCollapsed: false,
+          level: 1,
+          parentId: commsId,
+          isMainCategory: false,
+          backgroundColor: '#E8F5E8',
+          textColor: '#2D5A2D',
+          fontWeight: 'medium' as const,
+          fontFamily: 'Inter'
+        },
+        {
+          id: invitesId,
+          planId: '',
+          title: 'Invites',
+          order: 8,
+          isCollapsed: false,
+          level: 1,
+          parentId: commsId,
+          isMainCategory: false,
+          backgroundColor: '#E8F5E8',
+          textColor: '#2D5A2D',
+          fontWeight: 'medium' as const,
+          fontFamily: 'Inter'
+        },
+        // Sub-Categories - Training
+        {
+          id: analysisId,
+          planId: '',
+          title: 'Analysis',
+          order: 9,
+          isCollapsed: false,
+          level: 1,
+          parentId: trainingId,
+          isMainCategory: false,
+          backgroundColor: '#F0E7FF',
+          textColor: '#4C1D95',
+          fontWeight: 'medium' as const,
+          fontFamily: 'Inter'
+        },
+        {
+          id: designId,
+          planId: '',
+          title: 'Design',
+          order: 10,
+          isCollapsed: false,
+          level: 1,
+          parentId: trainingId,
+          isMainCategory: false,
+          backgroundColor: '#F0E7FF',
+          textColor: '#4C1D95',
+          fontWeight: 'medium' as const,
+          fontFamily: 'Inter'
+        },
+        {
+          id: deliverId,
+          planId: '',
+          title: 'Deliver',
+          order: 11,
+          isCollapsed: false,
+          level: 1,
+          parentId: trainingId,
+          isMainCategory: false,
+          backgroundColor: '#F0E7FF',
+          textColor: '#4C1D95',
+          fontWeight: 'medium' as const,
+          fontFamily: 'Inter'
+        },
+        {
+          id: evaluationId,
+          planId: '',
+          title: 'Evaluation',
+          order: 12,
+          isCollapsed: false,
+          level: 1,
+          parentId: trainingId,
+          isMainCategory: false,
+          backgroundColor: '#F0E7FF',
+          textColor: '#4C1D95',
+          fontWeight: 'medium' as const,
+          fontFamily: 'Inter'
+        },
+        // Sub-Categories - BAU
+        {
+          id: bauDesignId,
+          planId: '',
+          title: 'Design',
+          order: 13,
+          isCollapsed: false,
+          level: 1,
+          parentId: bauId,
+          isMainCategory: false,
+          backgroundColor: '#FFF3E0',
+          textColor: '#C2410C',
+          fontWeight: 'medium' as const,
+          fontFamily: 'Inter'
+        },
+        {
+          id: handoverId,
+          planId: '',
+          title: 'Handover',
+          order: 14,
+          isCollapsed: false,
+          level: 1,
+          parentId: bauId,
+          isMainCategory: false,
+          backgroundColor: '#FFF3E0',
+          textColor: '#C2410C',
+          fontWeight: 'medium' as const,
+          fontFamily: 'Inter'
+        }
+      ],
+    cards: [], // Let TimelinePage.tsx handle sample card creation
+    milestones: [], // Let TimelinePage.tsx handle sample milestone creation
+    texts: []
+  };
+};
+
+// Create the store
+export const usePlanStore = create<PlanState>()(
+  devtools(
+    persist(
+      (set, get) => ({
+        // Initial state
+        currentPlan: null,
+        plans: [],
+        isLoading: false,
+        error: null,
+        selectedElement: null,
+        isEditing: false,
+        snapToGrid: true,
+        gridSize: 20,
+        
+        // Plan actions
+        createPlan: async (title: string, timelineConfig?: Partial<TimelineConfig>) => {
+          set({ isLoading: true, error: null });
+          
+          try {
+            const newPlan = createNewPlan(title, timelineConfig);
+            
+            // Save to Supabase
+            const { data, error } = await supabase
+              .from('plans')
+              .insert({
+                title: newPlan.title,
+                timeline_start_date: newPlan.timeline.startDate.toISOString(),
+                timeline_end_date: newPlan.timeline.endDate.toISOString(),
+                timeline_scale: newPlan.timeline.scale,
+                timeline_show_grid: newPlan.timeline.showGrid,
+                timeline_snap_to_grid: newPlan.timeline.snapToGrid,
+                shared_with: newPlan.sharedWith
+              })
+              .select()
+              .single();
+            
+            if (error) throw error;
+            
+            // Update plan with the returned ID
+            const planWithId: Plan = {
+              ...newPlan,
+              id: data.id,
+              ownerId: data.user_id,
+              swimlanes: newPlan.swimlanes.map(swimlane => ({
+                ...swimlane,
+                planId: data.id
+              })),
+              cards: newPlan.cards.map(card => ({
+                ...card,
+                planId: data.id
+              })),
+              milestones: newPlan.milestones.map(milestone => ({
+                ...milestone,
+                planId: data.id
+              }))
+            };
+            
+            // Save swimlanes to Supabase
+            if (planWithId.swimlanes.length > 0) {
+              const { error: swimlanesError } = await supabase
+                .from('swimlanes')
+                .insert(planWithId.swimlanes.map(swimlane => ({
+                  plan_id: swimlane.planId,
+                  title: swimlane.title,
+                  "order": swimlane.order,
+                  color: swimlane.color,
+                  is_collapsed: swimlane.isCollapsed
+                })));
+              
+              if (swimlanesError) throw swimlanesError;
+            }
+            
+            set({ 
+              currentPlan: planWithId,
+              isLoading: false 
+            });
+          } catch (error) {
+            set({ 
+              error: error instanceof Error ? error.message : 'Failed to create plan',
+              isLoading: false 
+            });
+          }
+        },
+        
+        loadPlan: async (id: string) => {
+          set({ isLoading: true, error: null });
+          
+          try {
+            // Load plan from Supabase
+            const { data: planData, error: planError } = await supabase
+              .from('plans')
+              .select('*')
+              .eq('id', id)
+              .single();
+            
+            if (planError) throw planError;
+            
+            // Load swimlanes
+            const { data: swimlanesData, error: swimlanesError } = await supabase
+              .from('swimlanes')
+              .select('*')
+              .eq('plan_id', id)
+              .order('order');
+            
+            if (swimlanesError) throw swimlanesError;
+            
+            // Load cards
+            const { data: cardsData, error: cardsError } = await supabase
+              .from('cards')
+              .select('*')
+              .eq('plan_id', id)
+              .order('order');
+            
+            if (cardsError) throw cardsError;
+            
+            // Load milestones
+            const { data: milestonesData, error: milestonesError } = await supabase
+              .from('milestones')
+              .select('*')
+              .eq('plan_id', id);
+            
+            if (milestonesError) throw milestonesError;
+            
+            // Transform data to our types
+            const plan: Plan = {
+              id: planData.id,
+              title: planData.title,
+              createdAt: new Date(planData.created_at),
+              updatedAt: new Date(planData.updated_at),
+              ownerId: planData.user_id,
+              sharedWith: planData.shared_with || [],
+              timeline: {
+                startDate: new Date(planData.timeline_start_date),
+                endDate: new Date(planData.timeline_end_date),
+                scale: planData.timeline_scale,
+                showGrid: planData.timeline_show_grid,
+                snapToGrid: planData.timeline_snap_to_grid
+              },
+              swimlanes: (swimlanesData || []).map(swimlane => ({
+                id: swimlane.id,
+                planId: swimlane.plan_id,
+                title: swimlane.title,
+                order: swimlane.order,
+                color: swimlane.color,
+                isCollapsed: swimlane.is_collapsed,
+                level: swimlane.level || 0
+              })),
+              cards: (cardsData || []).map(card => ({
+                id: card.id,
+                planId: card.plan_id,
+                swimlaneId: card.swimlane_id,
+                title: card.title,
+                description: card.description,
+                startDate: new Date(card.start_date),
+                endDate: new Date(card.end_date),
+                color: card.color,
+                status: card.status as CardStatus,
+                order: card.order,
+                position: card.position_x && card.position_y ? 
+                  { x: card.position_x, y: card.position_y } : undefined
+              })),
+              milestones: (milestonesData || []).map(milestone => ({
+                id: milestone.id,
+                planId: milestone.plan_id,
+                swimlaneId: milestone.swimlane_id,
+                title: milestone.title,
+                date: new Date(milestone.date),
+                description: milestone.description,
+                color: milestone.color,
+                position: milestone.position_x && milestone.position_y ? 
+                  { x: milestone.position_x, y: milestone.position_y } : undefined
+              })),
+              texts: [] // TODO: Load text elements from database
+            };
+            
+            set({ 
+              currentPlan: plan,
+              isLoading: false 
+            });
+          } catch (error) {
+            set({ 
+              error: error instanceof Error ? error.message : 'Failed to load plan',
+              isLoading: false 
+            });
+          }
+        },
+        
+        savePlan: async () => {
+          const { currentPlan } = get();
+          
+          if (!currentPlan) return;
+          
+          set({ isLoading: true, error: null });
+          
+          try {
+            // Update plan in Supabase
+            const { error: planError } = await supabase
+              .from('plans')
+              .update({
+                title: currentPlan.title,
+                timeline_start_date: currentPlan.timeline.startDate.toISOString(),
+                timeline_end_date: currentPlan.timeline.endDate.toISOString(),
+                timeline_scale: currentPlan.timeline.scale,
+                timeline_show_grid: currentPlan.timeline.showGrid,
+                timeline_snap_to_grid: currentPlan.timeline.snapToGrid,
+                shared_with: currentPlan.sharedWith,
+                updated_at: new Date().toISOString()
+              })
+              .eq('id', currentPlan.id);
+            
+            if (planError) throw planError;
+            
+            // Update swimlanes
+            if (currentPlan.swimlanes.length > 0) {
+              const { error: swimlanesError } = await supabase
+                .from('swimlanes')
+                .upsert(currentPlan.swimlanes.map(swimlane => ({
+                  id: swimlane.id,
+                  plan_id: swimlane.planId,
+                  title: swimlane.title,
+                  "order": swimlane.order,
+                  color: swimlane.color,
+                  is_collapsed: swimlane.isCollapsed
+                })));
+              
+              if (swimlanesError) throw swimlanesError;
+            }
+            
+            // Update cards
+            if (currentPlan.cards.length > 0) {
+              const { error: cardsError } = await supabase
+                .from('cards')
+                .upsert(currentPlan.cards.map(card => ({
+                  id: card.id,
+                  plan_id: card.planId,
+                  swimlane_id: card.swimlaneId,
+                  title: card.title,
+                  description: card.description,
+                  start_date: card.startDate.toISOString(),
+                  end_date: card.endDate.toISOString(),
+                  color: card.color,
+                  status: card.status,
+                  "order": card.order,
+                  position_x: card.position?.x,
+                  position_y: card.position?.y
+                })));
+              
+              if (cardsError) throw cardsError;
+            }
+            
+            // Update milestones
+            if (currentPlan.milestones.length > 0) {
+              const { error: milestonesError } = await supabase
+                .from('milestones')
+                .upsert(currentPlan.milestones.map(milestone => ({
+                  id: milestone.id,
+                  plan_id: milestone.planId,
+                  swimlane_id: milestone.swimlaneId,
+                  title: milestone.title,
+                  date: milestone.date.toISOString(),
+                  description: milestone.description,
+                  color: milestone.color,
+                  position_x: milestone.position?.x,
+                  position_y: milestone.position?.y
+                })));
+              
+              if (milestonesError) throw milestonesError;
+            }
+            
+            // Update local state with new timestamp
+            set(state => ({
+              currentPlan: state.currentPlan ? {
+                ...state.currentPlan,
+                updatedAt: new Date()
+              } : null,
+              isLoading: false
+            }));
+          } catch (error) {
+            set({ 
+              error: error instanceof Error ? error.message : 'Failed to save plan',
+              isLoading: false 
+            });
+          }
+        },
+        
+        deletePlan: async (id: string) => {
+          set({ isLoading: true, error: null });
+          
+          try {
+            // Delete plan from Supabase (cascade will delete related records)
+            const { error } = await supabase
+              .from('plans')
+              .delete()
+              .eq('id', id);
+            
+            if (error) throw error;
+            
+            // Update local state
+            set(state => ({
+              currentPlan: state.currentPlan?.id === id ? null : state.currentPlan,
+              plans: state.plans.filter(plan => plan.id !== id),
+              isLoading: false
+            }));
+          } catch (error) {
+            set({ 
+              error: error instanceof Error ? error.message : 'Failed to delete plan',
+              isLoading: false 
+            });
+          }
+        },
+        
+        loadPlans: async () => {
+          set({ isLoading: true, error: null });
+          
+          try {
+            const { data, error } = await supabase
+              .from('plans')
+              .select('*')
+              .order('updated_at', { ascending: false });
+            
+            if (error) throw error;
+            
+            const plans: Plan[] = (data || []).map(plan => ({
+              id: plan.id,
+              title: plan.title,
+              createdAt: new Date(plan.created_at),
+              updatedAt: new Date(plan.updated_at),
+              ownerId: plan.user_id,
+              sharedWith: plan.shared_with || [],
+              timeline: {
+                startDate: new Date(plan.timeline_start_date),
+                endDate: new Date(plan.timeline_end_date),
+                scale: plan.timeline_scale,
+                showGrid: plan.timeline_show_grid,
+                snapToGrid: plan.timeline_snap_to_grid
+              },
+              swimlanes: [],
+              cards: [],
+              milestones: [],
+              texts: []
+            }));
+            
+            set({ 
+              plans,
+              isLoading: false 
+            });
+          } catch (error) {
+            set({ 
+              error: error instanceof Error ? error.message : 'Failed to load plans',
+              isLoading: false 
+            });
+          }
+        },
+        
+        // Card actions
+        addCard: (card: Omit<Card, 'id'>) => {
+          const { currentPlan } = get();
+          
+          if (!currentPlan) return;
+          
+          const newCard: Card = {
+            ...card,
+            id: generateId()
+          };
+          
+          set(state => ({
+            currentPlan: state.currentPlan ? {
+              ...state.currentPlan,
+              cards: [...state.currentPlan.cards, newCard],
+              updatedAt: new Date()
+            } : null
+          }));
+        },
+        
+        updateCard: (id: string, updates: Partial<Card>) => {
+          set(state => ({
+            currentPlan: state.currentPlan ? {
+              ...state.currentPlan,
+              cards: state.currentPlan.cards.map(card => 
+                card.id === id ? { ...card, ...updates } : card
+              ),
+              updatedAt: new Date()
+            } : null
+          }));
+        },
+        
+        deleteCard: (id: string) => {
+          set(state => ({
+            currentPlan: state.currentPlan ? {
+              ...state.currentPlan,
+              cards: state.currentPlan.cards.filter(card => card.id !== id),
+              updatedAt: new Date()
+            } : null
+          }));
+        },
+        
+        moveCard: (id: string, swimlaneId: string, startDate?: Date, endDate?: Date, position?: Position) => {
+          set(state => ({
+            currentPlan: state.currentPlan ? {
+              ...state.currentPlan,
+              cards: state.currentPlan.cards.map(card => 
+                card.id === id 
+                  ? { 
+                      ...card, 
+                      ...(swimlaneId ? { swimlaneId } : {}),
+                      ...(startDate ? { startDate } : {}),
+                      ...(endDate ? { endDate } : {}),
+                      ...(position ? { position } : {})
+                    } 
+                  : card
+              ),
+              updatedAt: new Date()
+            } : null
+          }));
+        },
+        
+        resizeCard: (id: string, startDate: Date, endDate: Date) => {
+          set(state => ({
+            currentPlan: state.currentPlan ? {
+              ...state.currentPlan,
+              cards: state.currentPlan.cards.map(card => 
+                card.id === id 
+                  ? { ...card, startDate, endDate } 
+                  : card
+              ),
+              updatedAt: new Date()
+            } : null
+          }));
+        },
+        
+        // Milestone actions
+        addMilestone: (milestone: Omit<Milestone, 'id'>) => {
+          const { currentPlan } = get();
+          
+          if (!currentPlan) return;
+          
+          const newMilestone: Milestone = {
+            ...milestone,
+            id: generateId()
+          };
+          
+          set(state => ({
+            currentPlan: state.currentPlan ? {
+              ...state.currentPlan,
+              milestones: [...state.currentPlan.milestones, newMilestone],
+              updatedAt: new Date()
+            } : null
+          }));
+        },
+        
+        updateMilestone: (id: string, updates: Partial<Milestone>) => {
+          set(state => ({
+            currentPlan: state.currentPlan ? {
+              ...state.currentPlan,
+              milestones: state.currentPlan.milestones.map(milestone => 
+                milestone.id === id ? { ...milestone, ...updates } : milestone
+              ),
+              updatedAt: new Date()
+            } : null
+          }));
+        },
+        
+        deleteMilestone: (id: string) => {
+          set(state => ({
+            currentPlan: state.currentPlan ? {
+              ...state.currentPlan,
+              milestones: state.currentPlan.milestones.filter(milestone => milestone.id !== id),
+              updatedAt: new Date()
+            } : null
+          }));
+        },
+        
+        // Swimlane actions
+        addSwimlane: (title: string, parentId?: string) => {
+          const { currentPlan } = get();
+          
+          if (!currentPlan) return;
+          
+          const isMainCategory = !parentId;
+          const level = isMainCategory ? 0 : 1;
+          
+          const newSwimlane: Swimlane = {
+            id: generateId(),
+            planId: currentPlan.id,
+            title,
+            order: currentPlan.swimlanes.length,
+            isCollapsed: false,
+            level,
+            parentId,
+            isMainCategory,
+            hasChildren: isMainCategory
+          };
+          
+          set(state => ({
+            currentPlan: state.currentPlan ? {
+              ...state.currentPlan,
+              swimlanes: [...state.currentPlan.swimlanes, newSwimlane],
+              updatedAt: new Date()
+            } : null
+          }));
+        },
+        
+        // Add a sub-category to a main category
+        addSubCategory: (parentId: string, title: string) => {
+          const { currentPlan } = get();
+          
+          if (!currentPlan) return;
+          
+          const newSwimlane: Swimlane = {
+            id: generateId(),
+            planId: currentPlan.id,
+            title,
+            order: currentPlan.swimlanes.length,
+            isCollapsed: false,
+            level: 1,
+            parentId,
+            isMainCategory: false
+          };
+          
+          set(state => ({
+            currentPlan: state.currentPlan ? {
+              ...state.currentPlan,
+              swimlanes: [...state.currentPlan.swimlanes, newSwimlane],
+              updatedAt: new Date()
+            } : null
+          }));
+        },
+        
+        updateSwimlane: (id: string, updates: Partial<Swimlane>) => {
+          set(state => ({
+            currentPlan: state.currentPlan ? {
+              ...state.currentPlan,
+              swimlanes: state.currentPlan.swimlanes.map(swimlane => 
+                swimlane.id === id ? { ...swimlane, ...updates } : swimlane
+              ),
+              updatedAt: new Date()
+            } : null
+          }));
+        },
+        
+        deleteSwimlane: (id: string) => {
+          set(state => {
+            if (!state.currentPlan) return state;
+            
+            // Find the swimlane to delete
+            const swimlaneToDelete = state.currentPlan.swimlanes.find(s => s.id === id);
+            if (!swimlaneToDelete) return state;
+            
+            // If deleting a main category, also delete all its sub-categories
+            let swimlanesToDelete = [id];
+            if (swimlaneToDelete.isMainCategory) {
+              const subCategories = state.currentPlan.swimlanes
+                .filter(s => s.parentId === id)
+                .map(s => s.id);
+              swimlanesToDelete = [...swimlanesToDelete, ...subCategories];
+            }
+            
+            // Remove the swimlanes and any cards/milestones in them
+            const updatedSwimlanes = state.currentPlan.swimlanes
+              .filter(swimlane => !swimlanesToDelete.includes(swimlane.id));
+            const updatedCards = state.currentPlan.cards
+              .filter(card => !swimlanesToDelete.includes(card.swimlaneId));
+            const updatedMilestones = state.currentPlan.milestones
+              .filter(milestone => milestone.swimlaneId && !swimlanesToDelete.includes(milestone.swimlaneId));
+            
+            // Reorder remaining swimlanes
+            const reorderedSwimlanes = updatedSwimlanes.map((swimlane, index) => ({
+              ...swimlane,
+              order: index
+            }));
+            
+            return {
+              currentPlan: {
+                ...state.currentPlan,
+                swimlanes: reorderedSwimlanes,
+                cards: updatedCards,
+                milestones: updatedMilestones,
+                updatedAt: new Date()
+              }
+            };
+          });
+        },
+        
+        reorderSwimlanes: (swimlaneIds: string[]) => {
+          set(state => {
+            if (!state.currentPlan) return state;
+            
+            const updatedSwimlanes = swimlaneIds.map((id, index) => {
+              const swimlane = state.currentPlan!.swimlanes.find(s => s.id === id);
+              return swimlane ? { ...swimlane, order: index } : null;
+            }).filter(Boolean) as Swimlane[];
+            
+            return {
+              currentPlan: {
+                ...state.currentPlan,
+                swimlanes: updatedSwimlanes,
+                updatedAt: new Date()
+              }
+            };
+          });
+        },
+        
+        // Timeline actions
+        updateTimeline: (timeline: Partial<TimelineConfig>) => {
+          set(state => ({
+            currentPlan: state.currentPlan ? {
+              ...state.currentPlan,
+              timeline: { ...state.currentPlan.timeline, ...timeline },
+              updatedAt: new Date()
+            } : null
+          }));
+        },
+        
+        updatePlanTitle: (title: string) => {
+          set(state => ({
+            currentPlan: state.currentPlan ? {
+              ...state.currentPlan,
+              title,
+              updatedAt: new Date()
+            } : null
+          }));
+        },
+        
+        setCurrentPlan: (plan: Plan) => {
+          set({
+            currentPlan: plan
+          });
+        },
+        
+        // UI actions
+        setSelectedElement: (element: { type: ElementType; id: string } | null) => {
+          set({ selectedElement: element });
+        },
+        
+        setEditing: (isEditing: boolean) => {
+          set({ isEditing });
+        },
+        
+        setSnapToGrid: (snapToGrid: boolean) => {
+          set({ snapToGrid });
+        },
+        
+        setGridSize: (gridSize: number) => {
+          set({ gridSize });
+        },
+        
+        // Sharing actions
+        sharePlan: async (userId: string) => {
+          const { currentPlan } = get();
+          
+          if (!currentPlan) return;
+          
+          set({ isLoading: true, error: null });
+          
+          try {
+            const updatedSharedWith = [...currentPlan.sharedWith, userId];
+            
+            // Update in Supabase
+            const { error } = await supabase
+              .from('plans')
+              .update({ shared_with: updatedSharedWith })
+              .eq('id', currentPlan.id);
+            
+            if (error) throw error;
+            
+            // Update local state
+            set(state => ({
+              currentPlan: state.currentPlan ? {
+                ...state.currentPlan,
+                sharedWith: updatedSharedWith,
+                updatedAt: new Date()
+              } : null,
+              isLoading: false
+            }));
+          } catch (error) {
+            set({ 
+              error: error instanceof Error ? error.message : 'Failed to share plan',
+              isLoading: false 
+            });
+          }
+        },
+        
+        unsharePlan: async (userId: string) => {
+          const { currentPlan } = get();
+          
+          if (!currentPlan) return;
+          
+          set({ isLoading: true, error: null });
+          
+          try {
+            const updatedSharedWith = currentPlan.sharedWith.filter(id => id !== userId);
+            
+            // Update in Supabase
+            const { error } = await supabase
+              .from('plans')
+              .update({ shared_with: updatedSharedWith })
+              .eq('id', currentPlan.id);
+            
+            if (error) throw error;
+            
+            // Update local state
+            set(state => ({
+              currentPlan: state.currentPlan ? {
+                ...state.currentPlan,
+                sharedWith: updatedSharedWith,
+                updatedAt: new Date()
+              } : null,
+              isLoading: false
+            }));
+          } catch (error) {
+            set({ 
+              error: error instanceof Error ? error.message : 'Failed to unshare plan',
+              isLoading: false 
+            });
+          }
+        },
+        
+        // Delete selected element
+        deleteSelectedElement: (type: ElementType, id: string) => {
+          const { currentPlan } = get();
+          
+          if (!currentPlan) return;
+          
+          if (type === 'card') {
+            set(state => ({
+              currentPlan: state.currentPlan ? {
+                ...state.currentPlan,
+                cards: state.currentPlan.cards.filter(card => card.id !== id),
+                updatedAt: new Date()
+              } : null,
+              selectedElement: null
+            }));
+          } else if (type === 'milestone') {
+            set(state => ({
+              currentPlan: state.currentPlan ? {
+                ...state.currentPlan,
+                milestones: state.currentPlan.milestones.filter(milestone => milestone.id !== id),
+                updatedAt: new Date()
+              } : null,
+              selectedElement: null
+            }));
+          } else if (type === 'swimlane') {
+            set(state => {
+              if (!state.currentPlan) return state;
+              
+              // Remove the swimlane and any cards in it
+              const updatedSwimlanes = state.currentPlan.swimlanes.filter(swimlane => swimlane.id !== id);
+              const updatedCards = state.currentPlan.cards.filter(card => card.swimlaneId !== id);
+              const updatedMilestones = state.currentPlan.milestones.filter(milestone => milestone.swimlaneId !== id);
+              
+              // Reorder remaining swimlanes
+              const reorderedSwimlanes = updatedSwimlanes.map((swimlane, index) => ({
+                ...swimlane,
+                order: index
+              }));
+              
+              return {
+                currentPlan: {
+                  ...state.currentPlan,
+                  swimlanes: reorderedSwimlanes,
+                  cards: updatedCards,
+                  milestones: updatedMilestones,
+                  updatedAt: new Date()
+                },
+                selectedElement: null
+              };
+            });
+          }
+        },
+        
+        // Text actions
+        addText: (position: Position, content: string = 'New Text') => {
+          const { currentPlan } = get();
+          
+          if (!currentPlan) return null;
+          
+          const newText: TextElement = {
+            id: generateId(),
+            planId: currentPlan.id,
+            content,
+            position,
+            size: {
+              width: 200,
+              height: 50
+            },
+            style: {
+              fontSize: 16,
+              fontFamily: 'Arial, sans-serif',
+              color: '#000000',
+              backgroundColor: 'transparent',
+              textAlign: 'left',
+              fontWeight: 'normal',
+              fontStyle: 'normal'
+            },
+            isSelected: false,
+            isEditing: true,
+            order: currentPlan.texts.length,
+            createdAt: new Date(),
+            updatedAt: new Date()
+          };
+          
+          set(state => ({
+            currentPlan: state.currentPlan ? {
+              ...state.currentPlan,
+              texts: [...state.currentPlan.texts, newText],
+              updatedAt: new Date()
+            } : null
+          }));
+          
+          return newText.id;
+        },
+        
+        updateText: (id: string, updates: Partial<TextElement>) => {
+          set(state => ({
+            currentPlan: state.currentPlan ? {
+              ...state.currentPlan,
+              texts: state.currentPlan.texts.map(text => 
+                text.id === id ? { ...text, ...updates, updatedAt: new Date() } : text
+              ),
+              updatedAt: new Date()
+            } : null
+          }));
+        },
+        
+        deleteText: (id: string) => {
+          set(state => ({
+            currentPlan: state.currentPlan ? {
+              ...state.currentPlan,
+              texts: state.currentPlan.texts.filter(text => text.id !== id),
+              updatedAt: new Date()
+            } : null
+          }));
+        },
+        
+        selectText: (id: string | null) => {
+          set(state => ({
+            currentPlan: state.currentPlan ? {
+              ...state.currentPlan,
+              texts: state.currentPlan.texts.map(text => ({
+                ...text,
+                isSelected: text.id === id,
+                isEditing: false
+              })),
+              updatedAt: new Date()
+            } : null
+          }));
+        },
+        
+        setTextEditing: (id: string, isEditing: boolean) => {
+          set(state => ({
+            currentPlan: state.currentPlan ? {
+              ...state.currentPlan,
+              texts: state.currentPlan.texts.map(text => 
+                text.id === id ? { ...text, isEditing, isSelected: !isEditing } : text
+              ),
+              updatedAt: new Date()
+            } : null
+          }));
+        },
+        
+        // Utility actions
+        clearError: () => {
+          set({ error: null });
+        },
+        
+        reset: () => {
+          set({
+            currentPlan: null,
+            plans: [],
+            isLoading: false,
+            error: null,
+            selectedElement: null,
+            isEditing: false,
+            snapToGrid: true,
+            gridSize: 20
+          });
+        }
+      }),
+      {
+        name: 'plan-storage',
+        partialize: (state) => ({
+          // Only persist UI settings, not the actual plan data
+          snapToGrid: state.snapToGrid,
+          gridSize: state.gridSize
+        })
+      }
+    ),
+    { name: 'plan-store' }
+  )
+);

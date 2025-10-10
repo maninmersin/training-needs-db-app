@@ -1,0 +1,334 @@
+import React, { useState, useEffect } from 'react';
+import type { TextElement } from '../types';
+
+interface TextPropertiesModalProps {
+  isOpen: boolean;
+  textElement: TextElement | null;
+  onSave: (updates: Partial<TextElement>) => void;
+  onCancel: () => void;
+  onDelete?: () => void;
+}
+
+export default function TextPropertiesModal({ 
+  isOpen, 
+  textElement, 
+  onSave, 
+  onCancel,
+  onDelete 
+}: TextPropertiesModalProps) {
+  const [content, setContent] = useState('');
+  const [fontSize, setFontSize] = useState(14);
+  const [fontFamily, setFontFamily] = useState('Arial, sans-serif');
+  const [fontWeight, setFontWeight] = useState('normal');
+  const [fontStyle, setFontStyle] = useState('normal');
+  const [color, setColor] = useState('#000000');
+  const [backgroundColor, setBackgroundColor] = useState('transparent');
+  const [textAlign, setTextAlign] = useState<'left' | 'center' | 'right'>('left');
+  const [width, setWidth] = useState(200);
+  const [height, setHeight] = useState(50);
+
+  // Reset form when modal opens/closes or textElement changes
+  useEffect(() => {
+    if (isOpen && textElement) {
+      setContent(textElement.content);
+      setFontSize(textElement.style.fontSize);
+      setFontFamily(textElement.style.fontFamily);
+      setFontWeight(textElement.style.fontWeight);
+      setFontStyle(textElement.style.fontStyle);
+      setColor(textElement.style.color);
+      setBackgroundColor(textElement.style.backgroundColor);
+      setTextAlign(textElement.style.textAlign);
+      setWidth(textElement.size.width);
+      setHeight(textElement.size.height);
+    } else if (isOpen && !textElement) {
+      // Default values for new text
+      setContent('New text');
+      setFontSize(14);
+      setFontFamily('Arial, sans-serif');
+      setFontWeight('normal');
+      setFontStyle('normal');
+      setColor('#000000');
+      setBackgroundColor('transparent');
+      setTextAlign('left');
+      setWidth(200);
+      setHeight(50);
+    }
+  }, [isOpen, textElement]);
+
+  const handleSave = () => {
+    const updates: Partial<TextElement> = {
+      content,
+      size: { width, height },
+      style: {
+        fontSize,
+        fontFamily,
+        fontWeight,
+        fontStyle,
+        color,
+        backgroundColor,
+        textAlign
+      }
+    };
+    onSave(updates);
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div 
+      className="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm flex items-center justify-center z-50 animate-in fade-in duration-200"
+      onClick={onCancel}
+    >
+      <div 
+        className="bg-white rounded-lg shadow-2xl border border-gray-200 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto animate-in zoom-in-95 duration-200"
+        style={{ maxWidth: '32rem', width: 'min(90vw, 32rem)' }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="px-6 py-4 border-b border-gray-200">
+          <h2 className="text-lg font-semibold text-gray-900">
+            {textElement ? 'Edit Text Properties' : 'New Text Properties'}
+          </h2>
+        </div>
+        
+        <div className="px-6 py-4 space-y-6">
+          {/* Content */}
+          <div>
+            <label htmlFor="content" className="block text-sm font-medium text-gray-700 mb-2">
+              Text Content
+            </label>
+            <textarea
+              id="content"
+              value={content}
+              onChange={(e) => setContent(e.target.value)}
+              rows={3}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              placeholder="Enter your text here..."
+            />
+          </div>
+
+          {/* Font Settings Row */}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label htmlFor="fontSize" className="block text-sm font-medium text-gray-700 mb-2">
+                Font Size
+              </label>
+              <input
+                id="fontSize"
+                type="number"
+                value={fontSize}
+                onChange={(e) => setFontSize(parseInt(e.target.value) || 14)}
+                min="8"
+                max="72"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
+            
+            <div>
+              <label htmlFor="fontFamily" className="block text-sm font-medium text-gray-700 mb-2">
+                Font Family
+              </label>
+              <select
+                id="fontFamily"
+                value={fontFamily}
+                onChange={(e) => setFontFamily(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
+                <option value="Arial, sans-serif">Arial</option>
+                <option value="Inter, sans-serif">Inter</option>
+                <option value="Helvetica, sans-serif">Helvetica</option>
+                <option value="Georgia, serif">Georgia</option>
+                <option value="Times New Roman, serif">Times New Roman</option>
+                <option value="Courier New, monospace">Courier New</option>
+                <option value="Verdana, sans-serif">Verdana</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Font Style Row */}
+          <div className="grid grid-cols-3 gap-4">
+            <div>
+              <label htmlFor="fontWeight" className="block text-sm font-medium text-gray-700 mb-2">
+                Font Weight
+              </label>
+              <select
+                id="fontWeight"
+                value={fontWeight}
+                onChange={(e) => setFontWeight(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
+                <option value="normal">Normal</option>
+                <option value="bold">Bold</option>
+                <option value="lighter">Light</option>
+              </select>
+            </div>
+            
+            <div>
+              <label htmlFor="fontStyle" className="block text-sm font-medium text-gray-700 mb-2">
+                Font Style
+              </label>
+              <select
+                id="fontStyle"
+                value={fontStyle}
+                onChange={(e) => setFontStyle(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
+                <option value="normal">Normal</option>
+                <option value="italic">Italic</option>
+              </select>
+            </div>
+
+            <div>
+              <label htmlFor="textAlign" className="block text-sm font-medium text-gray-700 mb-2">
+                Text Align
+              </label>
+              <select
+                id="textAlign"
+                value={textAlign}
+                onChange={(e) => setTextAlign(e.target.value as 'left' | 'center' | 'right')}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
+                <option value="left">Left</option>
+                <option value="center">Center</option>
+                <option value="right">Right</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Color Settings Row */}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label htmlFor="color" className="block text-sm font-medium text-gray-700 mb-2">
+                Text Color
+              </label>
+              <div className="flex items-center gap-2">
+                <input
+                  id="color"
+                  type="color"
+                  value={color}
+                  onChange={(e) => setColor(e.target.value)}
+                  className="w-12 h-10 border border-gray-300 rounded cursor-pointer"
+                />
+                <input
+                  type="text"
+                  value={color}
+                  onChange={(e) => setColor(e.target.value)}
+                  className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="#000000"
+                />
+              </div>
+            </div>
+            
+            <div>
+              <label htmlFor="backgroundColor" className="block text-sm font-medium text-gray-700 mb-2">
+                Background Color
+              </label>
+              <div className="flex items-center gap-2">
+                <input
+                  id="backgroundColor"
+                  type="color"
+                  value={backgroundColor === 'transparent' ? '#FFFFFF' : backgroundColor}
+                  onChange={(e) => setBackgroundColor(e.target.value)}
+                  className="w-12 h-10 border border-gray-300 rounded cursor-pointer"
+                />
+                <input
+                  type="text"
+                  value={backgroundColor}
+                  onChange={(e) => setBackgroundColor(e.target.value)}
+                  className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="transparent"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Size Settings Row */}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label htmlFor="width" className="block text-sm font-medium text-gray-700 mb-2">
+                Width (px)
+              </label>
+              <input
+                id="width"
+                type="number"
+                value={width}
+                onChange={(e) => setWidth(parseInt(e.target.value) || 200)}
+                min="50"
+                max="1000"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
+            
+            <div>
+              <label htmlFor="height" className="block text-sm font-medium text-gray-700 mb-2">
+                Height (px)
+              </label>
+              <input
+                id="height"
+                type="number"
+                value={height}
+                onChange={(e) => setHeight(parseInt(e.target.value) || 50)}
+                min="20"
+                max="500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
+          </div>
+
+          {/* Preview */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Preview
+            </label>
+            <div 
+              className="border border-gray-200 rounded-md p-4 min-h-[60px] flex items-center"
+              style={{
+                backgroundColor: backgroundColor === 'transparent' ? '#FAFAFA' : backgroundColor
+              }}
+            >
+              <div
+                style={{
+                  fontSize: `${fontSize}px`,
+                  fontFamily,
+                  fontWeight,
+                  fontStyle,
+                  color,
+                  textAlign,
+                  width: '100%'
+                }}
+              >
+                {content || 'Preview text...'}
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <div className="px-6 py-4 border-t border-gray-200 flex justify-between">
+          <div>
+            {onDelete && textElement && (
+              <button
+                onClick={onDelete}
+                className="px-4 py-2 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-md transition-colors"
+              >
+                Delete Text
+              </button>
+            )}
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={onCancel}
+              className="px-4 py-2 text-gray-600 hover:text-gray-700 hover:bg-gray-100 rounded-md transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleSave}
+              className="px-4 py-2 bg-blue-600 text-white hover:bg-blue-700 rounded-md transition-colors"
+            >
+              {textElement ? 'Save Changes' : 'Create Text'}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

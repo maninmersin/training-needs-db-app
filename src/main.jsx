@@ -2,7 +2,7 @@ import React from 'react'
     import ReactDOM from 'react-dom/client'
     import App from './App.jsx'
     import './index.css'
-    import { enableDebugMode, disableDebugMode, toggleDebugMode } from './utils/consoleUtils'
+    import { enableDebugMode, disableDebugMode, toggleDebugMode } from '@core/utils/consoleUtils'
 
     // Make console utils globally available in development
     if (import.meta.env.DEV) {

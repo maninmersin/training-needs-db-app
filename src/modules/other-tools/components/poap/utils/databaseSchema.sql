@@ -1,0 +1,12 @@
+-- DEPRECATED: Old schema - use databaseSchemaV2.sql instead
+-- This file is kept for reference only
+
+-- The new comprehensive schema is in databaseSchemaV2.sql
+-- It includes:
+-- - plans: Core plan data with timeline configuration  
+-- - swimlanes: Hierarchical categories with styling and milestones
+-- - cards: Timeline tasks with full styling and positioning
+-- - text_elements: Freeform text with complete formatting
+-- - shape_elements: Geometric shapes (rectangles, circles, arrows)
+-- 
+-- To implement: Run the SQL commands in databaseSchemaV2.sql in your Supabase SQL editor

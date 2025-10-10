@@ -1,0 +1,237 @@
+/* Compliance Metric Card Styles */
+.compliance-metric-card {
+  background: white;
+  border: 1px solid #dee2e6;
+  border-radius: 8px;
+  padding: 20px;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.compliance-metric-card.drillable {
+  cursor: pointer;
+}
+
+.compliance-metric-card.drillable:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+  border-color: #007bff;
+}
+
+.compliance-metric-card.excellent {
+  border-left: 4px solid #28a745;
+}
+
+.compliance-metric-card.good {
+  border-left: 4px solid #ffc107;
+}
+
+.compliance-metric-card.warning {
+  border-left: 4px solid #fd7e14;
+}
+
+.compliance-metric-card.critical {
+  border-left: 4px solid #dc3545;
+}
+
+/* Card Header */
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 15px;
+}
+
+.card-title {
+  color: #2c3e50;
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0;
+  line-height: 1.2;
+  flex: 1;
+  margin-right: 10px;
+}
+
+.drill-indicator {
+  color: #007bff;
+  font-size: 18px;
+  font-weight: bold;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.compliance-metric-card.drillable:hover .drill-indicator {
+  opacity: 1;
+}
+
+/* Card Metrics */
+.card-metrics {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+}
+
+.primary-metric {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.compliance-rate {
+  font-size: 32px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.metric-label {
+  font-size: 14px;
+  color: #7f8c8d;
+  margin-top: 4px;
+}
+
+.secondary-metrics {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+}
+
+.metric {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.metric-value {
+  font-size: 18px;
+  font-weight: 600;
+  color: #2c3e50;
+  line-height: 1;
+}
+
+.metric-sublabel {
+  font-size: 12px;
+  color: #7f8c8d;
+  margin-top: 2px;
+}
+
+.metric-divider {
+  font-size: 16px;
+  color: #dee2e6;
+  margin: 0 4px;
+}
+
+/* Progress Bar */
+.progress-bar {
+  width: 100%;
+  height: 6px;
+  background: #f8f9fa;
+  border-radius: 3px;
+  overflow: hidden;
+  margin-bottom: 12px;
+}
+
+.progress-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.5s ease;
+}
+
+/* Warning Indicator */
+.warning-indicator {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #fff3cd;
+  border: 1px solid #ffeeba;
+  border-radius: 4px;
+  padding: 8px 12px;
+  margin-bottom: 10px;
+  font-size: 13px;
+}
+
+.warning-icon {
+  font-size: 16px;
+}
+
+.warning-text {
+  color: #856404;
+  font-weight: 500;
+}
+
+/* Card Status */
+.card-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.status-indicator {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.status-indicator.excellent {
+  background: #28a745;
+}
+
+.status-indicator.good {
+  background: #ffc107;
+}
+
+.status-indicator.warning {
+  background: #fd7e14;
+}
+
+.status-indicator.critical {
+  background: #dc3545;
+}
+
+.status-text {
+  color: #6c757d;
+  font-weight: 500;
+}
+
+/* Responsive Design */
+@media (max-width: 480px) {
+  .compliance-metric-card {
+    padding: 15px;
+  }
+  
+  .card-metrics {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+  
+  .compliance-rate {
+    font-size: 28px;
+  }
+  
+  .secondary-metrics {
+    align-self: stretch;
+    justify-content: space-around;
+  }
+}
+
+/* Animation for drill-down effect */
+@keyframes drill-down {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(0.98);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.compliance-metric-card.drillable:active {
+  animation: drill-down 0.2s ease;
+}

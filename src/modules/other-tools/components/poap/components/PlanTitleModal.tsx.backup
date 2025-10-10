@@ -1,0 +1,246 @@
+import { useState, useEffect } from 'react';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+
+interface PlanTitleModalProps {
+  isOpen: boolean;
+  currentTitle: string;
+  onSave: (newTitle: string) => void;
+  onCancel: () => void;
+}
+
+export default function PlanTitleModal({ 
+  isOpen, 
+  currentTitle, 
+  onSave, 
+  onCancel 
+}: PlanTitleModalProps) {
+  const [title, setTitle] = useState('');
+  const [textColor, setTextColor] = useState('#1F2937');
+  const [fontSize, setFontSize] = useState(24);
+  const [fontWeight, setFontWeight] = useState<'normal' | 'medium' | 'semibold' | 'bold'>('bold');
+  const [fontFamily, setFontFamily] = useState('Inter');
+
+  // Color options
+  const textColorOptions = [
+    { name: 'Dark Gray', value: '#1F2937' },
+    { name: 'Black', value: '#000000' },
+    { name: 'Blue', value: '#1E40AF' },
+    { name: 'Green', value: '#166534' },
+    { name: 'Red', value: '#B91C1C' },
+    { name: 'Purple', value: '#7C3AED' }
+  ];
+
+  const fontOptions = [
+    { value: 'Inter', label: 'Inter' },
+    { value: 'Roboto', label: 'Roboto' },
+    { value: 'Arial', label: 'Arial' },
+    { value: 'system-ui', label: 'System UI' },
+    { value: 'Helvetica Neue', label: 'Helvetica Neue' }
+  ];
+
+  const fontWeightOptions = [
+    { value: 'normal' as const, label: 'Normal' },
+    { value: 'medium' as const, label: 'Medium' },
+    { value: 'semibold' as const, label: 'Semi-Bold' },
+    { value: 'bold' as const, label: 'Bold' }
+  ];
+
+  // Initialize form when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      setTitle(currentTitle);
+      // Reset to default styling values
+      setTextColor('#1F2937');
+      setFontSize(24);
+      setFontWeight('bold');
+      setFontFamily('Inter');
+    }
+  }, [isOpen, currentTitle]);
+
+  // Handle save
+  const handleSave = () => {
+    const trimmedTitle = title.trim();
+    if (!trimmedTitle) return; // Don't save empty titles
+    
+    onSave(trimmedTitle);
+  };
+
+  // Handle cancel
+  const handleCancel = () => {
+    setTitle(currentTitle); // Reset to original title
+    onCancel();
+  };
+
+  // Handle Enter key press
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      handleSave();
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      handleCancel();
+    }
+  };
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onCancel}>
+      <DialogContent 
+        className="!max-w-2xl max-h-[80vh] overflow-y-auto !w-auto border-2 border-gray-300"
+        style={{ 
+          maxWidth: '672px !important',
+          width: '90vw',
+          maxHeight: '80vh',
+          padding: '32px !important'
+        }}
+      >
+        <DialogHeader>
+          <DialogTitle className="text-2xl font-bold">Edit Plan Title</DialogTitle>
+          <DialogDescription className="text-sm mt-1">
+            Customize your plan title and appearance
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-6 mt-6">
+          {/* Basic Info */}
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold text-gray-700 border-b border-gray-200 pb-2">Plan Information</h3>
+            
+            {/* Title */}
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Title</label>
+              <Input
+                type="text"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder="Enter plan title..."
+                autoFocus
+                className="w-full"
+              />
+              {!title.trim() && (
+                <p className="text-red-500 text-xs mt-1">Title cannot be empty</p>
+              )}
+            </div>
+
+            {/* Title Preview */}
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Preview</label>
+              <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg">
+                <h1 
+                  style={{
+                    color: textColor,
+                    fontSize: `${fontSize}px`,
+                    fontWeight: fontWeight,
+                    fontFamily: fontFamily
+                  }}
+                  className="m-0"
+                >
+                  {title || 'Your Plan Title'}
+                </h1>
+              </div>
+            </div>
+          </div>
+
+          {/* Appearance */}
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold text-gray-700 border-b border-gray-200 pb-2">Appearance</h3>
+            
+            {/* Text Color */}
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Text Color</label>
+              <div className="flex flex-wrap gap-3 mb-4">
+                {textColorOptions.map((colorOption) => (
+                  <button
+                    key={colorOption.value}
+                    onClick={() => setTextColor(colorOption.value)}
+                    className={`rounded-lg transition-all hover:scale-105 ${
+                      textColor === colorOption.value ? 'shadow-lg' : 'hover:shadow-md'
+                    }`}
+                    style={{ 
+                      backgroundColor: colorOption.value,
+                      width: '24px',
+                      height: '24px',
+                      border: textColor === colorOption.value ? '2px solid #3b82f6' : '1px solid #d1d5db'
+                    }}
+                    title={colorOption.name}
+                  />
+                ))}
+              </div>
+              <input
+                type="color"
+                value={textColor}
+                onChange={(e) => setTextColor(e.target.value)}
+                className="w-full h-12 rounded-lg border-2 border-gray-300 cursor-pointer"
+              />
+            </div>
+
+            {/* Typography Settings */}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Font Family</label>
+                <select
+                  value={fontFamily}
+                  onChange={(e) => setFontFamily(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  {fontOptions.map((font) => (
+                    <option key={font.value} value={font.value}>{font.label}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Font Weight</label>
+                <select
+                  value={fontWeight}
+                  onChange={(e) => setFontWeight(e.target.value as any)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  {fontWeightOptions.map((weight) => (
+                    <option key={weight.value} value={weight.value}>{weight.label}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* Font Size */}
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                Font Size: {fontSize}px
+              </label>
+              <input
+                type="range"
+                min="18"
+                max="36"
+                value={fontSize}
+                onChange={(e) => setFontSize(Number(e.target.value))}
+                className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
+              />
+            </div>
+          </div>
+        </div>
+
+        <DialogFooter className="gap-3 mt-6">
+          <Button onClick={handleCancel} variant="outline">
+            Cancel
+          </Button>
+          <Button 
+            onClick={handleSave}
+            disabled={!title.trim()}
+          >
+            Save Title
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}

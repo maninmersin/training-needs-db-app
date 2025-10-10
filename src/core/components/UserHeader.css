@@ -1,0 +1,122 @@
+.user-header {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: white;
+  border-bottom: 1px solid #e5e7eb;
+  padding: 0.75rem 20px; /* Use fixed padding instead of CSS variable */
+  margin: -20px -20px 1rem; /* Use fixed margin instead of CSS variable */
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+  height: 60px; /* Fixed height to prevent layout shifts */
+  box-sizing: border-box;
+  min-width: 0; /* Ensure flex items can shrink */
+}
+
+.user-info {
+  display: flex !important;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 1rem;
+  height: 100%;
+  min-width: 0; /* Allow flex items to shrink */
+}
+
+.user-details {
+  display: flex !important;
+  flex-direction: row !important; /* Force horizontal layout */
+  align-items: center;
+  gap: 0.5rem;
+  white-space: nowrap !important; /* Prevent text wrapping */
+  overflow: hidden; /* Handle overflow gracefully */
+  min-width: 0; /* Allow flex items to shrink */
+}
+
+.user-email {
+  font-weight: 500;
+  color: #374151;
+  font-size: 0.875rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 200px; /* Limit email width to prevent overflow */
+}
+
+.user-role {
+  font-size: 0.75rem;
+  color: #6b7280;
+  background: #f3f4f6;
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.375rem;
+  text-transform: capitalize;
+}
+
+.current-project {
+  font-size: 0.75rem;
+  color: #059669;
+  background: #ecfdf5;
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.375rem;
+  margin-left: 0.5rem;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 250px; /* Limit project name width */
+  white-space: nowrap;
+}
+
+.logout-btn {
+  padding: 0.375rem 0.75rem;
+  background: #ef4444;
+  color: white;
+  border: none;
+  border-radius: 0.375rem;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.logout-btn:hover {
+  background: #dc2626;
+}
+
+.loading-text {
+  color: #6b7280;
+  font-size: 0.875rem;
+}
+
+/* Responsive adjustments - Only apply on very small mobile screens */
+@media (max-width: 320px) {
+  .user-header {
+    padding: 0.5rem 10px;
+    margin: -10px -10px 1rem;
+    height: auto;
+    min-height: 60px;
+  }
+  
+  .user-details {
+    flex-direction: column !important;
+    align-items: flex-end;
+    gap: 0.25rem;
+    white-space: normal !important;
+  }
+  
+  .user-email {
+    font-size: 0.8rem;
+  }
+  
+  .current-project {
+    margin-left: 0;
+    margin-top: 0.25rem;
+  }
+}
+
+/* Force stable layout during navigation transitions */
+@media (min-width: 321px) {
+  .user-details {
+    flex-direction: row !important;
+    white-space: nowrap !important;
+  }
+  
+  .user-header {
+    height: 60px !important;
+  }
+}

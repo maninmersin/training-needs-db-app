@@ -1,0 +1,352 @@
+/* Timeline Grid Layout */
+.timeline-container {
+  display: grid;
+  grid-template-columns: 200px 1fr;
+  grid-template-rows: auto 1fr;
+  height: 100%;
+}
+
+/* Timeline Header spans both columns */
+.timeline-header {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: 200px 1fr;
+  border: 2px solid #e5e7eb;
+  overflow: hidden;
+}
+
+.timeline-header-left {
+  background: #f9fafb;
+  border-right: 1px solid #e5e7eb;
+}
+
+.timeline-header-right {
+  background: #f9fafb;
+  position: relative;
+  border-radius: 0 8px 0 0; /* Round only the top-right corner of the time period area */
+  overflow: hidden; /* Ensure content doesn't exceed the grid column width */
+}
+
+/* Year Row */
+.year-row {
+  background: #46566C;
+  color: white;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  font-weight: bold;
+  font-size: 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2); /* Match grid border color */
+}
+
+/* Month Row */
+.month-row {
+  background: #46566C;
+  color: white;
+  height: 32px;
+  position: relative;
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2); /* Match grid border color */
+}
+
+/* Week Row */
+.week-row {
+  background: #6E7F95;
+  color: white;
+  height: 32px;
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.week-row .time-period {
+  justify-content: flex-start;
+  padding-left: 8px;
+}
+
+/* Time Periods Container */
+.time-periods {
+  display: flex;
+  height: 100%;
+  position: relative;
+}
+
+.time-period {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  padding: 0px 4px;
+  border-right: 1px solid rgba(255, 255, 255, 0.2);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.time-period:last-child {
+  border-right: none;
+}
+
+/* Swimlanes Area */
+.swimlanes-container {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: 200px 1fr;
+  overflow-y: auto;
+  padding-top: 10px; /* Add white space between time period area and first category */
+}
+
+.swimlane-labels {
+  background: #f9fafb;
+  border-right: 1px solid #e5e7eb;
+}
+
+.swimlane-content {
+  background: #ffffff;
+  position: relative;
+}
+
+/* Individual Swimlane Row */
+.swimlane-row {
+  display: contents;
+}
+
+.swimlane-label {
+  background: #f8f9fa;
+  border-bottom: 1px solid #e9ecef;
+  padding: 16px;
+  display: flex;
+  align-items: center;
+  min-height: 80px;
+  font-weight: 600;
+  color: #495057;
+}
+
+.swimlane-track {
+  background: transparent; /* Let parent background show through */
+  border-bottom: 1px solid #e9ecef;
+  min-height: 80px;
+  position: relative;
+  display: grid;
+  grid-template-columns: var(--week-columns);
+  overflow-x: hidden; /* Prevent horizontal overflow */
+  /* Allow height to be overridden by inline styles */
+}
+
+/* Grid Lines in Track - No pseudo-element approach, will use JS-generated elements */
+.swimlane-track {
+  position: relative;
+}
+
+.timeline-grid-line {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background-color: #e9ecef;
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* Timeline Cards */
+.timeline-card {
+  position: absolute;
+  background: #3b82f6;
+  color: white;
+  border-radius: 16px;
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: move;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  transition: all 0.2s ease;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  height: 36px; /* Fixed height for 50% of row (40px - 4px margin) */
+  overflow: visible; /* Ensure handles aren't clipped */
+}
+
+.timeline-card:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+/* Today Indicator */
+.today-indicator {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: #ef4444;
+  z-index: 20;
+}
+
+.today-indicator::before {
+  content: '● Today';
+  position: absolute;
+  top: -24px;
+  left: -20px;
+  background: #ef4444;
+  color: white;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 10px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* Milestones */
+.milestone {
+  position: absolute;
+  z-index: 30; /* Higher than all other timeline elements */
+}
+
+.milestones-overlay {
+  z-index: 30; /* Ensure milestones overlay appears above everything */
+}
+
+.milestone-marker {
+  width: 0;
+  height: 0;
+  border-left: 12px solid transparent;
+  border-right: 12px solid transparent;
+  border-top: 18px solid #f59e0b;
+  position: relative;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
+}
+
+.milestone-label {
+  position: absolute;
+  top: -42px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #f59e0b;
+  color: white;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+/* Hierarchical Swimlane Styles */
+.swimlane-group {
+  display: flex;
+  border-bottom: 1px solid #e9ecef;
+  margin-bottom: 10px; /* Add white space between main category groups */
+  position: relative;
+}
+
+.swimlane-group:last-child {
+  margin-bottom: 0; /* Remove margin from the last group */
+}
+
+
+.main-category-label {
+  min-width: 80px;
+  border-right: 1px solid #e9ecef;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+.sub-categories {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  height: 100%;
+}
+
+.sub-category-label {
+  border-bottom: 1px solid #e9ecef;
+  padding: 8px 12px;
+  min-height: 80px;
+  display: flex;
+  align-items: center;
+  box-sizing: border-box;
+  margin: 0;
+}
+
+.sub-category-label:last-child {
+  border-bottom: none;
+}
+
+.main-category-content {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 10px; /* Add white space between main category groups */
+  position: relative;
+  background-color: #F8F8F8; /* Grey background for main category content areas */
+}
+
+.main-category-content:last-child {
+  margin-bottom: 0; /* Remove margin from the last group */
+}
+
+/* Shape Elements - Remove black border focus outline */
+.shape-element,
+.shape-element *,
+.shape-element svg,
+.shape-element svg * {
+  outline: none !important;
+  border: none !important;
+  box-shadow: none !important;
+  user-select: none !important;
+  -webkit-user-select: none !important;
+  -moz-user-select: none !important;
+  -ms-user-select: none !important;
+}
+
+.shape-element:focus,
+.shape-element:focus *,
+.shape-element:focus svg,
+.shape-element:focus svg * {
+  outline: none !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+.shape-element:active,
+.shape-element:active *,
+.shape-element:active svg,
+.shape-element:active svg * {
+  outline: none !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+.shape-element:hover,
+.shape-element:hover *,
+.shape-element:hover svg,
+.shape-element:hover svg * {
+  outline: none !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+.shape-element svg {
+  outline: none !important;
+  border: none !important;
+  pointer-events: none !important;
+}
+
+/* Exception: Allow resize handles to have borders and shadows */
+.shape-element .resize-handle {
+  border: 4px solid #fbbf24 !important; /* Yellow border */
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5) !important; /* Strong shadow */
+  outline: none !important;
+}
+

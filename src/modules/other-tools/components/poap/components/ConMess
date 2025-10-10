@@ -1,0 +1,629 @@
+TopToolbar.tsx:86 Browse Plans button clicked!
+TimelineContainer.tsx:175 onBrowsePlans called, current modal state: false
+TimelineContainer.tsx:176 Setting showPlansLibraryModal to true
+TimelineContainer.tsx:178 Previous state was: false
+TimelineContainer.tsx:179 Setting new state to: true
+TopToolbar.tsx:89 onBrowsePlans called successfully
+TimelineContainer.tsx:178 Previous state was: false
+TimelineContainer.tsx:179 Setting new state to: true
+SwimlaneList.tsx:63 SwimlaneList System Availability height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Testing height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Releases height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList System Availability height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Testing height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Releases height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Awareness height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Invites height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Awareness height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Invites height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Analysis height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Design height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Deliver height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Evaluation height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Analysis height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Design height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Deliver height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Evaluation height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Design height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Handover height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Design height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Handover height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList System Availability height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Testing height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Releases height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList System Availability height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Testing height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Releases height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Awareness height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Invites height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList System Availability height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Testing height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Releases height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Awareness height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Invites height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Analysis height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Design height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Deliver height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Evaluation height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList System Availability height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Testing height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Releases height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Awareness height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Invites height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Analysis height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Design height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Deliver height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Evaluation height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Design height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Handover height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList System Availability height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Testing height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Releases height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList System Availability height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Testing height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Releases height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Awareness height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Invites height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Awareness height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Invites height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Analysis height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Design height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Deliver height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Evaluation height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Analysis height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Design height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Deliver height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Evaluation height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Design height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Handover height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Design height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Handover height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList System Availability height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Testing height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Releases height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList System Availability height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Testing height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Releases height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Awareness height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Invites height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList System Availability height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Testing height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Releases height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Awareness height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Invites height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Analysis height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Design height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Deliver height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Evaluation height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList System Availability height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Testing height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Releases height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Awareness height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Invites height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Analysis height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Design height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Deliver height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Evaluation height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Design height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Handover height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneRow.tsx:58 SwimlaneRow System Availability: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneRow.tsx:58 SwimlaneRow System Availability: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+Windows11Modal.tsx:56 🪟 Windows11Modal render - isOpen: false title: Edit Card
+Windows11Modal.tsx:58 🪟 Windows11Modal returning null - not open
+Windows11Modal.tsx:56 🪟 Windows11Modal render - isOpen: false title: Edit Card
+Windows11Modal.tsx:58 🪟 Windows11Modal returning null - not open
+SwimlaneRow.tsx:58 SwimlaneRow Testing: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneRow.tsx:58 SwimlaneRow Testing: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+Windows11Modal.tsx:56 🪟 Windows11Modal render - isOpen: false title: Edit Card
+Windows11Modal.tsx:58 🪟 Windows11Modal returning null - not open
+Windows11Modal.tsx:56 🪟 Windows11Modal render - isOpen: false title: Edit Card
+Windows11Modal.tsx:58 🪟 Windows11Modal returning null - not open
+SwimlaneRow.tsx:58 SwimlaneRow Releases: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneRow.tsx:58 SwimlaneRow Releases: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+Windows11Modal.tsx:56 🪟 Windows11Modal render - isOpen: false title: Edit Card
+Windows11Modal.tsx:58 🪟 Windows11Modal returning null - not open
+Windows11Modal.tsx:56 🪟 Windows11Modal render - isOpen: false title: Edit Card
+Windows11Modal.tsx:58 🪟 Windows11Modal returning null - not open
+SwimlaneRow.tsx:58 SwimlaneRow Awareness: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneRow.tsx:58 SwimlaneRow Awareness: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+Windows11Modal.tsx:56 🪟 Windows11Modal render - isOpen: false title: Edit Card
+Windows11Modal.tsx:58 🪟 Windows11Modal returning null - not open
+Windows11Modal.tsx:56 🪟 Windows11Modal render - isOpen: false title: Edit Card
+Windows11Modal.tsx:58 🪟 Windows11Modal returning null - not open
+SwimlaneRow.tsx:58 SwimlaneRow Invites: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneRow.tsx:58 SwimlaneRow Invites: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+Windows11Modal.tsx:56 🪟 Windows11Modal render - isOpen: false title: Edit Card
+Windows11Modal.tsx:58 🪟 Windows11Modal returning null - not open
+Windows11Modal.tsx:56 🪟 Windows11Modal render - isOpen: false title: Edit Card
+Windows11Modal.tsx:58 🪟 Windows11Modal returning null - not open
+SwimlaneRow.tsx:58 SwimlaneRow Analysis: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneRow.tsx:58 SwimlaneRow Analysis: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+Windows11Modal.tsx:56 🪟 Windows11Modal render - isOpen: false title: Edit Card
+Windows11Modal.tsx:58 🪟 Windows11Modal returning null - not open
+Windows11Modal.tsx:56 🪟 Windows11Modal render - isOpen: false title: Edit Card
+Windows11Modal.tsx:58 🪟 Windows11Modal returning null - not open
+SwimlaneRow.tsx:58 SwimlaneRow Design: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneRow.tsx:58 SwimlaneRow Design: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+Windows11Modal.tsx:56 🪟 Windows11Modal render - isOpen: false title: Edit Card
+Windows11Modal.tsx:58 🪟 Windows11Modal returning null - not open
+Windows11Modal.tsx:56 🪟 Windows11Modal render - isOpen: false title: Edit Card
+Windows11Modal.tsx:58 🪟 Windows11Modal returning null - not open
+SwimlaneRow.tsx:58 SwimlaneRow Deliver: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneRow.tsx:58 SwimlaneRow Deliver: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+Windows11Modal.tsx:56 🪟 Windows11Modal render - isOpen: false title: Edit Card
+Windows11Modal.tsx:58 🪟 Windows11Modal returning null - not open
+Windows11Modal.tsx:56 🪟 Windows11Modal render - isOpen: false title: Edit Card
+Windows11Modal.tsx:58 🪟 Windows11Modal returning null - not open
+SwimlaneRow.tsx:58 SwimlaneRow Evaluation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneRow.tsx:58 SwimlaneRow Evaluation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+Windows11Modal.tsx:56 🪟 Windows11Modal render - isOpen: false title: Edit Card
+Windows11Modal.tsx:58 🪟 Windows11Modal returning null - not open
+Windows11Modal.tsx:56 🪟 Windows11Modal render - isOpen: false title: Edit Card
+Windows11Modal.tsx:58 🪟 Windows11Modal returning null - not open
+SwimlaneRow.tsx:58 SwimlaneRow Design: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneRow.tsx:58 SwimlaneRow Design: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+Windows11Modal.tsx:56 🪟 Windows11Modal render - isOpen: false title: Edit Card
+Windows11Modal.tsx:58 🪟 Windows11Modal returning null - not open
+Windows11Modal.tsx:56 🪟 Windows11Modal render - isOpen: false title: Edit Card
+Windows11Modal.tsx:58 🪟 Windows11Modal returning null - not open
+SwimlaneRow.tsx:58 SwimlaneRow Handover: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneRow.tsx:58 SwimlaneRow Handover: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+Windows11Modal.tsx:56 🪟 Windows11Modal render - isOpen: false title: Edit Card
+Windows11Modal.tsx:58 🪟 Windows11Modal returning null - not open
+Windows11Modal.tsx:56 🪟 Windows11Modal render - isOpen: false title: Edit Card
+Windows11Modal.tsx:58 🪟 Windows11Modal returning null - not open
+Windows11Modal.tsx:56 🪟 Windows11Modal render - isOpen: false title: Edit Category
+Windows11Modal.tsx:58 🪟 Windows11Modal returning null - not open
+Windows11Modal.tsx:56 🪟 Windows11Modal render - isOpen: false title: Edit Category
+Windows11Modal.tsx:58 🪟 Windows11Modal returning null - not open
+Windows11Modal.tsx:56 🪟 Windows11Modal render - isOpen: false title: Edit Plan Title
+Windows11Modal.tsx:58 🪟 Windows11Modal returning null - not open
+Windows11Modal.tsx:56 🪟 Windows11Modal render - isOpen: false title: Edit Plan Title
+Windows11Modal.tsx:58 🪟 Windows11Modal returning null - not open
+Windows11Modal.tsx:56 🪟 Windows11Modal render - isOpen: false title: Create New Card
+Windows11Modal.tsx:58 🪟 Windows11Modal returning null - not open
+Windows11Modal.tsx:56 🪟 Windows11Modal render - isOpen: false title: Create New Card
+Windows11Modal.tsx:58 🪟 Windows11Modal returning null - not open
+Windows11Modal.tsx:56 🪟 Windows11Modal render - isOpen: false title: Edit Category
+Windows11Modal.tsx:58 🪟 Windows11Modal returning null - not open
+Windows11Modal.tsx:56 🪟 Windows11Modal render - isOpen: false title: Edit Category
+Windows11Modal.tsx:58 🪟 Windows11Modal returning null - not open
+Windows11Modal.tsx:56 🪟 Windows11Modal render - isOpen: false title: Add New Milestone
+Windows11Modal.tsx:58 🪟 Windows11Modal returning null - not open
+Windows11Modal.tsx:56 🪟 Windows11Modal render - isOpen: false title: Add New Milestone
+Windows11Modal.tsx:58 🪟 Windows11Modal returning null - not open
+Windows11Modal.tsx:56 🪟 Windows11Modal render - isOpen: false title: Create New Text
+Windows11Modal.tsx:58 🪟 Windows11Modal returning null - not open
+Windows11Modal.tsx:56 🪟 Windows11Modal render - isOpen: false title: Create New Text
+Windows11Modal.tsx:58 🪟 Windows11Modal returning null - not open
+Windows11Modal.tsx:56 🪟 Windows11Modal render - isOpen: false title: Create New Shape
+Windows11Modal.tsx:58 🪟 Windows11Modal returning null - not open
+Windows11Modal.tsx:56 🪟 Windows11Modal render - isOpen: false title: Create New Shape
+Windows11Modal.tsx:58 🪟 Windows11Modal returning null - not open
+Windows11Modal.tsx:56 🪟 Windows11Modal render - isOpen: false title: Save As New Plan
+Windows11Modal.tsx:58 🪟 Windows11Modal returning null - not open
+Windows11Modal.tsx:56 🪟 Windows11Modal render - isOpen: false title: Save As New Plan
+Windows11Modal.tsx:58 🪟 Windows11Modal returning null - not open
+PlansLibraryModal.tsx:21 🎭 PlansLibraryModal render - isOpen: true
+PlansLibraryModal.tsx:22 🎭 PlansLibraryModal props: {isOpen: true, onClose: true, onSelectPlan: true, onCreateNew: true}
+PlansLibraryModal.tsx:91 🎭 PlansLibraryModal about to return Windows11Modal with isOpen: true
+PlansLibraryModal.tsx:21 🎭 PlansLibraryModal render - isOpen: true
+PlansLibraryModal.tsx:22 🎭 PlansLibraryModal props: {isOpen: true, onClose: true, onSelectPlan: true, onCreateNew: true}
+PlansLibraryModal.tsx:91 🎭 PlansLibraryModal about to return Windows11Modal with isOpen: true
+Windows11Modal.tsx:56 🪟 Windows11Modal render - isOpen: true title: Browse Plans
+Windows11Modal.tsx:126 🪟 Windows11Modal RENDERING modal overlay
+Windows11Modal.tsx:56 🪟 Windows11Modal render - isOpen: true title: Browse Plans
+Windows11Modal.tsx:126 🪟 Windows11Modal RENDERING modal overlay
+Windows11Modal.tsx:56 🪟 Windows11Modal render - isOpen: false title: Create New Plan
+Windows11Modal.tsx:58 🪟 Windows11Modal returning null - not open
+Windows11Modal.tsx:56 🪟 Windows11Modal render - isOpen: false title: Create New Plan
+Windows11Modal.tsx:58 🪟 Windows11Modal returning null - not open
+Windows11Modal.tsx:56 🪟 Windows11Modal render - isOpen: false title: Unsaved Changes
+Windows11Modal.tsx:58 🪟 Windows11Modal returning null - not open
+Windows11Modal.tsx:56 🪟 Windows11Modal render - isOpen: false title: Unsaved Changes
+Windows11Modal.tsx:58 🪟 Windows11Modal returning null - not open
+PlansLibraryModal.tsx:36 📋 Plans Library Modal opened - isOpen is TRUE
+PlansLibraryModal.tsx:37 📊 Current plans in store: (11) [{…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}, {…}]
+PlansLibraryModal.tsx:43 🔄 Loading plans from database...
+TimelineContainer.tsx:71 📊 showPlansLibraryModal state changed to: true
+TimelinePage.tsx:6 📄 TimelinePage component mounting/re-rendering
+TimelinePage.tsx:6 📄 TimelinePage component mounting/re-rendering
+TimelinePage.tsx:6 📄 TimelinePage component mounting/re-rendering
+TimelinePage.tsx:6 📄 TimelinePage component mounting/re-rendering
+SwimlaneList.tsx:63 SwimlaneList System Availability height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Testing height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Releases height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList System Availability height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Testing height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Releases height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Awareness height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Invites height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Awareness height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Invites height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Analysis height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Design height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Deliver height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Evaluation height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Analysis height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Design height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Deliver height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Evaluation height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Design height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Handover height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Design height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Handover height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList System Availability height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Testing height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Releases height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList System Availability height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Testing height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Releases height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Awareness height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Invites height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList System Availability height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Testing height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Releases height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Awareness height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Invites height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Analysis height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Design height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Deliver height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Evaluation height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList System Availability height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Testing height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Releases height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Awareness height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Invites height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Analysis height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Design height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Deliver height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Evaluation height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Design height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Handover height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList System Availability height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Testing height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Releases height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList System Availability height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Testing height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Releases height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Awareness height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Invites height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Awareness height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Invites height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Analysis height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Design height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Deliver height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Evaluation height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Analysis height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Design height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Deliver height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Evaluation height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Design height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Handover height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Design height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Handover height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList System Availability height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Testing height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Releases height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList System Availability height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Testing height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Releases height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Awareness height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Invites height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList System Availability height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Testing height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Releases height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Awareness height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Invites height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Analysis height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Design height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Deliver height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Evaluation height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList System Availability height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Testing height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Releases height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Awareness height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Invites height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Analysis height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Design height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Deliver height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Evaluation height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Design height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Handover height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneRow.tsx:58 SwimlaneRow System Availability: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneRow.tsx:58 SwimlaneRow System Availability: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+Windows11Modal.tsx:56 🪟 Windows11Modal render - isOpen: false title: Edit Card
+Windows11Modal.tsx:58 🪟 Windows11Modal returning null - not open
+Windows11Modal.tsx:56 🪟 Windows11Modal render - isOpen: false title: Edit Card
+Windows11Modal.tsx:58 🪟 Windows11Modal returning null - not open
+SwimlaneRow.tsx:58 SwimlaneRow Testing: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneRow.tsx:58 SwimlaneRow Testing: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+Windows11Modal.tsx:56 🪟 Windows11Modal render - isOpen: false title: Edit Card
+Windows11Modal.tsx:58 🪟 Windows11Modal returning null - not open
+Windows11Modal.tsx:56 🪟 Windows11Modal render - isOpen: false title: Edit Card
+Windows11Modal.tsx:58 🪟 Windows11Modal returning null - not open
+SwimlaneRow.tsx:58 SwimlaneRow Releases: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneRow.tsx:58 SwimlaneRow Releases: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+Windows11Modal.tsx:56 🪟 Windows11Modal render - isOpen: false title: Edit Card
+Windows11Modal.tsx:58 🪟 Windows11Modal returning null - not open
+Windows11Modal.tsx:56 🪟 Windows11Modal render - isOpen: false title: Edit Card
+Windows11Modal.tsx:58 🪟 Windows11Modal returning null - not open
+SwimlaneRow.tsx:58 SwimlaneRow Awareness: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneRow.tsx:58 SwimlaneRow Awareness: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+Windows11Modal.tsx:56 🪟 Windows11Modal render - isOpen: false title: Edit Card
+Windows11Modal.tsx:58 🪟 Windows11Modal returning null - not open
+Windows11Modal.tsx:56 🪟 Windows11Modal render - isOpen: false title: Edit Card
+Windows11Modal.tsx:58 🪟 Windows11Modal returning null - not open
+SwimlaneRow.tsx:58 SwimlaneRow Invites: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneRow.tsx:58 SwimlaneRow Invites: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+Windows11Modal.tsx:56 🪟 Windows11Modal render - isOpen: false title: Edit Card
+Windows11Modal.tsx:58 🪟 Windows11Modal returning null - not open
+Windows11Modal.tsx:56 🪟 Windows11Modal render - isOpen: false title: Edit Card
+Windows11Modal.tsx:58 🪟 Windows11Modal returning null - not open
+SwimlaneRow.tsx:58 SwimlaneRow Analysis: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneRow.tsx:58 SwimlaneRow Analysis: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+Windows11Modal.tsx:56 🪟 Windows11Modal render - isOpen: false title: Edit Card
+Windows11Modal.tsx:58 🪟 Windows11Modal returning null - not open
+Windows11Modal.tsx:56 🪟 Windows11Modal render - isOpen: false title: Edit Card
+Windows11Modal.tsx:58 🪟 Windows11Modal returning null - not open
+SwimlaneRow.tsx:58 SwimlaneRow Design: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneRow.tsx:58 SwimlaneRow Design: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+Windows11Modal.tsx:56 🪟 Windows11Modal render - isOpen: false title: Edit Card
+Windows11Modal.tsx:58 🪟 Windows11Modal returning null - not open
+Windows11Modal.tsx:56 🪟 Windows11Modal render - isOpen: false title: Edit Card
+Windows11Modal.tsx:58 🪟 Windows11Modal returning null - not open
+SwimlaneRow.tsx:58 SwimlaneRow Deliver: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneRow.tsx:58 SwimlaneRow Deliver: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+Windows11Modal.tsx:56 🪟 Windows11Modal render - isOpen: false title: Edit Card
+Windows11Modal.tsx:58 🪟 Windows11Modal returning null - not open
+Windows11Modal.tsx:56 🪟 Windows11Modal render - isOpen: false title: Edit Card
+Windows11Modal.tsx:58 🪟 Windows11Modal returning null - not open
+SwimlaneRow.tsx:58 SwimlaneRow Evaluation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneRow.tsx:58 SwimlaneRow Evaluation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+Windows11Modal.tsx:56 🪟 Windows11Modal render - isOpen: false title: Edit Card
+Windows11Modal.tsx:58 🪟 Windows11Modal returning null - not open
+Windows11Modal.tsx:56 🪟 Windows11Modal render - isOpen: false title: Edit Card
+Windows11Modal.tsx:58 🪟 Windows11Modal returning null - not open
+SwimlaneRow.tsx:58 SwimlaneRow Design: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneRow.tsx:58 SwimlaneRow Design: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+Windows11Modal.tsx:56 🪟 Windows11Modal render - isOpen: false title: Edit Card
+Windows11Modal.tsx:58 🪟 Windows11Modal returning null - not open
+Windows11Modal.tsx:56 🪟 Windows11Modal render - isOpen: false title: Edit Card
+Windows11Modal.tsx:58 🪟 Windows11Modal returning null - not open
+SwimlaneRow.tsx:58 SwimlaneRow Handover: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneRow.tsx:58 SwimlaneRow Handover: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+Windows11Modal.tsx:56 🪟 Windows11Modal render - isOpen: false title: Edit Card
+Windows11Modal.tsx:58 🪟 Windows11Modal returning null - not open
+Windows11Modal.tsx:56 🪟 Windows11Modal render - isOpen: false title: Edit Card
+Windows11Modal.tsx:58 🪟 Windows11Modal returning null - not open
+Windows11Modal.tsx:56 🪟 Windows11Modal render - isOpen: false title: Edit Category
+Windows11Modal.tsx:58 🪟 Windows11Modal returning null - not open
+Windows11Modal.tsx:56 🪟 Windows11Modal render - isOpen: false title: Edit Category
+Windows11Modal.tsx:58 🪟 Windows11Modal returning null - not open
+Windows11Modal.tsx:56 🪟 Windows11Modal render - isOpen: false title: Edit Plan Title
+Windows11Modal.tsx:58 🪟 Windows11Modal returning null - not open
+Windows11Modal.tsx:56 🪟 Windows11Modal render - isOpen: false title: Edit Plan Title
+Windows11Modal.tsx:58 🪟 Windows11Modal returning null - not open
+Windows11Modal.tsx:56 🪟 Windows11Modal render - isOpen: false title: Create New Card
+Windows11Modal.tsx:58 🪟 Windows11Modal returning null - not open
+Windows11Modal.tsx:56 🪟 Windows11Modal render - isOpen: false title: Create New Card
+Windows11Modal.tsx:58 🪟 Windows11Modal returning null - not open
+Windows11Modal.tsx:56 🪟 Windows11Modal render - isOpen: false title: Edit Category
+Windows11Modal.tsx:58 🪟 Windows11Modal returning null - not open
+Windows11Modal.tsx:56 🪟 Windows11Modal render - isOpen: false title: Edit Category
+Windows11Modal.tsx:58 🪟 Windows11Modal returning null - not open
+Windows11Modal.tsx:56 🪟 Windows11Modal render - isOpen: false title: Add New Milestone
+Windows11Modal.tsx:58 🪟 Windows11Modal returning null - not open
+Windows11Modal.tsx:56 🪟 Windows11Modal render - isOpen: false title: Add New Milestone
+Windows11Modal.tsx:58 🪟 Windows11Modal returning null - not open
+Windows11Modal.tsx:56 🪟 Windows11Modal render - isOpen: false title: Create New Text
+Windows11Modal.tsx:58 🪟 Windows11Modal returning null - not open
+Windows11Modal.tsx:56 🪟 Windows11Modal render - isOpen: false title: Create New Text
+Windows11Modal.tsx:58 🪟 Windows11Modal returning null - not open
+Windows11Modal.tsx:56 🪟 Windows11Modal render - isOpen: false title: Create New Shape
+Windows11Modal.tsx:58 🪟 Windows11Modal returning null - not open
+Windows11Modal.tsx:56 🪟 Windows11Modal render - isOpen: false title: Create New Shape
+Windows11Modal.tsx:58 🪟 Windows11Modal returning null - not open
+Windows11Modal.tsx:56 🪟 Windows11Modal render - isOpen: false title: Save As New Plan
+Windows11Modal.tsx:58 🪟 Windows11Modal returning null - not open
+Windows11Modal.tsx:56 🪟 Windows11Modal render - isOpen: false title: Save As New Plan
+Windows11Modal.tsx:58 🪟 Windows11Modal returning null - not open
+PlansLibraryModal.tsx:21 🎭 PlansLibraryModal render - isOpen: false
+PlansLibraryModal.tsx:22 🎭 PlansLibraryModal props: {isOpen: false, onClose: true, onSelectPlan: true, onCreateNew: true}
+PlansLibraryModal.tsx:91 🎭 PlansLibraryModal about to return Windows11Modal with isOpen: false
+PlansLibraryModal.tsx:21 🎭 PlansLibraryModal render - isOpen: false
+PlansLibraryModal.tsx:22 🎭 PlansLibraryModal props: {isOpen: false, onClose: true, onSelectPlan: true, onCreateNew: true}
+PlansLibraryModal.tsx:91 🎭 PlansLibraryModal about to return Windows11Modal with isOpen: false
+Windows11Modal.tsx:56 🪟 Windows11Modal render - isOpen: false title: Browse Plans
+Windows11Modal.tsx:58 🪟 Windows11Modal returning null - not open
+Windows11Modal.tsx:56 🪟 Windows11Modal render - isOpen: false title: Browse Plans
+Windows11Modal.tsx:58 🪟 Windows11Modal returning null - not open
+Windows11Modal.tsx:56 🪟 Windows11Modal render - isOpen: false title: Create New Plan
+Windows11Modal.tsx:58 🪟 Windows11Modal returning null - not open
+Windows11Modal.tsx:56 🪟 Windows11Modal render - isOpen: false title: Create New Plan
+Windows11Modal.tsx:58 🪟 Windows11Modal returning null - not open
+Windows11Modal.tsx:56 🪟 Windows11Modal render - isOpen: false title: Unsaved Changes
+Windows11Modal.tsx:58 🪟 Windows11Modal returning null - not open
+Windows11Modal.tsx:56 🪟 Windows11Modal render - isOpen: false title: Unsaved Changes
+Windows11Modal.tsx:58 🪟 Windows11Modal returning null - not open
+TimelineContainer.tsx:71 📊 showPlansLibraryModal state changed to: false
+TimelineContainer.tsx:71 📊 showPlansLibraryModal state changed to: false
+PlansLibraryModal.tsx:45 ✅ Plans loaded successfully
+SwimlaneList.tsx:63 SwimlaneList System Availability height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Testing height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Releases height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList System Availability height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Testing height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Releases height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Awareness height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Invites height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Awareness height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Invites height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Analysis height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Design height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Deliver height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Evaluation height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Analysis height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Design height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Deliver height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Evaluation height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Design height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Handover height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Design height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Handover height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList System Availability height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Testing height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Releases height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList System Availability height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Testing height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Releases height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Awareness height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Invites height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList System Availability height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Testing height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Releases height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Awareness height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Invites height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Analysis height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Design height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Deliver height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Evaluation height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList System Availability height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Testing height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Releases height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Awareness height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Invites height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Analysis height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Design height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Deliver height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Evaluation height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Design height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Handover height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList System Availability height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Testing height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Releases height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList System Availability height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Testing height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Releases height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Awareness height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Invites height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Awareness height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Invites height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Analysis height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Design height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Deliver height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Evaluation height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Analysis height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Design height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Deliver height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Evaluation height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Design height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Handover height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Design height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Handover height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList System Availability height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Testing height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Releases height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList System Availability height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Testing height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Releases height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Awareness height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Invites height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList System Availability height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Testing height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Releases height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Awareness height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Invites height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Analysis height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Design height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Deliver height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Evaluation height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList System Availability height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Testing height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Releases height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Awareness height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Invites height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Analysis height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Design height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Deliver height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Evaluation height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Design height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneList.tsx:63 SwimlaneList Handover height calculation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneRow.tsx:58 SwimlaneRow System Availability: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneRow.tsx:58 SwimlaneRow System Availability: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+Windows11Modal.tsx:56 🪟 Windows11Modal render - isOpen: false title: Edit Card
+Windows11Modal.tsx:58 🪟 Windows11Modal returning null - not open
+Windows11Modal.tsx:56 🪟 Windows11Modal render - isOpen: false title: Edit Card
+Windows11Modal.tsx:58 🪟 Windows11Modal returning null - not open
+SwimlaneRow.tsx:58 SwimlaneRow Testing: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneRow.tsx:58 SwimlaneRow Testing: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+Windows11Modal.tsx:56 🪟 Windows11Modal render - isOpen: false title: Edit Card
+Windows11Modal.tsx:58 🪟 Windows11Modal returning null - not open
+Windows11Modal.tsx:56 🪟 Windows11Modal render - isOpen: false title: Edit Card
+Windows11Modal.tsx:58 🪟 Windows11Modal returning null - not open
+SwimlaneRow.tsx:58 SwimlaneRow Releases: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneRow.tsx:58 SwimlaneRow Releases: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+Windows11Modal.tsx:56 🪟 Windows11Modal render - isOpen: false title: Edit Card
+Windows11Modal.tsx:58 🪟 Windows11Modal returning null - not open
+Windows11Modal.tsx:56 🪟 Windows11Modal render - isOpen: false title: Edit Card
+Windows11Modal.tsx:58 🪟 Windows11Modal returning null - not open
+SwimlaneRow.tsx:58 SwimlaneRow Awareness: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneRow.tsx:58 SwimlaneRow Awareness: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+Windows11Modal.tsx:56 🪟 Windows11Modal render - isOpen: false title: Edit Card
+Windows11Modal.tsx:58 🪟 Windows11Modal returning null - not open
+Windows11Modal.tsx:56 🪟 Windows11Modal render - isOpen: false title: Edit Card
+Windows11Modal.tsx:58 🪟 Windows11Modal returning null - not open
+SwimlaneRow.tsx:58 SwimlaneRow Invites: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneRow.tsx:58 SwimlaneRow Invites: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+Windows11Modal.tsx:56 🪟 Windows11Modal render - isOpen: false title: Edit Card
+Windows11Modal.tsx:58 🪟 Windows11Modal returning null - not open
+Windows11Modal.tsx:56 🪟 Windows11Modal render - isOpen: false title: Edit Card
+Windows11Modal.tsx:58 🪟 Windows11Modal returning null - not open
+SwimlaneRow.tsx:58 SwimlaneRow Analysis: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneRow.tsx:58 SwimlaneRow Analysis: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+Windows11Modal.tsx:56 🪟 Windows11Modal render - isOpen: false title: Edit Card
+Windows11Modal.tsx:58 🪟 Windows11Modal returning null - not open
+Windows11Modal.tsx:56 🪟 Windows11Modal render - isOpen: false title: Edit Card
+Windows11Modal.tsx:58 🪟 Windows11Modal returning null - not open
+SwimlaneRow.tsx:58 SwimlaneRow Design: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneRow.tsx:58 SwimlaneRow Design: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+Windows11Modal.tsx:56 🪟 Windows11Modal render - isOpen: false title: Edit Card
+Windows11Modal.tsx:58 🪟 Windows11Modal returning null - not open
+Windows11Modal.tsx:56 🪟 Windows11Modal render - isOpen: false title: Edit Card
+Windows11Modal.tsx:58 🪟 Windows11Modal returning null - not open
+SwimlaneRow.tsx:58 SwimlaneRow Deliver: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneRow.tsx:58 SwimlaneRow Deliver: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+Windows11Modal.tsx:56 🪟 Windows11Modal render - isOpen: false title: Edit Card
+Windows11Modal.tsx:58 🪟 Windows11Modal returning null - not open
+Windows11Modal.tsx:56 🪟 Windows11Modal render - isOpen: false title: Edit Card
+Windows11Modal.tsx:58 🪟 Windows11Modal returning null - not open
+SwimlaneRow.tsx:58 SwimlaneRow Evaluation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneRow.tsx:58 SwimlaneRow Evaluation: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+Windows11Modal.tsx:56 🪟 Windows11Modal render - isOpen: false title: Edit Card
+Windows11Modal.tsx:58 🪟 Windows11Modal returning null - not open
+Windows11Modal.tsx:56 🪟 Windows11Modal render - isOpen: false title: Edit Card
+Windows11Modal.tsx:58 🪟 Windows11Modal returning null - not open
+SwimlaneRow.tsx:58 SwimlaneRow Design: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneRow.tsx:58 SwimlaneRow Design: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+Windows11Modal.tsx:56 🪟 Windows11Modal render - isOpen: false title: Edit Card
+Windows11Modal.tsx:58 🪟 Windows11Modal returning null - not open
+Windows11Modal.tsx:56 🪟 Windows11Modal render - isOpen: false title: Edit Card
+Windows11Modal.tsx:58 🪟 Windows11Modal returning null - not open
+SwimlaneRow.tsx:58 SwimlaneRow Handover: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+SwimlaneRow.tsx:58 SwimlaneRow Handover: {swimlaneCards: 1, cardRows: Array(1), maxRow: 0, totalRows: 1, calculatedHeight: 80}
+Windows11Modal.tsx:56 🪟 Windows11Modal render - isOpen: false title: Edit Card
+Windows11Modal.tsx:58 🪟 Windows11Modal returning null - not open
+Windows11Modal.tsx:56 🪟 Windows11Modal render - isOpen: false title: Edit Card
+Windows11Modal.tsx:58 🪟 Windows11Modal returning null - not open
+Windows11Modal.tsx:56 🪟 Windows11Modal render - isOpen: false title: Edit Category
+Windows11Modal.tsx:58 🪟 Windows11Modal returning null - not open
+Windows11Modal.tsx:56 🪟 Windows11Modal render - isOpen: false title: Edit Category
+Windows11Modal.tsx:58 🪟 Windows11Modal returning null - not open
+Windows11Modal.tsx:56 🪟 Windows11Modal render - isOpen: false title: Edit Card
+Windows11Modal.tsx:58 🪟 Windows11Modal returning null - not open
+Windows11Modal.tsx:56 🪟 Windows11Modal render - isOpen: false title: Edit Card
+Windows11Modal.tsx:58 🪟 Windows11Modal returning null - not open
+Windows11Modal.tsx:56 🪟 Windows11Modal render - isOpen: false title: Edit Card
+Windows11Modal.tsx:58 🪟 Windows11Modal returning null - not open
+Windows11Modal.tsx:56 🪟 Windows11Modal render - isOpen: false title: Edit Card
+Windows11Modal.tsx:58 🪟 Windows11Modal returning null - not open

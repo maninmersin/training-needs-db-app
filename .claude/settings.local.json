@@ -28,8 +28,21 @@
       "Bash(git commit:*)",
       "Bash(git branch:*)",
       "Bash(git remote add:*)",
-      "Bash(git push:*)"
+      "Bash(git push:*)",
+      "Bash(mkdir:*)",
+      "WebSearch",
+      "Bash(timeout 10 npm run dev)",
+      "Bash(find:*)",
+      "Bash(psql:*)",
+      "Bash(npx vercel:*)",
+      "Bash(npm view:*)",
+      "Bash(npm uninstall:*)",
+      "WebFetch(domain:training-needs-db-7szrtxpau-stuart-lawsons-projects.vercel.app)",
+      "WebFetch(domain:training-needs-db-4cwinjsxs-stuart-lawsons-projects.vercel.app)"
     ],
-    "deny": []
+    "deny": [],
+    "additionalDirectories": [
+      "C:\\c\\Users\\Stuart\\OneDrive\\Desktop"
+    ]
   }
 }

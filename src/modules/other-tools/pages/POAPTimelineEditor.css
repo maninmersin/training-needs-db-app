@@ -1,0 +1,312 @@
+.poap-timeline-editor {
+  min-height: calc(100vh - 60px);
+  background: #f8f9fa;
+}
+
+.editor-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px 20px;
+  background: white;
+  border-bottom: 1px solid #e0e0e0;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.header-navigation {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.9rem;
+}
+
+.nav-btn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  background: none;
+  border: none;
+  color: #3498db;
+  cursor: pointer;
+  padding: 5px 8px;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  transition: background 0.3s ease;
+}
+
+.nav-btn:hover {
+  background: rgba(52, 152, 219, 0.1);
+}
+
+.nav-separator {
+  color: #666;
+  margin: 0 5px;
+}
+
+.current-page {
+  color: #333;
+  font-weight: 500;
+}
+
+.editor-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.action-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 15px;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.action-btn.secondary {
+  background: #ecf0f1;
+  color: #2c3e50;
+}
+
+.action-btn.secondary:hover {
+  background: #d5dbdb;
+}
+
+/* Loading state */
+.timeline-editor-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 400px;
+  color: #666;
+}
+
+.loading-spinner {
+  width: 40px;
+  height: 40px;
+  border: 3px solid #f3f3f3;
+  border-top: 3px solid #3498db;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 1rem;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Modal styles */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.create-plan-modal {
+  background: white;
+  border-radius: 12px;
+  padding: 30px;
+  max-width: 400px;
+  width: 90%;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+}
+
+.create-plan-modal h3 {
+  margin: 0 0 10px 0;
+  color: #2c3e50;
+  font-size: 1.3rem;
+}
+
+.create-plan-modal p {
+  margin: 0 0 20px 0;
+  color: #666;
+  font-size: 0.9rem;
+}
+
+.create-plan-modal input {
+  width: 100%;
+  padding: 12px 15px;
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
+  font-size: 1rem;
+  margin-bottom: 20px;
+  transition: border-color 0.3s ease;
+}
+
+.create-plan-modal input:focus {
+  outline: none;
+  border-color: #3498db;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.btn-primary, .btn-secondary {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.btn-primary {
+  background: #3498db;
+  color: white;
+}
+
+.btn-primary:hover {
+  background: #2980b9;
+}
+
+.btn-secondary {
+  background: #ecf0f1;
+  color: #2c3e50;
+}
+
+.btn-secondary:hover {
+  background: #d5dbdb;
+}
+
+/* Browse Plans Modal specific styles */
+.browse-plans-modal {
+  max-width: 500px;
+  max-height: 80vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.plans-list {
+  flex: 1;
+  overflow-y: auto;
+  margin-bottom: 1.5rem;
+  max-height: 300px;
+}
+
+.plan-item {
+  padding: 12px 15px;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  margin-bottom: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  background: white;
+}
+
+.plan-item:hover {
+  border-color: #3498db;
+  background: #f8f9ff;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(52, 152, 219, 0.1);
+}
+
+.plan-info h4 {
+  margin: 0 0 4px 0;
+  color: #2c3e50;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.plan-info .plan-name {
+  margin: 0 0 4px 0;
+  color: #666;
+  font-size: 0.85rem;
+  font-style: italic;
+}
+
+.plan-info small {
+  color: #888;
+  font-size: 0.8rem;
+}
+
+.loading-state, .empty-plans-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  text-align: center;
+  color: #666;
+}
+
+/* Empty state actions layout */
+.empty-state-actions {
+  display: flex;
+  gap: 15px;
+  justify-content: center;
+  margin-top: 1.5rem;
+}
+
+/* Empty state */
+.editor-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 400px;
+  color: #666;
+  padding: 40px;
+}
+
+.editor-empty-state h3 {
+  margin: 0 0 10px 0;
+  color: #2c3e50;
+  font-size: 1.3rem;
+}
+
+.editor-empty-state p {
+  margin: 0 0 20px 0;
+  font-size: 0.9rem;
+}
+
+/* Editor content */
+.editor-content {
+  padding: 0;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .editor-header {
+    padding: 10px 15px;
+    flex-direction: column;
+    gap: 10px;
+    align-items: flex-start;
+  }
+  
+  .header-navigation {
+    font-size: 0.8rem;
+  }
+  
+  .editor-actions {
+    align-self: flex-end;
+  }
+  
+  .create-plan-modal {
+    padding: 20px;
+    margin: 0 10px;
+  }
+  
+  .modal-actions {
+    flex-direction: column-reverse;
+  }
+  
+  .btn-primary, .btn-secondary {
+    width: 100%;
+    justify-content: center;
+  }
+}

@@ -1,0 +1,50 @@
+/* 
+ * Training Needs Database Application - Color Scheme
+ * Unified color palette matching the sidebar design
+ */
+
+:root {
+  /* Primary Colors - Dark Blue/Slate Theme */
+  --primary-dark: #2c3e50;      /* Main dark blue */
+  --secondary-dark: #34495e;    /* Lighter dark blue */
+  --border-color: #495057;      /* Border and separator color */
+  
+  /* Background Colors */
+  --background-color: #ecf0f1;  /* Main app background */
+  --card-background: #ffffff;   /* Card and panel backgrounds */
+  
+  /* Text Colors */
+  --text-light: #f8f9fa;        /* Light text on dark backgrounds */
+  --text-dark: #2c3e50;         /* Dark text on light backgrounds */
+  --text-muted: #6c757d;        /* Muted/secondary text */
+  
+  /* Interactive Colors */
+  --accent-blue: #3498db;       /* Accent blue for highlights */
+  --link-color: #7fb3d3;        /* Links on dark backgrounds */
+  --hover-overlay: rgba(255, 255, 255, 0.1); /* Hover effect on dark */
+  
+  /* Status Colors */
+  --success-color: #27ae60;
+  --warning-color: #f39c12;
+  --error-color: #e74c3c;
+  --info-color: #3498db;
+  
+  /* Gradients */
+  --gradient-primary: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+  --gradient-secondary: linear-gradient(135deg, #34495e 0%, #2c3e50 100%);
+  
+  /* Shadows */
+  --shadow-light: 0 2px 8px rgba(0, 0, 0, 0.1);
+  --shadow-medium: 0 4px 15px rgba(0, 0, 0, 0.15);
+  --shadow-dark: 0 8px 25px rgba(0, 0, 0, 0.2);
+}
+
+/*
+ * Usage Examples:
+ * 
+ * Headers: background: var(--gradient-primary); color: var(--text-light);
+ * Cards: background: var(--card-background); border: 1px solid var(--border-color);
+ * Buttons: background: var(--primary-dark); color: var(--text-light);
+ * Links: color: var(--link-color);
+ * Text: color: var(--text-dark);
+ */

@@ -1,0 +1,116 @@
+.module-switcher {
+  background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+  border-bottom: 1px solid #495057;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.module-switcher-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+.module-tab {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 20px;
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  border-radius: 8px 8px 0 0;
+  margin: 0 2px;
+  position: relative;
+  min-width: 140px;
+  text-align: center;
+  justify-content: center;
+}
+
+.module-tab:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+  transform: translateY(-2px);
+}
+
+.module-tab.active {
+  background: #f8f9fa;
+  color: #2c3e50;
+  box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.module-tab.active:hover {
+  transform: none;
+  background: #f8f9fa;
+}
+
+.module-tab.placeholder {
+  opacity: 0.7;
+}
+
+.module-tab.placeholder:hover {
+  background: rgba(255, 255, 255, 0.05);
+  transform: none;
+}
+
+.module-icon {
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+.module-name {
+  font-weight: inherit;
+  white-space: nowrap;
+}
+
+.coming-soon-badge {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  background: #ff6b6b;
+  color: white;
+  font-size: 10px;
+  font-weight: bold;
+  padding: 2px 6px;
+  border-radius: 8px;
+  line-height: 1;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .module-switcher-container {
+    overflow-x: auto;
+    justify-content: flex-start;
+    padding: 0 10px;
+  }
+  
+  .module-tab {
+    min-width: 120px;
+    padding: 10px 16px;
+    font-size: 13px;
+  }
+  
+  .module-name {
+    display: none;
+  }
+  
+  .module-icon {
+    font-size: 18px;
+  }
+}
+
+@media (max-width: 480px) {
+  .module-tab {
+    min-width: 60px;
+    padding: 12px 8px;
+  }
+}
