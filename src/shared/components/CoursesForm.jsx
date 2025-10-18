@@ -1,7 +1,208 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@core/services/supabaseClient';
 import { useProject } from '@core/contexts/ProjectContext';
 import './CoursesForm.css';
+
+// Excel-style dropdown filter component with checkboxes
+const ExcelStyleFilter = ({ columnName, uniqueValues, selectedValues, onChange }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0, width: 0 });
+  const dropdownRef = useRef(null);
+  const buttonRef = useRef(null);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setIsOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Calculate dropdown position when opening
+  const handleToggleDropdown = () => {
+    if (!isOpen && buttonRef.current) {
+      const rect = buttonRef.current.getBoundingClientRect();
+      setDropdownPosition({
+        top: rect.bottom + window.scrollY,
+        left: rect.left + window.scrollX,
+        width: Math.max(rect.width, 200)
+      });
+    }
+    setIsOpen(!isOpen);
+  };
+
+  // Filter values based on search term
+  const filteredValues = uniqueValues.filter(value =>
+    String(value || '').toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  // Handle individual checkbox change
+  const handleCheckboxChange = (value, checked) => {
+    let newSelectedValues;
+    if (checked) {
+      newSelectedValues = [...selectedValues, value];
+    } else {
+      newSelectedValues = selectedValues.filter(v => v !== value);
+    }
+    onChange(newSelectedValues);
+  };
+
+  // Handle "Select All" functionality
+  const handleSelectAll = (checked) => {
+    if (checked) {
+      const allValues = [...new Set([...selectedValues, '__BLANK__', '__NOT_BLANK__', ...filteredValues])];
+      onChange(allValues);
+    } else {
+      const newSelectedValues = selectedValues.filter(value =>
+        !filteredValues.includes(value) && value !== '__BLANK__' && value !== '__NOT_BLANK__'
+      );
+      onChange(newSelectedValues);
+    }
+  };
+
+  // Check if all visible items are selected
+  const allVisibleSelected = filteredValues.length > 0 &&
+    filteredValues.every(value => selectedValues.includes(value)) &&
+    selectedValues.includes('__BLANK__') &&
+    selectedValues.includes('__NOT_BLANK__');
+
+  const selectedCount = selectedValues.length;
+  const displayText = selectedCount === 0 ? 'All' :
+                     selectedCount === 1 ? selectedValues[0] === '__BLANK__' ? '(blank)' :
+                                         selectedValues[0] === '__NOT_BLANK__' ? '(not blank)' :
+                                         selectedValues[0] :
+                     `${selectedCount} selected`;
+
+  return (
+    <div className="excel-filter-container" ref={dropdownRef}>
+      <button
+        ref={buttonRef}
+        type="button"
+        className={`excel-filter-button ${selectedCount > 0 ? 'has-selection' : ''}`}
+        onClick={handleToggleDropdown}
+        title={selectedCount > 0 ? `${selectedCount} filter(s) applied` : 'Click to filter'}
+      >
+        <span className="filter-text">{displayText}</span>
+        <span className="filter-arrow">{isOpen ? '▲' : '▼'}</span>
+      </button>
+
+      {isOpen && (
+        <div
+          className="excel-filter-dropdown"
+          style={{
+            top: dropdownPosition.top,
+            left: dropdownPosition.left,
+            width: dropdownPosition.width
+          }}
+        >
+          <div className="filter-search">
+            <input
+              type="text"
+              placeholder="Search..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="filter-search-input"
+              onClick={(e) => e.stopPropagation()}
+            />
+          </div>
+
+          <div className="filter-options">
+            <div className="filter-option select-all">
+              <label>
+                <input
+                  type="checkbox"
+                  checked={allVisibleSelected}
+                  onChange={(e) => handleSelectAll(e.target.checked)}
+                />
+                <span className="checkmark"></span>
+                Select All
+              </label>
+            </div>
+
+            <div className="filter-divider"></div>
+
+            {/* Special options */}
+            <div className="filter-option">
+              <label>
+                <input
+                  type="checkbox"
+                  checked={selectedValues.includes('__BLANK__')}
+                  onChange={(e) => handleCheckboxChange('__BLANK__', e.target.checked)}
+                />
+                <span className="checkmark"></span>
+                <span className="special-option">(blank)</span>
+              </label>
+            </div>
+
+            <div className="filter-option">
+              <label>
+                <input
+                  type="checkbox"
+                  checked={selectedValues.includes('__NOT_BLANK__')}
+                  onChange={(e) => handleCheckboxChange('__NOT_BLANK__', e.target.checked)}
+                />
+                <span className="checkmark"></span>
+                <span className="special-option">(not blank)</span>
+              </label>
+            </div>
+
+            {filteredValues.length > 0 && <div className="filter-divider"></div>}
+
+            {/* Regular values */}
+            <div className="filter-values-container">
+              {filteredValues.length === 0 ? (
+                <div className="filter-option">
+                  <div style={{padding: '6px 12px', fontStyle: 'italic', color: '#6c757d'}}>
+                    {uniqueValues.length === 0 ? 'Loading values...' : 'No values found'}
+                  </div>
+                </div>
+              ) : (
+                filteredValues.map(value => (
+                  <div key={value} className="filter-option">
+                    <label>
+                      <input
+                        type="checkbox"
+                        checked={selectedValues.includes(value)}
+                        onChange={(e) => handleCheckboxChange(value, e.target.checked)}
+                      />
+                      <span className="checkmark"></span>
+                      <span className="filter-value" title={value}>{value}</span>
+                    </label>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+
+          <div className="filter-actions">
+            <button
+              type="button"
+              className="filter-action-btn clear-btn"
+              onClick={() => {
+                onChange([]);
+                setIsOpen(false);
+              }}
+            >
+              Clear
+            </button>
+            <button
+              type="button"
+              className="filter-action-btn apply-btn"
+              onClick={() => setIsOpen(false)}
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
 
 const CoursesForm = () => {
   const { currentProject } = useProject();
@@ -14,18 +215,47 @@ const CoursesForm = () => {
     return localStorage.getItem('tablesDensity') || 'normal';
   });
   const [functionalAreas, setFunctionalAreas] = useState([]);
+  const [columnFilters, setColumnFilters] = useState({});
+  const [uniqueValues, setUniqueValues] = useState({});
 
-  // Filter courses based on search term
+  // Filter courses based on search term and column filters
   const filteredCourses = courses.filter(course => {
-    const searchLower = searchTerm.toLowerCase();
-    return (
-      course.course_id.toLowerCase().includes(searchLower) ||
-      (course.course_name && course.course_name.toLowerCase().includes(searchLower)) ||
-      course.functional_area.toLowerCase().includes(searchLower) ||
-      course.duration_hrs.toString().includes(searchLower) ||
-      (course.application && course.application.toLowerCase().includes(searchLower)) ||
-      (course.priority && course.priority.toString().includes(searchLower))
-    );
+    // Search term filter
+    if (searchTerm) {
+      const searchLower = searchTerm.toLowerCase();
+      const matchesSearch = (
+        course.course_id.toLowerCase().includes(searchLower) ||
+        (course.course_name && course.course_name.toLowerCase().includes(searchLower)) ||
+        course.functional_area.toLowerCase().includes(searchLower) ||
+        course.duration_hrs.toString().includes(searchLower) ||
+        (course.application && course.application.toLowerCase().includes(searchLower)) ||
+        (course.priority && course.priority.toString().includes(searchLower))
+      );
+      if (!matchesSearch) return false;
+    }
+
+    // Column filters (multi-select)
+    for (const [columnName, filterValues] of Object.entries(columnFilters)) {
+      if (filterValues && filterValues.length > 0) {
+        const courseValue = String(course[columnName] || '');
+
+        const matchesAnyFilter = filterValues.some(filterValue => {
+          if (filterValue === '__BLANK__') {
+            return courseValue.trim() === '';
+          } else if (filterValue === '__NOT_BLANK__') {
+            return courseValue.trim() !== '';
+          } else {
+            return courseValue === filterValue;
+          }
+        });
+
+        if (!matchesAnyFilter) {
+          return false;
+        }
+      }
+    }
+
+    return true;
   });
 
   // Fetch courses and functional areas from Supabase
@@ -76,6 +306,26 @@ const CoursesForm = () => {
 
     fetchData();
   }, [currentProject]);
+
+  // Fetch unique values for column filters
+  useEffect(() => {
+    if (courses.length > 0) {
+      const columns = ['course_id', 'course_name', 'functional_area', 'duration_hrs', 'priority', 'application'];
+      const uniqueVals = {};
+
+      columns.forEach(columnName => {
+        const values = [...new Set(
+          courses
+            .map(course => course[columnName])
+            .filter(val => val !== null && val !== undefined && val !== '')
+            .map(val => String(val))
+        )].sort();
+        uniqueVals[columnName] = values;
+      });
+
+      setUniqueValues(uniqueVals);
+    }
+  }, [courses]);
 
   // Handle course updates
   const handleUpdate = async (courseId, updatedData) => {
@@ -177,7 +427,20 @@ const CoursesForm = () => {
   return (
     <div className={`courses-form ${density}`}>
       <div className="courses-form-header">
-        <h2>Courses Management</h2>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '10px' }}>
+          <h2>Courses Management</h2>
+          <div style={{ textAlign: 'right' }}>
+            <div style={{ fontSize: '1.5rem', fontWeight: '600', color: '#2c3e50' }}>
+              {filteredCourses.length} of {courses.length} courses
+            </div>
+            {Object.values(columnFilters).some(filter => filter && filter.length > 0) && (
+              <div style={{ fontSize: '0.9rem', color: '#28a745', fontWeight: '500' }}>
+                {Object.values(columnFilters).filter(filter => filter && filter.length > 0)
+                    .reduce((total, filterArray) => total + filterArray.length, 0)} filter(s) active
+              </div>
+            )}
+          </div>
+        </div>
         {currentProject && (
           <div className="project-indicator">
             <strong>Project:</strong> {currentProject.title}
@@ -258,6 +521,95 @@ const CoursesForm = () => {
             <th style={{width: '10%'}}>Priority</th>
             <th style={{width: '15%'}}>Application</th>
             <th style={{width: '15%'}}>Actions</th>
+          </tr>
+          <tr className="filter-row">
+            <th className="filter-cell">
+              <ExcelStyleFilter
+                columnName="course_id"
+                uniqueValues={uniqueValues['course_id'] || []}
+                selectedValues={columnFilters['course_id'] || []}
+                onChange={(selectedValues) => {
+                  setColumnFilters(prev => ({
+                    ...prev,
+                    course_id: selectedValues
+                  }));
+                }}
+              />
+            </th>
+            <th className="filter-cell">
+              <ExcelStyleFilter
+                columnName="course_name"
+                uniqueValues={uniqueValues['course_name'] || []}
+                selectedValues={columnFilters['course_name'] || []}
+                onChange={(selectedValues) => {
+                  setColumnFilters(prev => ({
+                    ...prev,
+                    course_name: selectedValues
+                  }));
+                }}
+              />
+            </th>
+            <th className="filter-cell">
+              <ExcelStyleFilter
+                columnName="functional_area"
+                uniqueValues={uniqueValues['functional_area'] || []}
+                selectedValues={columnFilters['functional_area'] || []}
+                onChange={(selectedValues) => {
+                  setColumnFilters(prev => ({
+                    ...prev,
+                    functional_area: selectedValues
+                  }));
+                }}
+              />
+            </th>
+            <th className="filter-cell">
+              <ExcelStyleFilter
+                columnName="duration_hrs"
+                uniqueValues={uniqueValues['duration_hrs'] || []}
+                selectedValues={columnFilters['duration_hrs'] || []}
+                onChange={(selectedValues) => {
+                  setColumnFilters(prev => ({
+                    ...prev,
+                    duration_hrs: selectedValues
+                  }));
+                }}
+              />
+            </th>
+            <th className="filter-cell">
+              <ExcelStyleFilter
+                columnName="priority"
+                uniqueValues={uniqueValues['priority'] || []}
+                selectedValues={columnFilters['priority'] || []}
+                onChange={(selectedValues) => {
+                  setColumnFilters(prev => ({
+                    ...prev,
+                    priority: selectedValues
+                  }));
+                }}
+              />
+            </th>
+            <th className="filter-cell">
+              <ExcelStyleFilter
+                columnName="application"
+                uniqueValues={uniqueValues['application'] || []}
+                selectedValues={columnFilters['application'] || []}
+                onChange={(selectedValues) => {
+                  setColumnFilters(prev => ({
+                    ...prev,
+                    application: selectedValues
+                  }));
+                }}
+              />
+            </th>
+            <th className="filter-cell">
+              <button
+                onClick={() => setColumnFilters({})}
+                className="clear-filters-btn"
+                title="Clear all filters"
+              >
+                Clear
+              </button>
+            </th>
           </tr>
         </thead>
         <tbody>
