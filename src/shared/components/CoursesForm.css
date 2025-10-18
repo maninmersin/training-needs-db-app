@@ -178,14 +178,18 @@
 .courses-form select {
   width: 100%;
   padding: var(--table-input-padding-normal);
-  border: 1px solid #ced4da;
+  border: 1px solid #ced4da !important;
   border-radius: 4px;
   box-sizing: border-box;
   font-size: var(--table-font-size-normal);
   line-height: 1.2;
   transition: border-color 0.3s ease;
-  background: white;
+  background: white !important;
+  color: #495057 !important;
   cursor: pointer;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
 }
 
 .courses-form select:focus {
