@@ -175,6 +175,25 @@
   box-shadow: 0 0 0 2px rgba(0,123,255,0.15);
 }
 
+.courses-form select {
+  width: 100%;
+  padding: var(--table-input-padding-normal);
+  border: 1px solid #ced4da;
+  border-radius: 4px;
+  box-sizing: border-box;
+  font-size: var(--table-font-size-normal);
+  line-height: 1.2;
+  transition: border-color 0.3s ease;
+  background: white;
+  cursor: pointer;
+}
+
+.courses-form select:focus {
+  outline: none;
+  border-color: #007bff;
+  box-shadow: 0 0 0 2px rgba(0,123,255,0.15);
+}
+
 .courses-form button {
   padding: 8px 14px;
   background-color: #007bff;
@@ -270,7 +289,8 @@
   padding: var(--table-row-padding-compact);
 }
 
-.courses-form.compact input {
+.courses-form.compact input,
+.courses-form.compact select {
   padding: var(--table-input-padding-compact);
   font-size: var(--table-font-size-compact);
 }
@@ -285,7 +305,8 @@
   padding: var(--table-row-padding-dense);
 }
 
-.courses-form.dense input {
+.courses-form.dense input,
+.courses-form.dense select {
   padding: var(--table-input-padding-compact);
   font-size: var(--table-font-size-compact);
 }
