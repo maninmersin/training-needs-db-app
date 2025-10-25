@@ -57,7 +57,7 @@ export const calculateSessions = (criteria, courses, endUsers, groupingKeys = ['
 
       for (let i = 1; i <= sessionsNeeded; i++) {
         let sessionEndTime = new Date(currentSessionStartTime);
-        sessionEndTime.setHours(sessionEndTime.getHours() + duration);
+        sessionEndTime.setTime(sessionEndTime.getTime() + (duration * 60 * 60 * 1000)); // Add duration in milliseconds
 
         // Parse time boundaries based on scheduling preference
         let endTimeAm, startTimePm, endTimePm;
@@ -80,7 +80,7 @@ export const calculateSessions = (criteria, courses, endUsers, groupingKeys = ['
         // Handle time boundary checking based on scheduling preference
         if (schedulingPreference === 'both' && endTimeAm && startTimePm && sessionEndTime > endTimeAm && sessionEndTime < startTimePm) {
           sessionEndTime = new Date(startTimePm);
-          sessionEndTime.setHours(sessionEndTime.getHours() + duration);
+          sessionEndTime.setTime(sessionEndTime.getTime() + (duration * 60 * 60 * 1000)); // Add duration in milliseconds
         } else if (schedulingPreference === 'am_only' && endTimeAm && sessionEndTime > endTimeAm) {
           // Move to next day for AM-only scheduling
           do {
@@ -90,7 +90,7 @@ export const calculateSessions = (criteria, courses, endUsers, groupingKeys = ['
           const [amStartHour, amStartMin] = criteria.start_time_am.split(':').map(Number);
           currentSessionStartTime.setHours(amStartHour, amStartMin, 0, 0);
           sessionEndTime = new Date(currentSessionStartTime);
-          sessionEndTime.setHours(sessionEndTime.getHours() + duration);
+          sessionEndTime.setTime(sessionEndTime.getTime() + (duration * 60 * 60 * 1000)); // Add duration in milliseconds
         } else if (schedulingPreference === 'pm_only' && endTimePm && sessionEndTime > endTimePm) {
           // Move to next day for PM-only scheduling
           do {
@@ -100,7 +100,7 @@ export const calculateSessions = (criteria, courses, endUsers, groupingKeys = ['
           const [pmStartHour, pmStartMin] = criteria.start_time_pm.split(':').map(Number);
           currentSessionStartTime.setHours(pmStartHour, pmStartMin, 0, 0);
           sessionEndTime = new Date(currentSessionStartTime);
-          sessionEndTime.setHours(sessionEndTime.getHours() + duration);
+          sessionEndTime.setTime(sessionEndTime.getTime() + (duration * 60 * 60 * 1000)); // Add duration in milliseconds
         } else if (schedulingPreference === 'both' && endTimePm && sessionEndTime > endTimePm) {
           // Move to next day for both AM/PM scheduling
           do {
@@ -110,7 +110,7 @@ export const calculateSessions = (criteria, courses, endUsers, groupingKeys = ['
           const [amStartHour, amStartMin] = criteria.start_time_am.split(':').map(Number);
           currentSessionStartTime.setHours(amStartHour, amStartMin, 0, 0);
           sessionEndTime = new Date(currentSessionStartTime);
-          sessionEndTime.setHours(sessionEndTime.getHours() + duration);
+          sessionEndTime.setTime(sessionEndTime.getTime() + (duration * 60 * 60 * 1000)); // Add duration in milliseconds
         }
 
         // Create title with scheduling preference indicator

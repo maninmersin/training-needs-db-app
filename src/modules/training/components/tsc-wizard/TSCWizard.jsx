@@ -657,7 +657,13 @@ const TSCWizard = () => {
       
       // Validate that we have the required data from the criteria stage
       if (!endUsers.length || !groupingKeys.length) {
-        alert('Please select at least one Functional Area and Training Location in the criteria stage.');
+        alert(
+          'No user-course combinations found. Please check:\n\n' +
+          '1. At least one Functional Area is selected\n' +
+          '2. At least one Training Location is selected\n' +
+          '3. Role-Course Mappings are configured for the selected roles and courses\n\n' +
+          'Tip: Go to Reference Data → Role-Course Mappings to assign courses to roles.'
+        );
         return;
       }
       

@@ -359,12 +359,13 @@
   min-width: 120px;
 }
 
+.courses-form .excel-filter-button,
 .excel-filter-button {
   width: 100%;
   padding: 4px 8px;
-  border: 1px solid #ced4da;
+  border: 1px solid #ced4da !important;
   border-radius: 4px;
-  background: white;
+  background: white !important;
   cursor: pointer;
   font-size: 12px;
   display: flex;
@@ -373,17 +374,21 @@
   gap: 4px;
   transition: all 0.2s ease;
   text-align: left;
+  color: #495057 !important;
 }
 
+.courses-form .excel-filter-button:hover,
 .excel-filter-button:hover {
-  border-color: #007bff;
-  box-shadow: 0 0 0 2px rgba(0,123,255,0.15);
+  border-color: #adb5bd !important;
+  background: #f8f9fa !important;
+  transform: none;
 }
 
+.courses-form .excel-filter-button.has-selection,
 .excel-filter-button.has-selection {
-  background: #e3f2fd;
-  border-color: #2196f3;
-  color: #1976d2;
+  background: white !important;
+  border-color: #ced4da !important;
+  color: #495057 !important;
   font-weight: 500;
 }
 

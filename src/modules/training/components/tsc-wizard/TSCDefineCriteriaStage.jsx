@@ -14,17 +14,17 @@ const TSCDefineCriteriaStage = ({
   const { currentProject } = useProject();
   const defaultValues = {
     max_attendees: 10,
-    total_weeks: 4,
-    daily_hours: 8,
+    total_weeks: 5,
+    daily_hours: 6,
     days_per_week: 5,
     contingency: 1,
     start_date: new Date().toISOString().split('T')[0], // Today's date in YYYY-MM-DD format
     scheduling_preference: 'both', // 'both', 'am_only', 'pm_only'
     scheduling_mode: 'group_complete', // 'group_complete', 'course_complete'
-    start_time_am: '08:00',
-    end_time_am: '12:00',
-    start_time_pm: '13:00',
-    end_time_pm: '17:00',
+    start_time_am: '09:30',
+    end_time_am: '12:30',
+    start_time_pm: '13:30',
+    end_time_pm: '16:30',
     scheduling_days: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'],
     selected_functional_areas: [],
     selected_training_locations: []
@@ -171,12 +171,12 @@ const TSCDefineCriteriaStage = ({
       } else if (value === 'both') {
         // Restore defaults if switching back to both
         if (!newValues.start_time_am || !newValues.end_time_am) {
-          newValues.start_time_am = '08:00';
-          newValues.end_time_am = '12:00';
+          newValues.start_time_am = '09:30';
+          newValues.end_time_am = '12:30';
         }
         if (!newValues.start_time_pm || !newValues.end_time_pm) {
-          newValues.start_time_pm = '13:00';
-          newValues.end_time_pm = '17:00';
+          newValues.start_time_pm = '13:30';
+          newValues.end_time_pm = '16:30';
         }
       }
     }
@@ -268,14 +268,28 @@ const TSCDefineCriteriaStage = ({
       const { data: courses } = await supabase.from('courses').select('*').eq('project_id', currentProject?.id);
 
       // Filter users by selected training locations
-      const filteredUsers = users.filter(user => 
+      const filteredUsers = users.filter(user =>
         values.selected_training_locations.includes(user.training_location)
       );
 
+      console.log('🔍 Debug - Filtered Users:', {
+        totalUsers: users?.length,
+        filteredUsers: filteredUsers.length,
+        selectedLocations: values.selected_training_locations,
+        sampleUserLocations: users?.slice(0, 3).map(u => u.training_location)
+      });
+
       // Filter courses by selected functional areas
-      const filteredCourses = courses.filter(course => 
+      const filteredCourses = courses.filter(course =>
         values.selected_functional_areas.includes(course.functional_area)
       );
+
+      console.log('🔍 Debug - Filtered Courses:', {
+        totalCourses: courses?.length,
+        filteredCourses: filteredCourses.length,
+        selectedAreas: values.selected_functional_areas,
+        sampleCourseFunctionalAreas: courses?.slice(0, 3).map(c => c.functional_area)
+      });
 
       // Build user-course combinations using role mappings
       const combinedData = filteredUsers.flatMap(user => {
@@ -294,6 +308,12 @@ const TSCDefineCriteriaStage = ({
           }
           return null;
         }).filter(Boolean);
+      });
+
+      console.log('🔍 Debug - Combined Data:', {
+        totalMappings: mappings?.length,
+        combinedDataLength: combinedData.length,
+        sampleUserRoles: filteredUsers.slice(0, 3).map(u => ({ id: u.id, role: u.project_role }))
       });
 
       // Remove duplicates
@@ -364,10 +384,20 @@ const TSCDefineCriteriaStage = ({
   const handleSubmit = () => {
     // Show validation and check if valid
     setShowValidation(true);
+
+    // Debug logging
+    console.log('🔍 Validation Check - Form Values:', {
+      selected_functional_areas: formValues.selected_functional_areas,
+      selected_training_locations: formValues.selected_training_locations,
+      functionalAreasLength: formValues.selected_functional_areas.length,
+      trainingLocationsLength: formValues.selected_training_locations.length
+    });
+
     const isValid = validateSelections();
-    
+
     if (!isValid) {
       console.warn('⚠️ Cannot proceed: Missing required selections');
+      console.warn('Validation Errors:', validationErrors);
       // Scroll to top to show validation errors
       window.scrollTo({ top: 0, behavior: 'smooth' });
       return;

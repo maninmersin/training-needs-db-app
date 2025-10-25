@@ -314,7 +314,11 @@ export const saveTrainingSessionsForSchedule = async (sessionsGrouped, scheduleI
       return [];
     }
 
+    // Debug: Check course_day_sequence values
+    const daySequences = sessionsToInsert.map(s => s.course_day_sequence);
+    const maxDaySequence = Math.max(...daySequences);
     console.log(`💾 Inserting ${sessionsToInsert.length} training sessions...`);
+    console.log(`🔍 course_day_sequence values - Min: ${Math.min(...daySequences)}, Max: ${maxDaySequence}, All values:`, daySequences);
 
     const { data, error } = await supabase
       .from('training_sessions')

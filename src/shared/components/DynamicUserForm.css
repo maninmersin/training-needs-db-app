@@ -323,14 +323,14 @@
 }
 
 .excel-filter-button:hover {
-  border-color: #007bff;
-  box-shadow: 0 0 0 2px rgba(0,123,255,0.15);
+  border-color: #adb5bd;
+  background: #f8f9fa;
 }
 
 .excel-filter-button.has-selection {
-  background: #e3f2fd;
-  border-color: #2196f3;
-  color: #1976d2;
+  background: white;
+  border-color: #ced4da;
+  color: #495057;
   font-weight: 500;
 }
 

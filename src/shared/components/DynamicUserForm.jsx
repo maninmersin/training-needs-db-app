@@ -457,6 +457,18 @@ const DynamicUserForm = () => {
         return;
       }
 
+      // Check if user ID already exists
+      const { data: existingUser } = await supabase
+        .from('end_users')
+        .select('id')
+        .eq('id', newUser.id)
+        .single();
+
+      if (existingUser) {
+        setError(`Employee ID ${newUser.id} already exists. Please use a different ID.`);
+        return;
+      }
+
       // Add project_id to the new user
       const userWithProject = {
         ...newUser,
@@ -469,9 +481,10 @@ const DynamicUserForm = () => {
         .select();
 
       if (error) throw error;
-      
+
       // Update local state
       setUsers([...users, data[0]]);
+      setError(null); // Clear any previous errors
     } catch (error) {
       setError(error.message);
     }

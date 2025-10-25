@@ -187,7 +187,7 @@ const TSCProcessDataStage = ({
                   // 🏫 Find best time slot for this session (allowing concurrent sessions in different classrooms)
                   let sessionStart = new Date(currentDate);
                   let sessionEnd = new Date(sessionStart);
-                  sessionEnd.setHours(sessionStart.getHours() + duration);
+                  sessionEnd.setTime(sessionEnd.getTime() + (duration * 60 * 60 * 1000)); // Add duration in milliseconds
                   
                   // Check if we can schedule at current time in any available classroom
                   if (!classroomTracker.isClassroomAvailable(groupName, sessionStart, sessionEnd, maxClassrooms)) {
@@ -199,9 +199,9 @@ const TSCProcessDataStage = ({
                     while (attempts < maxAttempts && !foundSlot) {
                       // First try moving forward by duration hours to see if classrooms free up
                       const nextSlotStart = new Date(sessionStart);
-                      nextSlotStart.setHours(nextSlotStart.getHours() + duration);
+                      nextSlotStart.setTime(nextSlotStart.getTime() + (duration * 60 * 60 * 1000)); // Add duration in milliseconds
                       const nextSlotEnd = new Date(nextSlotStart);
-                      nextSlotEnd.setHours(nextSlotStart.getHours() + duration);
+                      nextSlotEnd.setTime(nextSlotEnd.getTime() + (duration * 60 * 60 * 1000)); // Add duration in milliseconds
                       
                       // Check if next slot is within working hours
                       const nextSlotHour = nextSlotStart.getHours() + nextSlotStart.getMinutes() / 60;
@@ -241,10 +241,10 @@ const TSCProcessDataStage = ({
                         } else {
                           currentDate.setHours(amStartHour, amStartMin, 0, 0);
                         }
-                        
+
                         sessionStart = new Date(currentDate);
                         sessionEnd = new Date(sessionStart);
-                        sessionEnd.setHours(sessionStart.getHours() + duration);
+                        sessionEnd.setTime(sessionEnd.getTime() + (duration * 60 * 60 * 1000)); // Add duration in milliseconds
                         
                         if (classroomTracker.isClassroomAvailable(groupName, sessionStart, sessionEnd, maxClassrooms)) {
                           foundSlot = true;
@@ -306,7 +306,7 @@ const TSCProcessDataStage = ({
                   if (schedulingPreference === 'am_only') {
                     // Only AM sessions allowed
                     if (duration <= amBlockHours) {
-                      sessionEnd.setHours(sessionStart.getHours() + duration);
+                      sessionEnd.setTime(sessionEnd.getTime() + (duration * 60 * 60 * 1000)); // Add duration in milliseconds
                     } else {
                       // Split into multiple AM sessions across days
                       let remainingDuration = duration;
@@ -365,7 +365,7 @@ const TSCProcessDataStage = ({
                   } else if (schedulingPreference === 'pm_only') {
                     // Only PM sessions allowed
                     if (duration <= pmBlockHours) {
-                      sessionEnd.setHours(sessionStart.getHours() + duration);
+                      sessionEnd.setTime(sessionEnd.getTime() + (duration * 60 * 60 * 1000)); // Add duration in milliseconds
                     } else {
                       // Split into multiple PM sessions across days
                       let remainingDuration = duration;
@@ -424,11 +424,11 @@ const TSCProcessDataStage = ({
                   } else {
                     // Both AM and PM sessions allowed (original logic)
                     if (duration <= amBlockHours) {
-                      sessionEnd.setHours(sessionStart.getHours() + duration);
+                      sessionEnd.setTime(sessionEnd.getTime() + (duration * 60 * 60 * 1000)); // Add duration in milliseconds
                     } else if (duration <= pmBlockHours) {
                       sessionStart.setHours(pmStartHour, pmStartMin, 0, 0);
                       sessionEnd = new Date(sessionStart);
-                      sessionEnd.setHours(sessionStart.getHours() + duration);
+                      sessionEnd.setTime(sessionEnd.getTime() + (duration * 60 * 60 * 1000)); // Add duration in milliseconds
                     } else if (duration <= (amBlockHours + pmBlockHours)) {
                     // Split across AM and PM
                     let amPart = amBlockHours;
