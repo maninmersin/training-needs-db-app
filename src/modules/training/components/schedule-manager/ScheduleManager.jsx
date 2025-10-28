@@ -328,6 +328,7 @@ const ScheduleManager = () => {
 
       {currentView === 'edit' && currentSchedule && (
         <ScheduleEditor
+          key={`schedule-editor-${currentSchedule.id}`}
           schedule={currentSchedule}
           onSave={() => {
             // Don't refresh schedules immediately to avoid resetting editor state

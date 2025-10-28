@@ -36,7 +36,7 @@ const TSCWizard = () => {
 
   const [selectedFunctionalArea, setSelectedFunctionalArea] = useState('default');
   const [criteria, setCriteria] = useState({});
-  const [sessionsForCalendar, setSessionsForCalendar] = useState([]);
+  const [sessionsForCalendar, setSessionsForCalendar] = useState({});
   const [schedulesList, setSchedulesList] = useState([]);
   const [loadingSchedules, setLoadingSchedules] = useState(false);
   const [endUsers, setEndUsers] = useState([]);
@@ -54,7 +54,7 @@ const TSCWizard = () => {
     setProcessingInBackground(false);
     setSelectedFunctionalArea('default');
     setCriteria({});
-    setSessionsForCalendar([]);
+    setSessionsForCalendar({});
     setSchedulesList([]);
     setLoadingSchedules(false);
     setEndUsers([]);
@@ -521,7 +521,7 @@ const TSCWizard = () => {
               
               // Create session objects for each part
               for (const part of sessionParts) {
-                const sessionId = `${course.course_id}-${sessionNumber}-part${part.part}-${part.start.getTime()}`;
+                const sessionId = `${course.course_id}-${sessionNumber}-classroom${classroom.classroomNum}-part${part.part}-${part.start.getTime()}`;
                 const partTitle = sessionParts.length > 1 ?
                   `${course.course_name} - Group ${sessionNumber} Part ${part.part} ${part.partSuffix} (${sessionGroup.enhancedGroupName})` :
                   `${course.course_name} - Group ${sessionNumber} (${sessionGroup.enhancedGroupName})`;

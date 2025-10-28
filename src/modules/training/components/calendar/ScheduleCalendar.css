@@ -537,3 +537,311 @@
     margin-bottom: 5px;
   }
 }
+
+/* Date Range Filter Styles */
+.date-range-filter {
+  background: white;
+  border: 1px solid #dee2e6;
+  border-radius: 8px;
+  padding: 20px;
+  margin-bottom: 20px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.date-range-filter .filter-header {
+  margin-bottom: 15px;
+  border-bottom: 2px solid #007bff;
+  padding-bottom: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.date-range-filter .filter-header h4 {
+  margin: 0;
+  color: #495057;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.auto-detect-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 12px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 12px;
+  box-shadow: 0 2px 4px rgba(102, 126, 234, 0.3);
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+@keyframes pulse-glow {
+  0%, 100% {
+    box-shadow: 0 2px 4px rgba(102, 126, 234, 0.3);
+  }
+  50% {
+    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.5);
+  }
+}
+
+.filter-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+/* Navigation Controls */
+.navigation-controls {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  flex-wrap: wrap;
+}
+
+.nav-btn {
+  padding: 8px 16px;
+  border: 2px solid #007bff;
+  background: white;
+  color: #007bff;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  white-space: nowrap;
+}
+
+.nav-btn:hover {
+  background: #007bff;
+  color: white;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 6px rgba(0, 123, 255, 0.3);
+}
+
+.nav-btn:active {
+  transform: translateY(0);
+}
+
+.prev-btn {
+  border-color: #17a2b8;
+  color: #17a2b8;
+}
+
+.prev-btn:hover {
+  background: #17a2b8;
+  color: white;
+}
+
+.next-btn {
+  border-color: #28a745;
+  color: #28a745;
+}
+
+.next-btn:hover {
+  background: #28a745;
+  color: white;
+}
+
+.date-inputs {
+  display: flex;
+  gap: 20px;
+  align-items: center;
+  flex-wrap: wrap;
+  flex: 1;
+  justify-content: center;
+}
+
+.date-input-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.date-input-group label {
+  font-weight: 500;
+  color: #495057;
+  font-size: 14px;
+}
+
+.date-input-group input[type="date"] {
+  padding: 8px 12px;
+  border: 1px solid #ced4da;
+  border-radius: 4px;
+  font-size: 14px;
+  transition: border-color 0.3s ease;
+}
+
+.date-input-group input[type="date"]:focus {
+  outline: none;
+  border-color: #007bff;
+  box-shadow: 0 0 0 3px rgba(0,123,255,0.1);
+}
+
+.preset-buttons {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.preset-buttons button {
+  padding: 8px 16px;
+  border: 1px solid #007bff;
+  background: white;
+  color: #007bff;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+
+.preset-buttons button:hover {
+  background: #007bff;
+  color: white;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0,123,255,0.2);
+}
+
+.preset-buttons button.active {
+  background: #007bff;
+  color: white;
+  font-weight: 600;
+}
+
+.preset-buttons button.reset-btn {
+  border-color: #6c757d;
+  color: #6c757d;
+  margin-left: auto;
+}
+
+.preset-buttons button.reset-btn:hover {
+  background: #6c757d;
+  color: white;
+}
+
+/* Multi-week calendar scrolling improvements */
+.fc-scroller {
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  max-height: 80vh;
+}
+
+.fc-timegrid-body {
+  overflow: visible !important;
+}
+
+/* Week boundaries visual indicator - REMOVED */
+
+/* Smooth scrolling */
+.fc-scroller {
+  scroll-behavior: smooth;
+}
+
+/* Responsive adjustments for date range filter */
+@media (max-width: 768px) {
+  .navigation-controls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .nav-btn {
+    width: 100%;
+  }
+
+  .date-inputs {
+    flex-direction: column;
+    align-items: stretch;
+    width: 100%;
+  }
+
+  .preset-buttons {
+    flex-direction: column;
+  }
+
+  .preset-buttons button.reset-btn {
+    margin-left: 0;
+  }
+}
+
+/* Custom Day Header Styles - Date Above Day Name */
+.custom-day-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 4px;
+  line-height: 1.2;
+}
+
+.custom-day-header .header-date {
+  font-size: 18px;
+  font-weight: 700;
+  color: #212529;
+  margin-bottom: 2px;
+}
+
+.custom-day-header .header-month {
+  font-size: 11px;
+  font-weight: 500;
+  color: #6c757d;
+  text-transform: uppercase;
+  margin-bottom: 2px;
+}
+
+.custom-day-header .header-day {
+  font-size: 12px;
+  font-weight: 600;
+  color: #495057;
+  text-transform: uppercase;
+}
+
+/* Highlight today's date */
+.fc-day-today .custom-day-header .header-date {
+  color: #007bff;
+}
+
+.fc-day-today .custom-day-header .header-day {
+  color: #007bff;
+}
+
+/* Highlight Monday columns (week boundaries) - REMOVED */
+
+/* Make headers slightly larger for better readability */
+.fc-col-header-cell {
+  padding: 4px 0;
+  vertical-align: middle;
+}
+
+/* Responsive adjustments for smaller screens */
+@media (max-width: 1200px) {
+  .custom-day-header .header-date {
+    font-size: 16px;
+  }
+
+  .custom-day-header .header-month {
+    font-size: 10px;
+  }
+
+  .custom-day-header .header-day {
+    font-size: 11px;
+  }
+}
+
+@media (max-width: 768px) {
+  .custom-day-header .header-date {
+    font-size: 14px;
+  }
+
+  .custom-day-header .header-month {
+    font-size: 9px;
+  }
+
+  .custom-day-header .header-day {
+    font-size: 10px;
+  }
+}

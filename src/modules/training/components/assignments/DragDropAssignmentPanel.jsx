@@ -3789,7 +3789,16 @@ const DragDropAssignmentPanel = ({
         <div className="assignment-panel-header">
           <div className="header-title">
             <h2>🎯 Drag & Drop Assignment</h2>
-            <span className="schedule-name">{schedule?.name}</span>
+            <span className="schedule-name">
+              {schedule?.name}{' '}
+              <span
+                style={{opacity: 0.6, fontSize: '0.85em', cursor: 'pointer', textDecoration: 'underline'}}
+                title="Click to copy full schedule ID"
+                onClick={() => {navigator.clipboard.writeText(schedule?.id); alert('Schedule ID copied: ' + schedule?.id);}}
+              >
+                • ID: {schedule?.id?.substring(0, 8)}... (click to copy)
+              </span>
+            </span>
             {isStakeholder && (assignedFunctionalAreas.length > 0 || assignedTrainingLocations.length > 0) && (
               <div className="stakeholder-scope">
                 <span className="scope-label">Managing:</span>

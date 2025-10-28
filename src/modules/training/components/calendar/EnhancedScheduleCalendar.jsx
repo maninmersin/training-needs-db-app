@@ -11,9 +11,38 @@ import { generateEventIdFromSession } from '@core/utils/eventIdUtils';
 import { debugLog, debugWarn, debugError } from '@core/utils/consoleUtils';
 import './EnhancedScheduleCalendar.css';
 
-const EnhancedScheduleCalendar = ({ 
-  sessions, 
-  onSessionUpdated, 
+// Helper function to calculate initial calendar date from sessions
+const calculateInitialDate = (sessions) => {
+  if (!Array.isArray(sessions) || sessions.length === 0) {
+    return new Date(); // Default to today if no sessions
+  }
+
+  // Extract all session dates
+  const sessionDates = sessions
+    .map(session => {
+      const dateStr = session.start_datetime || session.start;
+      return dateStr ? new Date(dateStr) : null;
+    })
+    .filter(date => date !== null && !isNaN(date.getTime()));
+
+  if (sessionDates.length === 0) {
+    return new Date(); // Default to today if no valid dates
+  }
+
+  // Find the earliest session date
+  const earliestDate = new Date(Math.min(...sessionDates));
+
+  console.log('📅 Auto-navigating calendar to first session week:', {
+    earliestSession: earliestDate.toISOString(),
+    totalSessions: sessionDates.length
+  });
+
+  return earliestDate;
+};
+
+const EnhancedScheduleCalendar = ({
+  sessions,
+  onSessionUpdated,
   criteria,
   dragMode = false,
   capacityData = {},
@@ -34,7 +63,9 @@ const EnhancedScheduleCalendar = ({
   const [locationDisplayOrders, setLocationDisplayOrders] = useState({});
   // Use refs instead of state to prevent re-renders from datesSet callback
   const calendarViewRef = useRef('timeGridWeek');
-  const calendarDateRef = useRef(new Date());
+  // Calculate initial date from sessions on first render
+  const initialCalendarDate = useMemo(() => calculateInitialDate(sessions), []);
+  const calendarDateRef = useRef(initialCalendarDate);
   
   // Cache for assignment data to prevent repeated database calls
   const assignmentsCacheRef = useRef(null);

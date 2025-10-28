@@ -300,6 +300,13 @@ const AssignmentWorkspace = ({
 
   // Generate session identifier
   const generateSessionId = (session) => {
+    // CRITICAL FIX: Use the actual session_identifier from the session data if available
+    // This field is stable across time changes (drag/drop operations)
+    // Fallback to timestamp-based ID only for compatibility with old data
+    if (session.session_identifier) {
+      return session.session_identifier;
+    }
+    // Legacy fallback (for sessions created before session_identifier field was added)
     return `${session.course_id}-${session.session_number}-${new Date(session.start).getTime()}`;
   };
 

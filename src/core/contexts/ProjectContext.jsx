@@ -46,15 +46,22 @@ export const ProjectProvider = ({ children }) => {
         // Try to restore saved project first
         const savedProjectId = localStorage.getItem('currentProjectId');
         const savedProject = savedProjectId ? transformedProjects.find(p => p.id === savedProjectId) : null;
-        
+
         if (savedProject) {
-          setCurrentProject(savedProject);
-          console.log('Restored saved project:', savedProject.name);
+          // Only set if it's actually different (prevents unnecessary re-renders)
+          if (!currentProject || currentProject.id !== savedProject.id) {
+            setCurrentProject(savedProject);
+            console.log('Restored saved project:', savedProject.name);
+          } else {
+            console.log('Project already set, skipping restore to prevent re-render');
+          }
         } else {
           // Only select first project if no saved project found
-          setCurrentProject(transformedProjects[0]);
-          localStorage.setItem('currentProjectId', transformedProjects[0].id);
-          console.log('Auto-selected first project:', transformedProjects[0].name);
+          if (!currentProject || currentProject.id !== transformedProjects[0].id) {
+            setCurrentProject(transformedProjects[0]);
+            localStorage.setItem('currentProjectId', transformedProjects[0].id);
+            console.log('Auto-selected first project:', transformedProjects[0].name);
+          }
         }
       }
       
