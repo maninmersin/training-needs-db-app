@@ -2050,28 +2050,101 @@ const DragDropAssignmentPanel = ({
       
       // Extract training location from session using clean structure
       let trainingLocation = sessionInfo.training_location || 'Unknown';
-      
+
       // FALLBACK: Parse from legacy compound key if clean field not available
       if (trainingLocation === 'Unknown' && sessionInfo.group_name && sessionInfo.group_name.includes('|')) {
         const parts = sessionInfo.group_name.split('|');
         trainingLocation = parts[0]?.trim() || trainingLocation;
       }
-      
-      // Delete all assignments for this user in this group at this training location
-      const { error } = await supabase
+
+      console.log('🔍 DELETE query parameters:', {
+        schedule_id: schedule.id,
+        end_user_id: userInfo.userId || userInfo.end_user_id,
+        training_location: trainingLocation,
+        group_identifier_pattern: `%-Group${groupNumber}`,
+        groupNumber
+      });
+
+      // First, let's check what assignments exist for debugging
+      const { data: existingAssignments, error: checkError } = await supabase
+        .from('user_assignments')
+        .select('*')
+        .eq('schedule_id', schedule.id)
+        .eq('end_user_id', userInfo.userId || userInfo.end_user_id);
+
+      if (!checkError) {
+        console.log('🔍 Found existing assignments for this user:', existingAssignments);
+      }
+
+      // STRATEGY: Remove from group means removing ALL assignments (group-level AND session-level)
+      // that belong to sessions in this group at this training location
+
+      // Step 1: Delete group-level assignments (if any exist with group_identifier)
+      const { data: deletedGroupAssignments } = await supabase
         .from('user_assignments')
         .delete()
         .eq('schedule_id', schedule.id)
         .eq('end_user_id', userInfo.userId || userInfo.end_user_id)
-        .eq('training_location', trainingLocation)
-        .like('group_identifier', `%-group-${groupNumber}`);
-      
-      if (error) {
-        console.error('❌ Error removing user from group:', error);
-        throw error;
+        .eq('assignment_level', 'group')
+        .like('group_identifier', `%-Group${groupNumber}`)
+        .select();
+
+      console.log('🔍 Deleted group-level assignments:', deletedGroupAssignments?.length || 0);
+
+      // Step 2: Find all session identifiers for this group and delete session-level assignments
+      // Get all sessions that belong to this group at this training location
+      const allSessions = getAllSessionsFlat();
+      const groupSessions = allSessions.filter(session => {
+        const sessionGroupMatch = session.title?.match(/Group (\d+)/);
+        const sessionGroupNumber = sessionGroupMatch ? sessionGroupMatch[1] : null;
+        const sessionLocation = session.training_location || session.extendedProps?.training_location || session._location;
+
+        return sessionGroupNumber === groupNumber && sessionLocation === trainingLocation;
+      });
+
+      console.log('🔍 Found sessions in this group:', groupSessions.length);
+
+      if (groupSessions.length > 0) {
+        const sessionIdentifiers = groupSessions.map(s => s.session_identifier).filter(id => id);
+        console.log('🔍 Session identifiers to delete:', sessionIdentifiers);
+
+        // DEBUG: Check what session_identifiers are actually in the database
+        const actualSessionIdentifiers = existingAssignments
+          .filter(a => a.assignment_level === 'session')
+          .map(a => a.session_identifier);
+        console.log('🔍 Actual session_identifiers in database:', actualSessionIdentifiers);
+
+        // STRATEGY: The database has old format (without classroom number) and new format (with classroom)
+        // We need to match both formats. Instead of exact match, we'll delete all session-level
+        // assignments for this user that match the course IDs in this group.
+
+        // Get unique course IDs from the group sessions
+        const groupCourseIds = [...new Set(groupSessions.map(s => s.course_id).filter(id => id))];
+        console.log('🔍 Course IDs in this group:', groupCourseIds);
+
+        if (groupCourseIds.length > 0) {
+          const { data: deletedSessionAssignments, error: sessionError } = await supabase
+            .from('user_assignments')
+            .delete()
+            .eq('schedule_id', schedule.id)
+            .eq('end_user_id', userInfo.userId || userInfo.end_user_id)
+            .eq('assignment_level', 'session')
+            .in('course_id', groupCourseIds)
+            .select();
+
+          if (sessionError) {
+            console.error('❌ Error removing session-level assignments:', sessionError);
+            throw sessionError;
+          }
+
+          console.log('🔍 Deleted session-level assignments:', deletedSessionAssignments?.length || 0);
+          console.log('🔍 Deleted records:', deletedSessionAssignments);
+        }
       }
-      
+
+      const totalDeleted = (deletedGroupAssignments?.length || 0);
       console.log('✅ Successfully removed user from group');
+      console.log('🔍 Total records deleted:', totalDeleted);
       
       // Refresh the assignment data
       await initializeAssignmentData();
@@ -2089,7 +2162,7 @@ const DragDropAssignmentPanel = ({
   const removeUserFromCourse = async (userInfo, sessionInfo) => {
     try {
       console.log('🗑️ Removing user from course:', userInfo, sessionInfo);
-      
+
       // 🛡️ AUTHORIZATION CHECK - Validate permission to remove this user from this session
       try {
         await ActionValidators.validateRemoveUserFromSession(userInfo, sessionInfo);
@@ -2098,34 +2171,45 @@ const DragDropAssignmentPanel = ({
         alert(`Access denied: ${authError.message}`);
         return;
       }
-      
+
       // Extract course ID from session
       const courseId = sessionInfo.course_id || sessionInfo.courseId;
-      
-      // Extract training location from session using clean structure
-      let trainingLocation = sessionInfo.training_location || 'Unknown';
-      
-      // FALLBACK: Parse from legacy compound key if clean field not available
-      if (trainingLocation === 'Unknown' && sessionInfo.group_name && sessionInfo.group_name.includes('|')) {
-        const parts = sessionInfo.group_name.split('|');
-        trainingLocation = parts[0]?.trim() || trainingLocation;
+
+      console.log('🔍 DELETE query parameters for course removal:', {
+        schedule_id: schedule.id,
+        end_user_id: userInfo.userId || userInfo.end_user_id,
+        course_id: courseId
+      });
+
+      // First, check existing assignments for debugging
+      const { data: existingAssignments, error: checkError } = await supabase
+        .from('user_assignments')
+        .select('*')
+        .eq('schedule_id', schedule.id)
+        .eq('end_user_id', userInfo.userId || userInfo.end_user_id);
+
+      if (!checkError) {
+        console.log('🔍 Found existing assignments for this user:', existingAssignments);
       }
-      
-      // Delete all assignments for this user for this course at this training location
-      const { error } = await supabase
+
+      // Delete all assignments for this user for this specific course (both session-level and course-level)
+      // NOTE: We do NOT filter by training_location because existing assignments have NULL values
+      const { data: deletedData, error } = await supabase
         .from('user_assignments')
         .delete()
         .eq('schedule_id', schedule.id)
         .eq('end_user_id', userInfo.userId || userInfo.end_user_id)
         .eq('course_id', courseId)
-        .eq('training_location', trainingLocation);
-      
+        .select();
+
       if (error) {
         console.error('❌ Error removing user from course:', error);
         throw error;
       }
-      
+
       console.log('✅ Successfully removed user from course');
+      console.log('🔍 Number of records deleted:', deletedData?.length || 0);
+      console.log('🔍 Deleted records:', deletedData);
       
       // Refresh the assignment data
       await initializeAssignmentData();
@@ -2640,15 +2724,22 @@ const DragDropAssignmentPanel = ({
     // Handle new Schedule Manager format: trainingLocation-classroomName-sessionTitle-index
     if (baseEventId.includes('-')) {
       const parts = baseEventId.split('-');
-      
-      // Handle our specific format: "Kuwait Training Centre-Classroom 1-Transfers - Group 1 Part 1-0"
-      // Split gives us: ['Kuwait Training Centre', 'Classroom 1', 'Transfers ', ' Group 1 Part 1', '0']
-      if (parts.length === 5) {
-        const trainingLocationFromId = parts[0]; // "Kuwait Training Centre"
-        const classroomFromId = parts[1]; // "Classroom 1"
-        // Reconstruct the title by joining the middle parts and cleaning up extra spaces
-        const sessionTitleFromId = (parts[2] + '-' + parts[3]).trim(); // "Transfers - Group 1 Part 1"
-        const indexPart = parts[4]; // "0"
+
+      // Handle format where location name might contain dashes
+      // Examples:
+      //   5 parts: "Kuwait Training Centre-Classroom 1-Transfers - Group 1 Part 1-0"
+      //   6 parts: "Egypt Alexandria - Mantrac Office-Classroom 1-Project Management - Group 1 Part 1-25"
+      // Strategy: Find "Classroom X" part, everything before it is location, everything after is title-index
+
+      const classroomIndex = parts.findIndex(part => part.trim().startsWith('Classroom '));
+
+      if (classroomIndex > 0 && classroomIndex < parts.length - 2) {
+        // Reconstruct location (everything before classroom)
+        const trainingLocationFromId = parts.slice(0, classroomIndex).join('-').trim();
+        const classroomFromId = parts[classroomIndex].trim(); // "Classroom 1"
+        // Reconstruct title (everything after classroom except last part which is index)
+        const sessionTitleFromId = parts.slice(classroomIndex + 1, -1).join('-').trim();
+        const indexPart = parts[parts.length - 1]; // Last part is always the index
         
         console.log(`🔍 NEW FORMAT DETECTED: location="${trainingLocationFromId}", classroom="${classroomFromId}", title="${sessionTitleFromId}", index="${indexPart}"`);
         

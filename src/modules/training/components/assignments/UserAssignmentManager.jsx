@@ -112,6 +112,8 @@ const UserAssignmentManager = () => {
           course_id: assignmentData.courseId || null,
           group_identifier: assignmentData.groupIdentifier || null,
           session_identifier: assignmentData.sessionIdentifier || null,
+          training_location: assignmentData.trainingLocation || null,
+          functional_area: assignmentData.functionalArea || null,
           assignment_type: assignmentData.type || 'standard',
           exception_reason: assignmentData.exceptionReason || null,
           notes: assignmentData.notes || null
@@ -133,6 +135,8 @@ const UserAssignmentManager = () => {
             course_id: assignmentData.courseId || null,
             group_identifier: assignmentData.groupIdentifier || null,
             session_identifier: assignmentData.sessionIdentifier || null,
+            training_location: assignmentData.trainingLocation || null,
+            functional_area: assignmentData.functionalArea || null,
             assignment_type: assignmentData.type || 'standard',
             exception_reason: assignmentData.exceptionReason || null,
             notes: assignmentData.notes || null
