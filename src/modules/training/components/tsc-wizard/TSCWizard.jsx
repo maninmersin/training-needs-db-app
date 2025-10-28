@@ -724,9 +724,9 @@ const TSCWizard = () => {
       console.log('✅ Schedule created successfully');
       alert(`✅ Schedule "${scheduleNameFromReview}" saved successfully!\n\nUse the Schedule Manager to edit or delete schedules.`);
 
-      // Navigate back to main menu after successful save
+      // Stay on the same page after successful save (user can manually navigate if needed)
       localStorage.removeItem('tscWizardState');
-      navigate('/');
+      // Removed: navigate('/'); - user requested to stay on the same page
     } catch (error) {
       console.error('❌ Error saving schedule:', error);
       alert(`Failed to save schedule: ${error.message}`);
