@@ -354,6 +354,21 @@ export const deleteImpactAssessment = async (assessmentId) => {
  * @param {string} assessmentId - The assessment ID
  * @returns {Promise<Array>} Hierarchical process structure
  */
+// Flat list of an assessment's processes (no tree building) - used for validation
+export const getProcessHierarchyFlat = async (assessmentId) => {
+  if (!assessmentId) {
+    throw new Error('Assessment ID is required');
+  }
+
+  const { data, error } = await supabase
+    .rpc('get_process_hierarchy_with_impacts', {
+      assessment_uuid: assessmentId
+    });
+
+  if (error) throw error;
+  return data || [];
+};
+
 export const getProcessHierarchy = async (assessmentId) => {
   if (!assessmentId) {
     throw new Error('Assessment ID is required');

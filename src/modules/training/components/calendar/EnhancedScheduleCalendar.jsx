@@ -66,6 +66,14 @@ const EnhancedScheduleCalendar = ({
   // Calculate initial date from sessions on first render
   const initialCalendarDate = useMemo(() => calculateInitialDate(sessions), []);
   const calendarDateRef = useRef(initialCalendarDate);
+
+  // Track when user navigates to different dates/views using refs to prevent re-renders.
+  // Defined once here: hooks must not be created inside the per-classroom render loop.
+  const handleDatesSet = useCallback((dateInfo) => {
+    calendarDateRef.current = dateInfo.start;
+    calendarViewRef.current = dateInfo.view.type;
+    debugLog('📅 Calendar navigation:', { date: dateInfo.start, view: dateInfo.view.type });
+  }, []);
   
   // Cache for assignment data to prevent repeated database calls
   const assignmentsCacheRef = useRef(null);
@@ -935,12 +943,7 @@ const EnhancedScheduleCalendar = ({
                 eventDisplay="block"
                 dayMaxEvents={false}
                 eventMinHeight={30}
-                datesSet={useCallback((dateInfo) => {
-                  // Track when user navigates to different dates/views using refs to prevent re-renders
-                  calendarDateRef.current = dateInfo.start;
-                  calendarViewRef.current = dateInfo.view.type;
-                  debugLog('📅 Calendar navigation:', { date: dateInfo.start, view: dateInfo.view.type });
-                }, [])}
+                datesSet={handleDatesSet}
               />
             </div>
           ))}

@@ -122,35 +122,6 @@ const StakeholderAccessManager = () => {
     setUserFunctionalAreas(data || []);
   };
 
-  const createUserFunctionalAreasTable = async () => {
-    const createTableSQL = `
-      CREATE TABLE IF NOT EXISTS auth_user_functional_areas (
-        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-        user_id UUID NOT NULL REFERENCES auth_users(id) ON DELETE CASCADE,
-        functional_area_id INTEGER NOT NULL REFERENCES functional_areas(id) ON DELETE CASCADE,
-        access_level VARCHAR(20) DEFAULT 'read' CHECK (access_level IN ('read', 'write', 'admin')),
-        created_at TIMESTAMP DEFAULT NOW(),
-        updated_at TIMESTAMP DEFAULT NOW(),
-        UNIQUE(user_id, functional_area_id)
-      );
-
-      CREATE INDEX IF NOT EXISTS idx_user_functional_areas_user 
-      ON auth_user_functional_areas(user_id);
-
-      CREATE INDEX IF NOT EXISTS idx_user_functional_areas_area 
-      ON auth_user_functional_areas(functional_area_id);
-    `;
-
-    try {
-      const { error } = await supabase.rpc('execute_sql', { sql: createTableSQL });
-      if (error) throw error;
-      console.log('User functional areas table created successfully');
-    } catch (err) {
-      console.error('Error creating user functional areas table:', err);
-      throw err;
-    }
-  };
-
   const handleAssignFunctionalArea = async (userId, functionalAreaId, accessLevel = 'read') => {
     try {
       if (!currentProject) {
@@ -168,23 +139,7 @@ const StakeholderAccessManager = () => {
           project_id: currentProject.id
         });
 
-      if (error && error.code === '42P01') { // Table doesn't exist
-        await createUserFunctionalAreasTable();
-        
-        // Retry the insert
-        const { error: retryError } = await supabase
-          .from('auth_user_functional_areas')
-          .insert({
-            user_id: userId,
-            functional_area_id: functionalAreaId,
-            access_level: accessLevel,
-            project_id: currentProject.id
-          });
-        
-        if (retryError) throw retryError;
-      } else if (error) {
-        throw error;
-      }
+      if (error) throw error;
 
       await fetchUserFunctionalAreas();
     } catch (err) {
@@ -213,23 +168,7 @@ const StakeholderAccessManager = () => {
           project_id: currentProject.id
         });
 
-      if (error && error.code === '42804') { // Type error, table might not exist
-        await createUserFunctionalAreasTable();
-        
-        // Retry the insert
-        const { data: retryData, error: retryError } = await supabase
-          .from('auth_user_functional_areas')
-          .insert({
-            user_id: userId,
-            training_location_id: trainingLocationId,
-            access_level: accessLevel,
-            project_id: currentProject.id
-          });
-        
-        if (retryError) throw retryError;
-      } else if (error) {
-        throw error;
-      }
+      if (error) throw error;
 
       await fetchUserFunctionalAreas();
     } catch (err) {

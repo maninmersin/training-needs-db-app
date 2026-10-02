@@ -51,3 +51,10 @@ temp/
 # Vercel
 .vercel
 .vercel
+
+# Vercel CLI env pulls (contain tokens)
+.env.vercel
+.env*.local
+
+# Local tooling binaries (PostgREST etc.)
+tools/

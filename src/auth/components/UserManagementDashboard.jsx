@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { supabase } from '@core/services/supabaseClient';
-import { supabaseAdmin, isAdminAvailable, getAdminErrorMessage } from '@core/services/supabaseAdmin';
+import * as adminUsers from '@core/services/adminUsersApi';
 import './UserManagementDashboard.css';
 
 const UserManagementDashboard = () => {
@@ -198,20 +198,13 @@ const UserManagementDashboard = () => {
   const handleCreateUser = async (e) => {
     e.preventDefault();
     
-    // Check if admin operations are available
-    if (!isAdminAvailable()) {
-      setError(getAdminErrorMessage());
-      return;
-    }
-
     try {
       setLoading(true);
 
-      // Create user in Supabase Auth using admin client
-      const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
+      // Create the login account via the auth server
+      const { data: authData, error: authError } = await adminUsers.createUser({
         email: formData.email,
-        password: formData.password,
-        email_confirm: true
+        password: formData.password
       });
 
       if (authError) throw authError;
@@ -285,11 +278,9 @@ const UserManagementDashboard = () => {
         .delete()
         .eq('id', userToDelete.id);
 
-      // Delete from Supabase Auth (if admin available)
-      if (isAdminAvailable()) {
-        const { error: authError } = await supabaseAdmin.auth.admin.deleteUser(userToDelete.id);
-        // Auth deletion is optional, continue if it fails
-      }
+      // Delete the login account (non-fatal if it fails)
+      const { error: authError } = await adminUsers.deleteUser(userToDelete.id);
+      if (authError) console.warn('Login account not deleted:', authError.message);
 
       await fetchUsers();
       setShowDeleteModal(false);
@@ -354,30 +345,16 @@ const UserManagementDashboard = () => {
       return;
     }
 
-    if (!isAdminAvailable()) {
-      setError(getAdminErrorMessage());
-      return;
-    }
-
     try {
       setLoading(true);
 
-      // Update email if changed
-      if (editFormData.email !== editingUser.email) {
-        const { error: emailError } = await supabaseAdmin.auth.admin.updateUserById(
-          editingUser.id,
-          { email: editFormData.email }
-        );
-        if (emailError) throw emailError;
-      }
-
-      // Update password if provided
-      if (editFormData.password && editFormData.password.trim() !== '') {
-        const { error: passwordError } = await supabaseAdmin.auth.admin.updateUserById(
-          editingUser.id,
-          { password: editFormData.password }
-        );
-        if (passwordError) throw passwordError;
+      // Update login email/password via the auth server
+      const changes = {};
+      if (editFormData.email !== editingUser.email) changes.email = editFormData.email;
+      if (editFormData.password && editFormData.password.trim() !== '') changes.password = editFormData.password;
+      if (Object.keys(changes).length > 0) {
+        const { error: authError } = await adminUsers.updateUser(editingUser.id, changes);
+        if (authError) throw authError;
       }
 
 

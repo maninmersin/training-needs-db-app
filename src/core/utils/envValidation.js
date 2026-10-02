@@ -2,14 +2,23 @@
  * Environment variable validation and security utilities
  */
 
-const requiredVars = {
-  VITE_SUPABASE_URL: 'Supabase project URL is required',
-  VITE_SUPABASE_ANON_KEY: 'Supabase anonymous key is required'
-};
+const isLocalBackend = (import.meta.env.VITE_DB_BACKEND || 'supabase').toLowerCase() === 'local';
 
-const optionalVars = {
-  VITE_SUPABASE_SERVICE_ROLE_KEY: 'Service role key for admin operations (optional but recommended for user management)'
-};
+const requiredVars = isLocalBackend
+  ? {}
+  : {
+      VITE_SUPABASE_URL: 'Supabase project URL is required',
+      VITE_SUPABASE_ANON_KEY: 'Supabase anonymous key is required'
+    };
+
+const optionalVars = isLocalBackend
+  ? {
+      VITE_API_URL: 'PostgREST URL (defaults to http://localhost:3000)',
+      VITE_AUTH_URL: 'Auth server URL (defaults to http://localhost:4000)'
+    }
+  : {
+      VITE_AUTH_URL: 'Auth server URL for admin user management (defaults to http://localhost:4000)'
+    };
 
 /**
  * Validate all required environment variables are present

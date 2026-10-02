@@ -1,33 +1,6 @@
-import { createClient } from '@supabase/supabase-js'
-import { debugInfo, debugError } from '../../../../../core/utils/consoleUtils'
+// POAP shares the platform's single database client (avoids duplicate auth clients
+// and follows the VITE_DB_BACKEND switch).
+export { supabase } from '../../../../../core/services/supabaseClient'
 
-debugInfo('Initializing POAP Supabase client...');
-
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-
-if (!supabaseUrl || !supabaseKey) {
-  debugError('Missing Supabase configuration:');
-  debugError('VITE_SUPABASE_URL:', supabaseUrl);
-  debugError('VITE_SUPABASE_ANON_KEY:', supabaseKey ? '*** (provided)' : 'undefined');
-  throw new Error('Supabase URL and Anon Key must be provided in .env file');
-}
-
-debugInfo('POAP Supabase URL configured:', supabaseUrl);
-debugInfo('POAP Supabase Key configured:', supabaseKey ? '*** (redacted)' : 'undefined');
-
-export const supabase = createClient(supabaseUrl, supabaseKey, {
-  db: { schema: 'public' },
-  auth: { persistSession: true, autoRefreshToken: true }
-});
-
-// Mock authentication for development (using platform's client)
-export const initMockAuth = async () => {
-  try {
-    // The main platform should handle authentication
-    // No need for mock auth as the platform has its own auth system
-    console.log('Using main platform authentication')
-  } catch (err) {
-    console.warn('Platform auth not available:', err)
-  }
-}
+// Kept for existing callers; the main platform handles authentication.
+export const initMockAuth = async () => {}
