@@ -4,6 +4,10 @@ import path from 'path'
 
 export default defineConfig({
   plugins: [react()],
+  // Production builds drop console.log/info/debug (warn and error are kept)
+  esbuild: {
+    pure: ['console.log', 'console.info', 'console.debug']
+  },
   server: {
     host: true,
     port: 5173
@@ -45,7 +49,7 @@ export default defineConfig({
           if (id.includes('@supabase/supabase-js')) {
             return 'supabase-vendor';
           }
-          if (id.includes('date-fns') || id.includes('moment') || id.includes('clsx')) {
+          if (id.includes('date-fns') || id.includes('clsx')) {
             return 'utils-vendor';
           }
           
@@ -60,15 +64,12 @@ export default defineConfig({
           }
           
           // Visualization
-          if (id.includes('konva') || id.includes('react-konva')) {
-            return 'viz-vendor';
-          }
           if (id.includes('pivottable') || id.includes('react-pivottable')) {
             return 'chart-vendor';
           }
           
           // Export utilities (excluding xlsx)
-          if (id.includes('jspdf') || id.includes('papaparse') || id.includes('react-csv') || id.includes('file-saver')) {
+          if (id.includes('jspdf') || id.includes('react-csv') || id.includes('file-saver')) {
             return 'export-vendor';
           }
           

@@ -1,5 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import './TrainingSessionCalendar.css';
+import { supabase } from '@core/services/supabaseClient';
 import ScheduleCalendar from './ScheduleCalendar';
 import TSCDefineCriteriaStage from '../tsc-wizard/TSCDefineCriteriaStage';
 import TSCFetchDataStage from '../tsc-wizard/TSCFetchDataStage';

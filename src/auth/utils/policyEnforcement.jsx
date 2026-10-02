@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { SimpleAuthService } from '@auth/services/simpleAuthService';
+import { AuthorizationService } from '@auth/services/authorizationService';
 import { supabase } from '@core/services/supabaseClient';
 
 /**

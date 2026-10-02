@@ -559,23 +559,12 @@ const DragDropAssignmentPanel = ({
             });
           }
         } else {
-          // User doesn't need any courses in this schedule
-          // Only add to unassigned if they have valid role mappings for this project
-          // This prevents users from other projects or unrelated functional areas from appearing
-          const hasProjectRoleMappings = roleMappings.some(mapping => 
-            mapping.project_role_name === user.project_role
-          );
-          
-          if (hasProjectRoleMappings) {
-            // User has role mappings but doesn't need courses in this specific schedule
-            // This could happen if they're assigned to courses outside this schedule's functional areas
-            debugLog(`🔍 User ${user.name} (${user.project_role}) has role mappings but no courses needed in this schedule`);
-            categories.unassigned.push(user);
-          } else {
-            // User has no role mappings for this project - don't show in any category
-            // This is expected for employees in other functional areas who haven't been assigned courses yet
-            debugLog(`🚫 User ${user.name} (${user.project_role}) has no role mappings for this project - excluding from all categories`);
-          }
+          // User doesn't need any courses in this schedule. In the flat-table model every
+          // user here was loaded from their own training_data rows for this project, so they
+          // have course mappings - list them as unassigned (the role-based check this replaced
+          // referenced roleMappings, which no longer exists and threw a ReferenceError).
+          debugLog(`🔍 User ${user.name} (${user.project_role}) has no courses needed in this schedule`);
+          categories.unassigned.push(user);
         }
       }
       

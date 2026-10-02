@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@core/services/supabaseClient';
+import * as adminUsers from '@core/services/adminUsersApi';
 import './UserRegistrationWizard.css';
 
 const UserRegistrationWizard = ({ onComplete, onCancel }) => {
@@ -165,11 +166,10 @@ const UserRegistrationWizard = ({ onComplete, onCancel }) => {
       setLoading(true);
       setError(null);
 
-      // Create user in Supabase Auth
-      const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+      // Create the login account via the auth server
+      const { data: authData, error: authError } = await adminUsers.createUser({
         email: formData.email,
-        password: formData.password,
-        email_confirm: true
+        password: formData.password
       });
 
       if (authError) throw authError;
@@ -214,18 +214,7 @@ const UserRegistrationWizard = ({ onComplete, onCancel }) => {
             .from('auth_user_functional_areas')
             .insert(accessInserts);
 
-          if (accessError && accessError.code === '42P01') {
-            // Table doesn't exist, create it
-            await createUserFunctionalAreasTable();
-            
-            const { error: retryError } = await supabase
-              .from('auth_user_functional_areas')
-              .insert(accessInserts);
-            
-            if (retryError) throw retryError;
-          } else if (accessError) {
-            throw accessError;
-          }
+          if (accessError) throw accessError;
         } catch (err) {
           console.error('Error assigning functional area access:', err);
         }
@@ -234,10 +223,7 @@ const UserRegistrationWizard = ({ onComplete, onCancel }) => {
       // Send welcome email if requested
       if (formData.sendWelcomeEmail) {
         try {
-          const { error: emailError } = await supabase.auth.admin.generateLink({
-            type: 'invite',
-            email: formData.email
-          });
+          const { error: emailError } = await adminUsers.inviteUser(formData.email);
           if (emailError) console.warn('Failed to send welcome email:', emailError);
         } catch (err) {
           console.warn('Failed to send welcome email:', err);
@@ -260,23 +246,6 @@ const UserRegistrationWizard = ({ onComplete, onCancel }) => {
     } finally {
       setLoading(false);
     }
-  };
-
-  const createUserFunctionalAreasTable = async () => {
-    const createTableSQL = `
-      CREATE TABLE IF NOT EXISTS auth_user_functional_areas (
-        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-        user_id UUID NOT NULL REFERENCES auth_users(id) ON DELETE CASCADE,
-        functional_area_id INTEGER NOT NULL REFERENCES functional_areas(id) ON DELETE CASCADE,
-        access_level VARCHAR(20) DEFAULT 'read' CHECK (access_level IN ('read', 'write', 'admin')),
-        created_at TIMESTAMP DEFAULT NOW(),
-        updated_at TIMESTAMP DEFAULT NOW(),
-        UNIQUE(user_id, functional_area_id)
-      );
-    `;
-
-    const { error } = await supabase.rpc('execute_sql', { sql: createTableSQL });
-    if (error) throw error;
   };
 
   const getAccessLevel = (areaId) => {

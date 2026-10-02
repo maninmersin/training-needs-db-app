@@ -69,49 +69,8 @@ const RolePermissionsEditor = () => {
     }
   };
 
-  const createPermissionsTable = async () => {
-    const createTablesSQL = `
-      -- Create permissions table
-      CREATE TABLE IF NOT EXISTS auth_permissions (
-        id SERIAL PRIMARY KEY,
-        name VARCHAR(100) NOT NULL UNIQUE,
-        description TEXT,
-        resource VARCHAR(50) NOT NULL,
-        action VARCHAR(50) NOT NULL,
-        created_at TIMESTAMP DEFAULT NOW(),
-        UNIQUE(resource, action)
-      );
-
-      -- Create role_permissions junction table
-      CREATE TABLE IF NOT EXISTS auth_role_permissions (
-        id SERIAL PRIMARY KEY,
-        role_id INTEGER NOT NULL REFERENCES auth_roles(id) ON DELETE CASCADE,
-        permission_id INTEGER NOT NULL REFERENCES auth_permissions(id) ON DELETE CASCADE,
-        created_at TIMESTAMP DEFAULT NOW(),
-        UNIQUE(role_id, permission_id)
-      );
-
-      CREATE INDEX IF NOT EXISTS idx_role_permissions_role 
-      ON auth_role_permissions(role_id);
-
-      CREATE INDEX IF NOT EXISTS idx_role_permissions_permission 
-      ON auth_role_permissions(permission_id);
-    `;
-
-    try {
-      const { error } = await supabase.rpc('execute_sql', { sql: createTablesSQL });
-      if (error) throw error;
-      console.log('Permissions tables created successfully');
-    } catch (err) {
-      console.error('Error creating permissions tables:', err);
-      throw err;
-    }
-  };
-
   const initializeDefaultPermissions = async () => {
     try {
-      await createPermissionsTable();
-      
       for (const perm of defaultPermissions) {
         const permissionName = `${perm.resource}:${perm.action}`;
         

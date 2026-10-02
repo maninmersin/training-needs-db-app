@@ -5,6 +5,21 @@ This system is evolving from a React-based training needs database application i
 
 **Current Evolution Status**: Database cleanup completed (2025-01-28). Stakeholder enhancement project initiated (2025-01-29) to align with industry best practices.
 
+## Backend Architecture & Local Mode (2026-10-02)
+
+The app can run against **Supabase** or a **local PostgreSQL stack** (no cloud), chosen by `VITE_DB_BACKEND`. Full guide: `LOCAL_SETUP.md`.
+
+- **Single client**: every module imports `supabase` from `src/core/services/supabaseClient.js`. In local mode that is a PostgREST client (`@supabase/postgrest-js`) + `localAuthClient.js`, exposing the same `from/rpc/auth` API. Never create another Supabase client.
+- **Local stack**: embedded PostgreSQL 17 (`embedded-postgres`) → PostgREST 12.2 (`tools/postgrest.exe`) → `server/auth` (Express, bcrypt, JWT). `npm run local` starts it all.
+- **Schema = migrations**: `db/migrations/*.sql`, applied by `npm run db:migrate`. `0000_supabase_compat.sql` provides Supabase's roles, `auth.uid()` and `auth.users`, so RLS policies run unchanged. `0001_baseline.sql` is pulled from Supabase (`npm run db:pull-schema`). Add new numbered files; never edit applied ones. `archive/sql/` holds old ad-hoc scripts (not run).
+- **Security rules**:
+  - Nothing privileged may use a `VITE_` env var, because Vite bundles every `VITE_` var into browser JS.
+  - Admin user operations go through `src/core/services/adminUsersApi.js` → `server/auth` `/admin/*`, which checks for the `admin`/`super_admin` role.
+  - No `execute_sql`-style RPCs. Schema changes go in migrations.
+- **Tests**: `npm test` (Jest unit tests in `src/**/__tests__`) and `npm run test:local-stack` (backend integration).
+- **Lint**: `eslint.config.js` added. Existing warnings are tolerated; keep errors at zero.
+- **Production builds** strip `console.log/info/debug` (Vite `esbuild.pure`).
+
 ## Database Cleanup Initiative (2025-01-28)
 
 ### Overview
