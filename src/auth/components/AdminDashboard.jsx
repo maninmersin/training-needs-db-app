@@ -1,8 +1,8 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { 
-  FaCogs, FaUsers, FaUserShield, FaKey, FaUserCog,
-  FaDatabase, FaLock, FaChartLine 
+import {
+  FaCogs, FaUsers, FaKey, FaUserCog,
+  FaLock, FaChartLine
 } from 'react-icons/fa';
 import './AdminDashboard.css';
 
@@ -14,13 +14,6 @@ const AdminDashboard = () => {
       icon: FaUserCog,
       path: '/user-management',
       color: '#3498db'
-    },
-    {
-      title: 'Stakeholder Access',
-      description: 'Configure stakeholder permissions and access levels',
-      icon: FaUserShield,
-      path: '/stakeholder-access',
-      color: '#9b59b6'
     },
     {
       title: 'Roles & Permissions',

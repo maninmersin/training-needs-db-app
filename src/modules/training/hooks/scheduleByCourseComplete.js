@@ -108,11 +108,16 @@ function _collectCourseLocationSessions(course, groupedEndUsers, currentCriteria
     const usersInGroup = groupedEndUsers[groupName];
     const courseUsers = usersInGroup.filter(user => user.course_id === course.course_id);
     const attendees = courseUsers.length;
-    
+
+    console.log(`\n🎯 Processing ${course.course_name} at ${groupName}:`);
+    console.log(`   Total users in location: ${usersInGroup.length}`);
+    console.log(`   Users for this course: ${attendees}`);
+    console.log(`   Max attendees per session: ${currentCriteria.max_attendees}`);
+
     if (attendees > 0) {
       const sessionGroups = createSessionGroups(courseUsers, currentCriteria.max_attendees);
       const maxClassrooms = locationClassroomReqs.get(groupName)?.numberOfClassrooms || 1;
-      
+
       console.log(`📍 Location ${groupName}: ${attendees} attendees, ${sessionGroups.length} sessions, ${maxClassrooms} classrooms`);
       
       courseLocationSessions.push({
@@ -200,10 +205,12 @@ async function _scheduleAllGroupsAtLocation(
   const duration = Number(course.duration_hrs);
   let locationCurrentTime = new Date(startTime);
   let allGroupsScheduled = false;
-  let maxIterations = 50;
+  // CRITICAL FIX: Dynamic iteration limit based on number of sessions
+  // Previously was fixed at 50, which could fail for schedules with many sessions
+  const maxIterations = Math.max(100, sessionGroups.length * 20);
   let iterationCount = 0;
-  
-  console.log(`📍 Scheduling ${sessionGroups.length} groups at ${locationName} (${maxClassrooms} classrooms)`);
+
+  console.log(`📍 Scheduling ${sessionGroups.length} groups at ${locationName} (${maxClassrooms} classrooms, max ${maxIterations} iterations)`);
   
   // Create list of sessions to schedule at this location
   const locationSessions = sessionGroups.map(sessionGroup => ({
@@ -263,13 +270,38 @@ async function _scheduleAllGroupsAtLocation(
     }
   }
   
-  if (iterationCount >= maxIterations) {
-    console.warn(`⚠️ Reached maximum iterations (${maxIterations}) for ${locationName}`);
-  }
-  
+  // CRITICAL FIX: Error handling for incomplete scheduling
   const scheduledCount = locationSessions.filter(s => s.scheduled).length;
+
+  if (!allGroupsScheduled) {
+    const unscheduledSessions = locationSessions
+      .filter(s => !s.scheduled)
+      .map(s => `Group ${s.sessionGroup.sessionNumber}`)
+      .join(', ');
+
+    console.error(`❌ FAILED to schedule all sessions at ${locationName}`);
+    console.error(`   Scheduled: ${scheduledCount}/${sessionGroups.length}`);
+    console.error(`   Unscheduled: ${unscheduledSessions}`);
+    console.error(`   Iterations used: ${iterationCount}/${maxIterations}`);
+
+    if (iterationCount >= maxIterations) {
+      console.error(`   Reason: Reached maximum iterations limit`);
+    }
+
+    throw new Error(
+      `Failed to schedule all sessions for "${course.course_name}" at ${locationName}.\n\n` +
+      `Scheduled: ${scheduledCount}/${sessionGroups.length} sessions (missing: ${unscheduledSessions})\n\n` +
+      `This usually means there aren't enough available time slots in your schedule.\n\n` +
+      `Try one of these solutions:\n` +
+      `• Increase "Total Weeks" in Stage 1\n` +
+      `• Add more "Scheduling Days" (e.g., include Friday or Saturday)\n` +
+      `• Reduce "Daily Hours" to allow more scheduling flexibility\n` +
+      `• Reduce "Max Attendees" to create fewer, smaller sessions`
+    );
+  }
+
   console.log(`✅ ${locationName} completed: ${scheduledCount}/${sessionGroups.length} groups scheduled`);
-  
+
   return {
     allSessionsScheduled: allGroupsScheduled,
     scheduledCount,

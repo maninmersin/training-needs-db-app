@@ -544,6 +544,20 @@ const ScheduleEditor = ({ schedule, onSave, onBack }) => {
     try {
       setSaving(true);
 
+      // CRITICAL FIX: Parse schedule criteria to get correct max_attendees and training_locations
+      let parsedCriteria = {};
+      try {
+        parsedCriteria = typeof schedule.criteria === 'string'
+          ? JSON.parse(schedule.criteria)
+          : schedule.criteria || {};
+        console.log('📋 Parsed schedule criteria:', {
+          max_attendees: parsedCriteria.max_attendees,
+          training_locations: parsedCriteria.selected_training_locations
+        });
+      } catch (e) {
+        console.error('❌ Error parsing schedule criteria:', e);
+      }
+
       // Debug: Log the sessions structure before conversion
       console.log('📊 DEBUG: sessionsForCalendar structure before save:', {
         keys: Object.keys(sessionsForCalendar),
@@ -667,7 +681,9 @@ const ScheduleEditor = ({ schedule, onSave, onBack }) => {
             session_title: session.title || 'Untitled Session',
             session_part_number: sessionPartNumber,
             classroom_number: classroomNumber,
-            training_location: session.location || 'TBD',
+            // NOTE: Each session can have its own training_location, so preserve session-specific location
+            // If you need to bulk-update all sessions to a new location, use the "Add Course" feature
+            training_location: session.location || session.training_location || 'TBD',
             functional_area: session.functional_area || 'General',
             start_datetime: (() => {
               const startDate = new Date(session.start);
@@ -685,14 +701,13 @@ const ScheduleEditor = ({ schedule, onSave, onBack }) => {
               }
               return toLocalDateTime(endDate);
             })(),
-            duration_hours: session.duration || ((new Date(session.end) - new Date(session.start)) / (1000 * 60 * 60)) || 1,
-            max_attendees: session.max_participants || 10,
-            current_attendees: session.current_participants || 0,
+            duration_hrs: session.duration || ((new Date(session.end) - new Date(session.start)) / (1000 * 60 * 60)) || 1,
+            // CRITICAL FIX: Use max_attendees from schedule criteria (source of truth), not from session
+            // Write to BOTH fields to ensure compatibility with database schema
+            max_attendees: parsedCriteria.max_attendees || session.max_participants || session.max_attendees || null,
+            max_participants: parsedCriteria.max_attendees || session.max_participants || session.max_attendees || null,
             instructor_id: session.trainer_id || null,
             instructor_name: session.trainer_name || '',
-            color_theme: session.color || '#007bff',
-            text_color: session.text_color || '#ffffff',
-            background_color: session.background_color || '#007bff20',
             notes: session.notes || '',
             session_status: 'scheduled',
             project_id: currentProject?.id || schedule.project_id,
@@ -991,7 +1006,12 @@ const ScheduleEditor = ({ schedule, onSave, onBack }) => {
     });
     setSessionsForCalendar(updatedSessions);
     setHasChanges(true);
-    
+
+    // Save unsaved changes to sessionStorage to persist across component unmounts
+    const sessionStorageKey = `unsaved-sessions-${schedule.id}`;
+    sessionStorage.setItem(sessionStorageKey, JSON.stringify(updatedSessions));
+    console.log('💾 Saved newly added courses to sessionStorage');
+
     // Show success message
     alert(`✅ Course added successfully! ${newSessions.length} session${newSessions.length !== 1 ? 's' : ''} created.`);
   };

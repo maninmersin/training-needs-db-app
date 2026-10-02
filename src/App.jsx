@@ -1,6 +1,6 @@
 import { useState, useEffect, Suspense, lazy } from 'react';
 import { BrowserRouter as Router, Routes, Route, useNavigate } from 'react-router-dom';
-import { ModularSidebar, ErrorBoundary, Home, ModuleSwitcher, Breadcrumb, UserHeader } from '@core/components';
+import { ModularSidebar, ErrorBoundary, ModuleSwitcher, Breadcrumb, UserHeader } from '@core/components';
 import { LoginComponent, ProtectedRoute } from '@auth/components';
 import { ModuleProvider } from '@core/contexts';
 import { ProjectProvider } from '@core/contexts/ProjectContext';
@@ -16,6 +16,7 @@ const ImportExportEndUsers = lazy(() => import('@shared/components/ImportExportE
 const PivotReport = lazy(() => import('@shared/components/PivotReport'));
 const CoursesForm = lazy(() => import('@shared/components/CoursesForm'));
 const ImportExportCourses = lazy(() => import('@shared/components/ImportExportCourses'));
+const ImportExportTrainingData = lazy(() => import('@shared/components/ImportExportTrainingData'));
 const ExportAllData = lazy(() => import('@shared/components/ExportAllData'));
 const TrainingSessionCalculator = lazy(() => import('@modules/training/components/tsc-wizard/TrainingSessionCalculator'));
 const TrainingSessionCalendar = lazy(() => import('@modules/training/components/calendar/TrainingSessionCalendar'));
@@ -30,43 +31,17 @@ const ReferenceDataManager = lazy(() => import('@shared/components/ReferenceData
 const AttendanceTracker = lazy(() => import('@modules/training/components/attendance/AttendanceTracker'));
 const AttendanceReports = lazy(() => import('@modules/training/components/attendance/AttendanceReports'));
 const AttendanceComplianceDashboard = lazy(() => import('@modules/training/components/attendance/AttendanceComplianceDashboard'));
-const StakeholderReferenceDataManager = lazy(() => import('@modules/stakeholders/components/StakeholderReferenceDataManager'));
 
 // User management components
 const UserManagementDashboard = lazy(() => import('@auth/components/UserManagementDashboard'));
-const StakeholderAccessManager = lazy(() => import('@auth/components/StakeholderAccessManager'));
 const RolePermissionsEditor = lazy(() => import('@auth/components/RolePermissionsEditor'));
 
 // Module Dashboards
 const TrainingDashboard = lazy(() => import('@modules/training/components/TrainingDashboard'));
 const AdminDashboard = lazy(() => import('@auth/components/AdminDashboard'));
-const OtherToolsDashboard = lazy(() => import('@modules/other-tools/components/OtherToolsDashboard'));
 
 // Project Management Components
 const ProjectSelectionDashboard = lazy(() => import('@modules/projects/components/ProjectSelectionDashboard'));
-
-// Stakeholder Management Components
-const StakeholderDashboard = lazy(() => import('@modules/stakeholders/components/StakeholderDashboard'));
-const StakeholderDirectory = lazy(() => import('@modules/stakeholders/components/StakeholderDirectory'));
-const InfluenceInterestMatrix = lazy(() => import('@modules/stakeholders/components/InfluenceInterestMatrix'));
-
-// Impact Assessment Components
-const ImpactAssessmentDashboard = lazy(() => import('@modules/impact-assessment/components/ImpactAssessmentDashboard'));
-const AssessmentManager = lazy(() => import('@modules/impact-assessment/components/AssessmentManager'));
-const AssessmentDetailView = lazy(() => import('@modules/impact-assessment/components/AssessmentDetailView'));
-const ImpactAnalyticsDashboard = lazy(() => import('@modules/impact-assessment/components/analytics/ImpactAnalyticsDashboard'));
-const StakeholderImpactCorrelationView = lazy(() => import('@modules/impact-assessment/components/StakeholderImpactCorrelationView'));
-const ResponsibilityChangeTrackingDashboard = lazy(() => import('@modules/impact-assessment/components/ResponsibilityChangeTrackingDashboard'));
-const RACIComparisonMatrices = lazy(() => import('@modules/impact-assessment/components/RACIComparisonMatrices'));
-
-// Impact Assessment Setup Components
-const ProcessHierarchyManager = lazy(() => import('@modules/impact-assessment/components/ProcessHierarchyManager'));
-const ProcessHierarchyImportExport = lazy(() => import('@modules/impact-assessment/components/ProcessHierarchyImportExport'));
-const ReferenceDataSetup = lazy(() => import('@modules/impact-assessment/components/ReferenceDataSetup'));
-
-// Other Tools Pages
-const POAPLandingPage = lazy(() => import('@modules/other-tools/pages/POAPLandingPage'));
-const POAPTimelineEditor = lazy(() => import('@modules/other-tools/pages/POAPTimelineEditor'));
 
 import './index.css';
 
@@ -146,48 +121,13 @@ function App() {
             } />
             
             <Route element={<ProtectedRoute />}>
-              <Route path="/" element={<Home />} />
+              <Route path="/" element={<TrainingDashboard />} />
               <Route path="/projects" element={<ProjectSelectionDashboard />} />
               
               {/* Module Routes */}
               <Route path="/training" element={<TrainingDashboard />} />
               <Route path="/admin" element={<AdminDashboard />} />
-              <Route path="/other-tools" element={<OtherToolsDashboard />} />
-              <Route path="/other-tools/poap" element={<POAPLandingPage />} />
-              <Route path="/other-tools/poap/editor" element={<POAPTimelineEditor />} />
-              
-              {/* Stakeholder Management Routes */}
-              <Route path="/stakeholder-engagement" element={<StakeholderDashboard />} />
-              <Route path="/stakeholder-directory" element={<StakeholderDirectory />} />
-              <Route path="/influence-interest-matrix" element={<InfluenceInterestMatrix />} />
-              <Route path="/stakeholder-reference-data" element={<StakeholderReferenceDataManager />} />
-              
-              {/* Impact Assessment Routes */}
-              <Route path="/impact-assessment" element={<ImpactAssessmentDashboard />} />
-              <Route path="/impact-assessment/manage" element={<AssessmentManager />} />
-              <Route path="/impact-assessment/:assessmentId" element={<AssessmentDetailView />} />
-              
-              {/* Impact Analytics Routes */}
-              <Route path="/impact-assessment/:assessmentId/analytics" element={<ImpactAnalyticsDashboard />} />
-              <Route path="/impact-assessment/analytics" element={<ImpactAnalyticsDashboard />} />
-              
-              {/* RACI Analysis Routes */}
-              <Route path="/impact-assessment/:assessmentId/stakeholder-correlation" element={<StakeholderImpactCorrelationView />} />
-              <Route path="/impact-assessment/:assessmentId/responsibility-tracking" element={<ResponsibilityChangeTrackingDashboard />} />
-              <Route path="/impact-assessment/:assessmentId/raci-comparison" element={<RACIComparisonMatrices />} />
-              
-              {/* Global RACI Analysis Routes (for all assessments) */}
-              <Route path="/impact-assessment/stakeholder-correlation" element={<StakeholderImpactCorrelationView />} />
-              <Route path="/impact-assessment/responsibility-tracking" element={<ResponsibilityChangeTrackingDashboard />} />
-              <Route path="/impact-assessment/raci-comparison" element={<RACIComparisonMatrices />} />
-              
-              {/* Setup & Configuration Routes */}
-              <Route path="/impact-assessment/setup/hierarchy" element={<ProcessHierarchyManager />} />
-              <Route path="/impact-assessment/setup/hierarchy/:assessmentId" element={<ProcessHierarchyManager />} />
-              <Route path="/impact-assessment/setup/import-export" element={<ProcessHierarchyImportExport />} />
-              <Route path="/impact-assessment/setup/import-export/:assessmentId" element={<ProcessHierarchyImportExport />} />
-              <Route path="/impact-assessment/setup/reference-data" element={<ReferenceDataSetup />} />
-              
+
               {/* Legacy routes maintained for backward compatibility */}
               <Route path="/dynamic-users" element={<DynamicUserForm />} />
               <Route path="/import-export" element={<ImportExportEndUsers />} />
@@ -195,6 +135,7 @@ function App() {
               <Route path="/pivot-report" element={<PivotReport />} />
               <Route path="/courses" element={<CoursesForm />} />
               <Route path="/import-export-courses" element={<ImportExportCourses />} />
+              <Route path="/import-export-training-data" element={<ImportExportTrainingData />} />
               <Route path="/reference-data" element={<ReferenceDataManager />} />
               <Route path="/export-all-data" element={<ExportAllData />} />
               <Route path="/training-sessions" element={<TrainingSessionCalculator/>} />
@@ -211,7 +152,6 @@ function App() {
               
               {/* User Management Routes */}
               <Route path="/user-management" element={<UserManagementDashboard />} />
-              <Route path="/stakeholder-access" element={<StakeholderAccessManager />} />
               <Route path="/role-permissions" element={<RolePermissionsEditor />} />
             </Route>
             </Routes>

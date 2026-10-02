@@ -8,12 +8,12 @@ import TSCProcessDataStage from './TSCProcessDataStage';
 import TSCReviewAdjustStage from './TSCReviewAdjustStage';
 import './TSCWizard.css';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { 
-  calculateClassroomsNeeded, 
+import {
+  calculateClassroomsNeeded,
   ClassroomOccupancyTracker,
-  validateClassroomCapacity 
+  validateClassroomCapacity
 } from '@core/utils/classroomCalculations';
-import { getCurrentLocalDateTime } from '@core/utils/dateTimeUtils';
+import { getCurrentLocalDateTime, createLocalDateFromString } from '@core/utils/dateTimeUtils';
 import { useSchedulingEngine } from '@modules/training/hooks/useSchedulingEngine';
 import { 
   saveTrainingSchedule, 
@@ -43,9 +43,12 @@ const TSCWizard = () => {
   const [filteredData, setFilteredData] = useState([]);
   const [groupingKeys, setGroupingKeys] = useState([]);
   const [pivotState, setPivotState] = useState({});
-  
+
   // Simple schedule name state (read-only wizard with save only)
   const [scheduleName, setScheduleName] = useState('');
+
+  // Key for forcing re-mount of stage 0 when navigating back to it
+  const [stage0MountKey, setStage0MountKey] = useState(Date.now());
 
   // Reset wizard to beginning
   const resetWizard = () => {
@@ -62,6 +65,7 @@ const TSCWizard = () => {
     setGroupingKeys([]);
     setPivotState({});
     setScheduleName('');
+    setStage0MountKey(Date.now()); // Force re-mount of stage 0 to refresh data
     localStorage.removeItem('tscWizardState');
   };
 
@@ -95,31 +99,32 @@ const TSCWizard = () => {
         throw new Error('No project selected');
       }
 
-      const { data: courses, error: coursesError } = await supabase
-        .from('courses')
-        .select('*')
-        .eq('project_id', currentProject.id);
-
-      const { data: projectRoles, error: rolesError } = await supabase
-        .from('project_roles')
-        .select('*')
-        .eq('project_id', currentProject.id);
-
-      if (coursesError || rolesError) {
-        console.error('❌ Courses Error:', coursesError?.message);
-        console.error('❌ Roles Error:', rolesError?.message);
-        throw new Error('One or more datasets failed to load');
-      }
-
-      console.log('✅ Courses fetched:', courses);
-      console.log('✅ Project roles fetched:', projectRoles);
-
-      setSchedulesList({
-        courses,
-        end_users: projectRoles
+      // Extract unique courses from endUsers data (already filtered in Define Criteria stage)
+      const coursesMap = new Map();
+      endUsers.forEach(user => {
+        if (!coursesMap.has(user.course_id)) {
+          coursesMap.set(user.course_id, {
+            course_id: user.course_id,
+            course_name: user.course_name,
+            functional_area: user.functional_area,
+            duration_hrs: user.duration_hrs
+          });
+        }
       });
 
-      return { courses, projectRoles };
+      const courses = Array.from(coursesMap.values());
+
+      console.log('✅ Courses extracted from endUsers:', courses);
+      console.log('✅ End users data:', endUsers);
+
+      // For flat table approach, endUsers already contains the user-course combinations
+      setSchedulesList({
+        courses,
+        end_users: endUsers
+      });
+
+      // Return in expected format (projectRoles not used in flat table approach)
+      return { courses, projectRoles: endUsers };
     } catch (error) {
       console.error('🔥 Fetch error:', error.message);
       throw error;
@@ -332,9 +337,10 @@ const TSCWizard = () => {
             if (classroom.sessionGroups.length === 0) continue;
             
             const classroomKey = `Classroom ${classroom.classroomNum}`;
-            
+
             // Initialize start time for this classroom
-            let currentDate = new Date(currentCriteria.start_date);
+            // TIMEZONE FIX: Create Date in LOCAL timezone, not UTC
+            let currentDate = createLocalDateFromString(currentCriteria.start_date);
             while (!currentCriteria.scheduling_days.includes(dayNames[currentDate.getDay()])) {
               currentDate.setDate(currentDate.getDate() + 1);
             }
@@ -696,7 +702,14 @@ const TSCWizard = () => {
   };
 
   const handlePrevious = () => {
-    setVisibleStage(prev => Math.max(prev - 1, 0));
+    setVisibleStage(prev => {
+      const newStage = Math.max(prev - 1, 0);
+      // If navigating back to stage 0, update mount key to force re-fetch of data
+      if (newStage === 0) {
+        setStage0MountKey(Date.now());
+      }
+      return newStage;
+    });
   };
 
   const handleFinish = async (scheduleNameFromReview) => {
@@ -742,6 +755,7 @@ const TSCWizard = () => {
       case 0:
         return (
           <TSCDefineCriteriaStage
+            key={`stage-0-${currentProject?.id}-${stage0MountKey}`}
             criteria={criteria[selectedFunctionalArea] || {}}
             setCriteria={(updated) => setCriteria(prev => ({ ...prev, [selectedFunctionalArea]: updated }))}
             onNextStage={handleNext}

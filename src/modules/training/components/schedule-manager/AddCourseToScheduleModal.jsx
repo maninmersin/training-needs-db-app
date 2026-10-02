@@ -3,6 +3,7 @@ import { supabase } from '@core/services/supabaseClient';
 import { useProject } from '@core/contexts/ProjectContext';
 import { generateEventIdFromSession } from '@core/utils/eventIdUtils';
 import { toLocalDateTime } from '@core/utils/dateTimeUtils';
+import { generateStableSessionId } from '@core/services/scheduleService';
 import './AddCourseToScheduleModal.css';
 
 const AddCourseToScheduleModal = ({ isOpen, onClose, schedule, currentSessions, onCourseAdded }) => {
@@ -22,6 +23,58 @@ const AddCourseToScheduleModal = ({ isOpen, onClose, schedule, currentSessions, 
     maxParticipants: 10
   });
   const [availableClassrooms, setAvailableClassrooms] = useState([]);
+  const [nextSessionNumber, setNextSessionNumber] = useState(1);
+
+  // Calculate next available session number for the selected course
+  const calculateNextSessionNumber = (courseId) => {
+    if (!courseId || !currentSessions) {
+      console.log('🔢 No courseId or currentSessions, defaulting to 1');
+      return 1;
+    }
+
+    let maxSessionNumber = 0;
+    let sessionsFound = 0;
+
+    console.log('🔢 Calculating next session number for course:', courseId);
+    console.log('🔢 Current sessions structure:', currentSessions);
+
+    // Traverse the nested structure to find all sessions for this course
+    Object.entries(currentSessions).forEach(([faKey, trainingLocations]) => {
+      if (trainingLocations && typeof trainingLocations === 'object') {
+        Object.entries(trainingLocations).forEach(([locKey, classrooms]) => {
+          if (classrooms && typeof classrooms === 'object') {
+            Object.entries(classrooms).forEach(([classKey, sessionsList]) => {
+              if (Array.isArray(sessionsList)) {
+                sessionsList.forEach(session => {
+                  console.log('🔢 Checking session:', {
+                    course_id: session.course_id,
+                    course_name: session.course?.course_name,
+                    session_number: session.sessionNumber || session.session_number,
+                    location: `${faKey}/${locKey}/${classKey}`
+                  });
+
+                  // Check both session.course_id and session.course.course_id
+                  const sessionCourseId = session.course_id || session.course?.course_id;
+                  const sessionNumber = session.sessionNumber || session.session_number;
+
+                  if (sessionCourseId === courseId && sessionNumber) {
+                    sessionsFound++;
+                    maxSessionNumber = Math.max(maxSessionNumber, sessionNumber);
+                    console.log(`🔢 Found matching session! Number: ${sessionNumber}, Max so far: ${maxSessionNumber}`);
+                  }
+                });
+              }
+            });
+          }
+        });
+      }
+    });
+
+    const nextNumber = maxSessionNumber + 1;
+    console.log(`🔢 Final result: Found ${sessionsFound} sessions, max number was ${maxSessionNumber}, next will be ${nextNumber}`);
+
+    return nextNumber;
+  };
 
   // Get functional areas and training locations from the current schedule
   const getScheduleContext = async () => {
@@ -105,25 +158,46 @@ const AddCourseToScheduleModal = ({ isOpen, onClose, schedule, currentSessions, 
         setLoading(true);
         setError(null);
 
-        // Get courses for the current project only
-        const { data: allCourses, error: coursesError } = await supabase
-          .from('courses')
+        // Fetch training data from flat file (same as TSC Wizard)
+        const { data: trainingData, error: trainingError } = await supabase
+          .from('training_data')
           .select('*')
-          .eq('project_id', currentProject?.id)
-          .order('course_name', { ascending: true });
+          .eq('project_id', currentProject?.id);
 
-        if (coursesError) throw coursesError;
+        if (trainingError) throw trainingError;
 
-        // Get all available functional areas and training locations 
+        // Extract unique courses from training data (same logic as TSC Wizard)
+        const coursesMap = new Map();
+        trainingData.forEach(row => {
+          if (!coursesMap.has(row.course_id)) {
+            coursesMap.set(row.course_id, {
+              course_id: row.course_id,
+              course_name: row.course_name,
+              duration_hrs: row.duration_hrs,
+              functional_area: row.functional_area,
+              location: row.user_location || 'TBD',
+              topic: row.course_topic,
+              sub_topic: row.course_sub_topic,
+              application: row.course_application,
+              priority: row.course_priority
+            });
+          }
+        });
+
+        const allCourses = Array.from(coursesMap.values()).sort((a, b) =>
+          (a.course_name || '').localeCompare(b.course_name || '')
+        );
+
+        // Get all available functional areas and training locations
         const { functionalAreas, trainingLocations } = await getScheduleContext();
 
-        console.log('🆕 Add Course - Loaded all courses:', {
+        console.log('🆕 Add Course - Loaded all courses from flat file:', {
           totalCourses: allCourses.length,
           availableLocations: trainingLocations.length,
           availableFunctionalAreas: functionalAreas.length
         });
 
-        // Use ALL courses - no filtering for complete freedom
+        // Use ALL courses from flat file
         setCourses(allCourses || []);
         setTrainingLocations(trainingLocations);
 
@@ -220,7 +294,13 @@ const AddCourseToScheduleModal = ({ isOpen, onClose, schedule, currentSessions, 
   const handleCourseSelect = (courseId) => {
     const course = courses.find(c => c.course_id === courseId);
     setSelectedCourse(course);
+
+    // Calculate next available session number for this course
+    const nextNumber = calculateNextSessionNumber(courseId);
+    setNextSessionNumber(nextNumber);
+
     console.log('📋 Selected course:', course);
+    console.log('📋 Next session number will be:', nextNumber);
   };
 
   // Generate sessions for the selected course
@@ -229,14 +309,31 @@ const AddCourseToScheduleModal = ({ isOpen, onClose, schedule, currentSessions, 
       throw new Error('Please select a course, training location, and classroom');
     }
 
+    // Extract AM/PM time blocks from schedule criteria (defaults match TSC Wizard)
+    const parsedCriteria = typeof schedule.criteria === 'string'
+      ? JSON.parse(schedule.criteria)
+      : (schedule.criteria || {});
+
+    const amStartHour = parsedCriteria.am_start_hour || 9;
+    const amStartMin = parsedCriteria.am_start_min || 30;
+    const amEndHour = parsedCriteria.am_end_hour || 12;
+    const amEndMin = parsedCriteria.am_end_min || 30;
+    const pmStartHour = parsedCriteria.pm_start_hour || 13;
+    const pmStartMin = parsedCriteria.pm_start_min || 30;
+    const pmEndHour = parsedCriteria.pm_end_hour || 16;
+    const pmEndMin = parsedCriteria.pm_end_min || 30;
+
+    const amBlockHours = (amEndHour + amEndMin / 60) - (amStartHour + amStartMin / 60);
+    const pmBlockHours = (pmEndHour + pmEndMin / 60) - (pmStartHour + pmStartMin / 60);
+
     const sessions = [];
-    const startDateTime = new Date(`${formData.startDate} ${formData.startTime}`);
     const courseDurationHours = selectedCourse.duration_hrs || 2;
-    
-    // Determine if this is a multi-day course and how many parts
-    const isMultiDay = courseDurationHours > 6; // Courses longer than 6 hours are typically multi-day
-    const partsPerDay = Math.ceil(courseDurationHours / 4); // 4-hour max per day
-    const hoursPerPart = isMultiDay ? Math.min(4, courseDurationHours / partsPerDay) : courseDurationHours;
+
+    console.log('🕐 Time blocks:', {
+      amBlock: `${amStartHour}:${amStartMin.toString().padStart(2, '0')} - ${amEndHour}:${amEndMin.toString().padStart(2, '0')} (${amBlockHours}hrs)`,
+      pmBlock: `${pmStartHour}:${pmStartMin.toString().padStart(2, '0')} - ${pmEndHour}:${pmEndMin.toString().padStart(2, '0')} (${pmBlockHours}hrs)`,
+      courseDuration: `${courseDurationHours}hrs`
+    });
 
     // Find the correct functional area and compound location key to use
     let targetFunctionalArea = null;
@@ -289,73 +386,227 @@ const AddCourseToScheduleModal = ({ isOpen, onClose, schedule, currentSessions, 
       targetClassroom = `Classroom ${nextNumber}`;
     }
 
-    for (let groupNum = 1; groupNum <= formData.numberOfGroups; groupNum++) {
-      // Calculate base session start time based on spacing between groups
-      let baseSessionStart = new Date(startDateTime);
+    // Start from the next available session number for this course
+    const startingSessionNumber = nextSessionNumber;
+
+    for (let i = 0; i < formData.numberOfGroups; i++) {
+      const groupNum = startingSessionNumber + i;
+
+      // Calculate base session start date based on spacing between groups
+      let currentDate = new Date(`${formData.startDate}T00:00:00`);
       if (formData.sessionSpacing === 'daily') {
-        baseSessionStart.setDate(startDateTime.getDate() + (groupNum - 1));
+        currentDate.setDate(currentDate.getDate() + i);
       } else if (formData.sessionSpacing === 'weekly') {
-        baseSessionStart.setDate(startDateTime.getDate() + ((groupNum - 1) * 7));
+        currentDate.setDate(currentDate.getDate() + (i * 7));
       }
 
-      // Generate sessions for each part of the course
-      for (let partNum = 1; partNum <= partsPerDay; partNum++) {
-        // Calculate session start time for this part
-        let sessionStart = new Date(baseSessionStart);
-        if (partNum > 1) {
-          // Add days for subsequent parts (Part 2 = next day, etc.)
-          sessionStart.setDate(baseSessionStart.getDate() + (partNum - 1));
+      // Use user-selected start time or default to AM start
+      const userStartTime = formData.startTime.split(':');
+      const userStartHour = parseInt(userStartTime[0]);
+      const userStartMin = parseInt(userStartTime[1]);
+      currentDate.setHours(userStartHour, userStartMin, 0, 0);
+
+      // Handle multi-day course splitting based on AM/PM blocks (following TSC Wizard logic)
+      if (courseDurationHours <= amBlockHours) {
+        // Single AM session
+        const sessionStart = new Date(currentDate);
+        sessionStart.setHours(amStartHour, amStartMin, 0, 0);
+        const sessionEnd = new Date(sessionStart);
+        sessionEnd.setTime(sessionEnd.getTime() + (courseDurationHours * 60 * 60 * 1000));
+
+        const sessionTitle = `${selectedCourse.course_name} - Group ${groupNum}`;
+
+        sessions.push(createSessionObject(
+          sessionTitle, sessionStart, sessionEnd, groupNum, 1, 1,
+          courseDurationHours, targetFunctionalArea, targetLocationKey, targetClassroom
+        ));
+
+      } else if (courseDurationHours <= pmBlockHours) {
+        // Single PM session
+        const sessionStart = new Date(currentDate);
+        sessionStart.setHours(pmStartHour, pmStartMin, 0, 0);
+        const sessionEnd = new Date(sessionStart);
+        sessionEnd.setTime(sessionEnd.getTime() + (courseDurationHours * 60 * 60 * 1000));
+
+        const sessionTitle = `${selectedCourse.course_name} - Group ${groupNum}`;
+
+        sessions.push(createSessionObject(
+          sessionTitle, sessionStart, sessionEnd, groupNum, 1, 1,
+          courseDurationHours, targetFunctionalArea, targetLocationKey, targetClassroom
+        ));
+
+      } else if (courseDurationHours <= (amBlockHours + pmBlockHours)) {
+        // Split across AM and PM on same day
+        const amDuration = amBlockHours;
+        const pmDuration = courseDurationHours - amBlockHours;
+
+        // AM Part 1
+        const amStart = new Date(currentDate);
+        amStart.setHours(amStartHour, amStartMin, 0, 0);
+        const amEnd = new Date(amStart);
+        amEnd.setHours(amEndHour, amEndMin, 0, 0);
+
+        sessions.push(createSessionObject(
+          `${selectedCourse.course_name} - Group ${groupNum} (Part 1)`,
+          amStart, amEnd, groupNum, 1, 2,
+          amDuration, targetFunctionalArea, targetLocationKey, targetClassroom
+        ));
+
+        // PM Part 2
+        const pmStart = new Date(currentDate);
+        pmStart.setHours(pmStartHour, pmStartMin, 0, 0);
+        const pmEnd = new Date(pmStart);
+        pmEnd.setTime(pmEnd.getTime() + (pmDuration * 60 * 60 * 1000));
+
+        sessions.push(createSessionObject(
+          `${selectedCourse.course_name} - Group ${groupNum} (Part 2)`,
+          pmStart, pmEnd, groupNum, 2, 2,
+          pmDuration, targetFunctionalArea, targetLocationKey, targetClassroom
+        ));
+
+      } else {
+        // Multi-day course: split into multiple AM/PM sessions
+        let remainingDuration = courseDurationHours;
+        let partNumber = 1;
+        let dayOffset = 0;
+
+        while (remainingDuration > 0) {
+          const sessionDate = new Date(currentDate);
+          sessionDate.setDate(currentDate.getDate() + dayOffset);
+
+          // Determine if this part fits in AM or PM block
+          const partDuration = Math.min(remainingDuration, amBlockHours + pmBlockHours);
+
+          if (partDuration <= amBlockHours) {
+            // Fits in AM block
+            const partStart = new Date(sessionDate);
+            partStart.setHours(amStartHour, amStartMin, 0, 0);
+            const partEnd = new Date(partStart);
+            partEnd.setTime(partEnd.getTime() + (partDuration * 60 * 60 * 1000));
+
+            sessions.push(createSessionObject(
+              `${selectedCourse.course_name} - Group ${groupNum} (Part ${partNumber})`,
+              partStart, partEnd, groupNum, partNumber, Math.ceil(courseDurationHours / (amBlockHours + pmBlockHours) * 2),
+              partDuration, targetFunctionalArea, targetLocationKey, targetClassroom
+            ));
+
+            remainingDuration -= partDuration;
+            partNumber++;
+            dayOffset++;
+
+          } else if (partDuration <= pmBlockHours) {
+            // Fits in PM block
+            const partStart = new Date(sessionDate);
+            partStart.setHours(pmStartHour, pmStartMin, 0, 0);
+            const partEnd = new Date(partStart);
+            partEnd.setTime(partEnd.getTime() + (partDuration * 60 * 60 * 1000));
+
+            sessions.push(createSessionObject(
+              `${selectedCourse.course_name} - Group ${groupNum} (Part ${partNumber})`,
+              partStart, partEnd, groupNum, partNumber, Math.ceil(courseDurationHours / (amBlockHours + pmBlockHours) * 2),
+              partDuration, targetFunctionalArea, targetLocationKey, targetClassroom
+            ));
+
+            remainingDuration -= partDuration;
+            partNumber++;
+            dayOffset++;
+
+          } else {
+            // Needs both AM and PM blocks on same day
+            const amDuration = amBlockHours;
+            const pmDuration = Math.min(remainingDuration - amBlockHours, pmBlockHours);
+
+            // AM part
+            const amStart = new Date(sessionDate);
+            amStart.setHours(amStartHour, amStartMin, 0, 0);
+            const amEnd = new Date(amStart);
+            amEnd.setHours(amEndHour, amEndMin, 0, 0);
+
+            sessions.push(createSessionObject(
+              `${selectedCourse.course_name} - Group ${groupNum} (Part ${partNumber})`,
+              amStart, amEnd, groupNum, partNumber, Math.ceil(courseDurationHours / (amBlockHours + pmBlockHours) * 2),
+              amDuration, targetFunctionalArea, targetLocationKey, targetClassroom
+            ));
+
+            remainingDuration -= amDuration;
+            partNumber++;
+
+            // PM part
+            const pmStart = new Date(sessionDate);
+            pmStart.setHours(pmStartHour, pmStartMin, 0, 0);
+            const pmEnd = new Date(pmStart);
+            pmEnd.setTime(pmEnd.getTime() + (pmDuration * 60 * 60 * 1000));
+
+            sessions.push(createSessionObject(
+              `${selectedCourse.course_name} - Group ${groupNum} (Part ${partNumber})`,
+              pmStart, pmEnd, groupNum, partNumber, Math.ceil(courseDurationHours / (amBlockHours + pmBlockHours) * 2),
+              pmDuration, targetFunctionalArea, targetLocationKey, targetClassroom
+            ));
+
+            remainingDuration -= pmDuration;
+            partNumber++;
+            dayOffset++;
+          }
         }
+      }
+    }
 
-        // Calculate end time for this part
-        const sessionEnd = new Date(sessionStart.getTime() + (hoursPerPart * 60 * 60 * 1000));
+    // Helper function to create session object
+    function createSessionObject(sessionTitle, sessionStart, sessionEnd, groupNum, partNum, totalParts, duration, functionalArea, locationKey, classroom) {
+      // Extract classroom number from classroom string (e.g., "Classroom 1" -> 1)
+      const classroomNumberMatch = classroom.match(/\d+/);
+      const classroomNumber = classroomNumberMatch ? parseInt(classroomNumberMatch[0]) : 1;
 
-        // Create session title with part information if multi-day
-        let sessionTitle = `${selectedCourse.course_name} - Group ${groupNum}`;
-        if (isMultiDay && partsPerDay > 1) {
-          sessionTitle += ` (Part ${partNum})`;
-        }
-
-        // Create session object
-        const timestamp = Date.now() + (partNum * 100); // Unique timestamp per part
-        const uniqueId = `${timestamp}-${groupNum}-${partNum}`;
-        
-        const newSession = {
+      const newSession = {
+        course_id: selectedCourse.course_id,
+        course_name: selectedCourse.course_name,
+        session_number: groupNum,
+        sessionNumber: groupNum,
+        session_part_number: partNum,
+        sessionPartNumber: partNum,
+        group_type: [],
+        groupType: [],
+        group_name: `${locationKey} - ${classroom}`,
+        groupName: `${locationKey} - ${classroom}`,
+        start: toLocalDateTime(sessionStart),
+        end: toLocalDateTime(sessionEnd),
+        duration: duration,
+        functional_area: functionalArea,
+        functionalArea: functionalArea,
+        location: formData.trainingLocation,
+        classroom: classroom,
+        classroomNumber: classroomNumber,
+        title: sessionTitle,
+        custom_title: '',
+        trainer_id: null,
+        trainer_name: '',
+        color: '#007bff',
+        text_color: '#ffffff',
+        background_color: '#007bff20',
+        notes: `Added via Add Course functionality - Part ${partNum} of ${totalParts}`,
+        max_participants: formData.maxParticipants,
+        max_attendees: formData.maxParticipants,
+        current_participants: 0,
+        event_id: null,
+        totalParts: totalParts,
+        total_parts: totalParts,
+        partNumber: partNum,
+        isMultiDay: totalParts > 1,
+        is_multi_day_course: totalParts > 1,
+        course_day_sequence: partNum,
+        course: {
           course_id: selectedCourse.course_id,
           course_name: selectedCourse.course_name,
-          session_number: groupNum,
-          group_type: [], // Default empty array
-          group_name: `${targetLocationKey} - ${targetClassroom}`, // Clean group name format
-          start: toLocalDateTime(sessionStart),
-          end: toLocalDateTime(sessionEnd),
-          duration: hoursPerPart,
-          functional_area: targetFunctionalArea, // Use the existing functional area
-          location: formData.trainingLocation,
-          classroom: targetClassroom,
-          title: sessionTitle,
-          custom_title: '',
-          trainer_id: null,
-          trainer_name: '',
-          color: '#007bff', // Default color
-          text_color: '#ffffff',
-          background_color: '#007bff20',
-          notes: `Added via Add Course functionality at ${new Date().toISOString()}${isMultiDay ? ` - Multi-day course part ${partNum} of ${partsPerDay}` : ''}`,
-          max_participants: formData.maxParticipants,
-          current_participants: 0,
-          event_id: null, // Will be generated
-          _uniqueTimestamp: timestamp,
-          // Multi-day course fields
-          totalParts: partsPerDay,
-          partNumber: partNum,
-          sessionPartNumber: partNum, // For compatibility with ScheduleEditor
-          isMultiDay: isMultiDay
-        };
+          duration_hrs: selectedCourse.duration_hrs
+        }
+      };
 
-        // Generate event_id with the unique timestamp included
-        newSession.event_id = generateEventIdFromSession(newSession);
+      // Generate stable session_identifier using the same function as TSC Wizard
+      newSession.session_identifier = generateStableSessionId(newSession);
+      newSession.group_identifier = `${selectedCourse.course_id}-group-${groupNum}`;
+      newSession.event_id = generateEventIdFromSession(newSession);
 
-        sessions.push(newSession);
-      }
+      return newSession;
     }
 
     return sessions;
@@ -431,11 +682,11 @@ const AddCourseToScheduleModal = ({ isOpen, onClose, schedule, currentSessions, 
 
           {!loading && courses.length === 0 && (
             <div className="empty-state">
-              <p>📚 No additional courses available for this schedule.</p>
-              <p><small>All courses from the courses table may already be in this schedule, or there might be no courses in the courses table.</small></p>
+              <p>📚 No courses available to add.</p>
+              <p><small>No courses found in the training_data flat file for this project. Please ensure your training data has been imported.</small></p>
               <div className="debug-info" style={{marginTop: '16px', padding: '12px', background: '#f8f9fa', borderRadius: '4px', fontSize: '12px', textAlign: 'left'}}>
                 <strong>Debug Info:</strong>
-                <p>• Schedule sessions: {schedule?.sessions?.length || 0}</p>
+                <p>• Project ID: {currentProject?.id || 'None'}</p>
                 <p>• Check browser console for detailed filtering logs</p>
               </div>
             </div>
@@ -470,9 +721,31 @@ const AddCourseToScheduleModal = ({ isOpen, onClose, schedule, currentSessions, 
                       <p><strong>Name:</strong> {selectedCourse.course_name}</p>
                       <p><strong>Functional Area:</strong> {selectedCourse.functional_area}</p>
                       <p><strong>Duration:</strong> {selectedCourse.duration_hrs} hours</p>
+                      {(() => {
+                        const parsedCriteria = typeof schedule.criteria === 'string'
+                          ? JSON.parse(schedule.criteria)
+                          : (schedule.criteria || {});
+                        const amHours = ((parsedCriteria.am_end_hour || 12) + (parsedCriteria.am_end_min || 30) / 60) -
+                                       ((parsedCriteria.am_start_hour || 9) + (parsedCriteria.am_start_min || 30) / 60);
+                        const pmHours = ((parsedCriteria.pm_end_hour || 16) + (parsedCriteria.pm_end_min || 30) / 60) -
+                                       ((parsedCriteria.pm_start_hour || 13) + (parsedCriteria.pm_start_min || 30) / 60);
+
+                        if (selectedCourse.duration_hrs <= amHours || selectedCourse.duration_hrs <= pmHours) {
+                          return null; // Single session, no multi-day message
+                        } else if (selectedCourse.duration_hrs <= (amHours + pmHours)) {
+                          return <p><strong>Multi-day:</strong> This course will be split into 2 parts (AM + PM same day)</p>;
+                        } else {
+                          const totalParts = Math.ceil(selectedCourse.duration_hrs / (amHours + pmHours)) * 2;
+                          return <p><strong>Multi-day:</strong> This course will be split into {totalParts} parts across {Math.ceil(totalParts / 2)} days</p>;
+                        }
+                      })()}
                       {selectedCourse.application && (
                         <p><strong>Application:</strong> {selectedCourse.application}</p>
                       )}
+                      <p style={{marginTop: '12px', padding: '8px', background: '#e7f3ff', borderRadius: '4px'}}>
+                        <strong>📊 Next Group Number:</strong> Group {nextSessionNumber}
+                        {formData.numberOfGroups > 1 && ` - ${nextSessionNumber + formData.numberOfGroups - 1}`}
+                      </p>
                     </div>
                   </div>
                 )}

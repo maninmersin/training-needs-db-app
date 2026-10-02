@@ -7,6 +7,7 @@ import interactionPlugin from '@fullcalendar/interaction';
 import { getColorByCourseTitle } from '@core/utils/colorUtils';
 import { supabase } from '@core/services/supabaseClient';
 import { generateEventIdFromSession } from '@core/utils/eventIdUtils';
+import { fromLocalDateTime } from '@core/utils/dateTimeUtils';
 // Temporarily enable debug logging for classroom troubleshooting
 import { debugLog, debugWarn, debugError } from '@core/utils/consoleUtils';
 import './EnhancedScheduleCalendar.css';
@@ -21,7 +22,11 @@ const calculateInitialDate = (sessions) => {
   const sessionDates = sessions
     .map(session => {
       const dateStr = session.start_datetime || session.start;
-      return dateStr ? new Date(dateStr) : null;
+      if (!dateStr) return null;
+      // Use fromLocalDateTime for datetime strings, or parse Date objects directly
+      return (typeof dateStr === 'string' && dateStr.includes('T'))
+        ? fromLocalDateTime(dateStr)
+        : new Date(dateStr);
     })
     .filter(date => date !== null && !isNaN(date.getTime()));
 
@@ -89,7 +94,14 @@ const EnhancedScheduleCalendar = ({
   const memoizedAssignments = useMemo(() => {
     // Only log changes, not on every render
     debugLog(`📊 CALENDAR: Assignments prop changed - length: ${assignments?.length || 0}`);
-    
+
+    // DIAGNOSTIC: Always log assignment changes (ALWAYS VISIBLE)
+    console.log('📊 CALENDAR ASSIGNMENTS UPDATE:', {
+      assignmentsLength: assignments?.length || 0,
+      sampleAssignment: assignments?.[0],
+      hasSessionIdentifier: !!assignments?.[0]?.session_identifier
+    });
+
     // If assignments is null or undefined, return empty array to stabilize
     if (!assignments) {
       return [];
@@ -99,6 +111,8 @@ const EnhancedScheduleCalendar = ({
     return assignments.map(assignment => ({
       id: assignment.id,
       end_user_id: assignment.end_user_id,
+      user_name: assignment.user_name, // ✅ ADDED: User name from flat table
+      user_email: assignment.user_email, // ✅ ADDED: User email from flat table
       session_identifier: assignment.session_identifier,
       session_id: assignment.session_id,
       assignment_level: assignment.assignment_level,
@@ -445,13 +459,26 @@ const EnhancedScheduleCalendar = ({
     
     debugLog(`🎨 RENDERING event "${session.title}" - using cached assignments`);
 
-    // Use cached assignments instead of async loading
-    const cachedAssignments = assignmentsCacheRef.current?.data || userAssignments || [];
-    
+    // Use assignments prop if available, otherwise fall back to cached/fetched assignments
+    // PRIORITY: assignments prop (passed from parent) > cached > userAssignments state
+    const cachedAssignments = memoizedAssignments?.length > 0 ? memoizedAssignments :
+                              (assignmentsCacheRef.current?.data || userAssignments || []);
+
     // Filter assignments for this session synchronously
-    const sessionId = session.eventId || session.id || 
+    const sessionId = session.eventId || session.id ||
       `${session.title || 'untitled'}-${new Date(session.start).getTime()}-${new Date(session.end).getTime()}`;
-    
+
+    // DIAGNOSTIC: Log matching attempt (ALWAYS VISIBLE)
+    console.log('🔍 CALENDAR EVENT MATCHING:', {
+      eventTitle: session.title,
+      sessionId: sessionId,
+      sessionIdentifier: session.session_identifier,
+      eventId: session.eventId,
+      totalAssignments: cachedAssignments.length,
+      usingMemoizedAssignments: memoizedAssignments?.length > 0,
+      sampleAssignmentIdentifier: cachedAssignments[0]?.session_identifier
+    });
+
     const assignedUsers = cachedAssignments.filter(assignment => {
       // Training Location Level
       if (assignment.assignment_level === 'training_location') {
@@ -501,6 +528,13 @@ const EnhancedScheduleCalendar = ({
       }
       
       return false;
+    });
+
+    // DIAGNOSTIC: Log matching result (ALWAYS VISIBLE)
+    console.log('🔍 CALENDAR EVENT RESULT:', {
+      eventTitle: session.title,
+      assignedUsersCount: assignedUsers.length,
+      sampleAssignedUser: assignedUsers[0]
     });
 
     const capacityInfo = {
@@ -568,18 +602,18 @@ const EnhancedScheduleCalendar = ({
                     <tbody>
                       {assignedUsers
                         .sort((a, b) => {
-                          const nameA = a.end_users?.name || `User ${a.end_user_id}`;
-                          const nameB = b.end_users?.name || `User ${b.end_user_id}`;
+                          const nameA = a.user_name || a.end_users?.name || `User ${a.end_user_id}`;
+                          const nameB = b.user_name || b.end_users?.name || `User ${b.end_user_id}`;
                           return nameA.localeCompare(nameB);
                         })
                         .map((assignment, index) => (
-                        <tr 
-                          key={index} 
+                        <tr
+                          key={index}
                           className="assigned-user-row"
                         >
                           <td className="user-id">{assignment.end_user_id}</td>
                           <td className="user-name">
-                            {assignment.end_users?.name || `User ${assignment.end_user_id}`}
+                            {assignment.user_name || assignment.end_users?.name || `User ${assignment.end_user_id}`}
                           </td>
                           <td className="user-actions">
                             <button

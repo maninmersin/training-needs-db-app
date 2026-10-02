@@ -32,23 +32,43 @@ export const getAllProjects = async () => {
       return ['admin', 'system_admin', 'global_admin', 'super_admin', 'administrator'].includes(roleName);
     });
 
+    // Try to fetch from projects_with_stats view first
+    let data, error;
+
     // If user has global admin role, return all projects
     if (hasGlobalAdminRole) {
-      const { data, error } = await supabase
+      ({ data, error } = await supabase
         .from('projects_with_stats')
         .select('*')
-        .order('updated_at', { ascending: false });
+        .order('updated_at', { ascending: false }));
+
+      // Fallback to projects table if view doesn't exist
+      if (error && error.code === 'PGRST205') {
+        console.log('⚠️ projects_with_stats view not found, falling back to projects table');
+        ({ data, error } = await supabase
+          .from('projects')
+          .select('*')
+          .order('updated_at', { ascending: false }));
+      }
 
       if (error) throw error;
       return data || [];
     }
 
     // Otherwise, return only projects the user has explicit access to
-    // This relies on RLS policies to filter based on project_users table
-    const { data, error } = await supabase
+    ({ data, error } = await supabase
       .from('projects_with_stats')
       .select('*')
-      .order('updated_at', { ascending: false });
+      .order('updated_at', { ascending: false }));
+
+    // Fallback to projects table if view doesn't exist
+    if (error && error.code === 'PGRST205') {
+      console.log('⚠️ projects_with_stats view not found, falling back to projects table');
+      ({ data, error } = await supabase
+        .from('projects')
+        .select('*')
+        .order('updated_at', { ascending: false }));
+    }
 
     if (error) throw error;
 

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@core/services/supabaseClient';
+import { createLocalDateFromString } from '@core/utils/dateTimeUtils';
 
 // ✅ Fixed standalone session generator
 export const calculateSessions = (criteria, courses, endUsers, groupingKeys = ['training_location']) => {
@@ -33,8 +34,9 @@ export const calculateSessions = (criteria, courses, endUsers, groupingKeys = ['
 
     // Handle scheduling preference for initial time setting
     const schedulingPreference = criteria.scheduling_preference || 'both';
-    let currentSessionStartTime = new Date(criteria.start_date);
-    
+    // TIMEZONE FIX: Create Date in LOCAL timezone, not UTC
+    let currentSessionStartTime = createLocalDateFromString(criteria.start_date);
+
     if (schedulingPreference === 'pm_only' && criteria.start_time_pm) {
       const [pmStartHour, pmStartMin] = criteria.start_time_pm.split(':').map(Number);
       currentSessionStartTime.setHours(pmStartHour, pmStartMin, 0, 0);

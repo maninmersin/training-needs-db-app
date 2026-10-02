@@ -373,10 +373,19 @@ const DragDropAssignmentPanel = ({
 
       const assignments = data || [];
       setAssignments(assignments);
+
+      // DIAGNOSTIC: Log fetched assignments (ALWAYS VISIBLE)
+      console.log('📋 DRAG-DROP PANEL: Fetched assignments:', {
+        count: assignments.length,
+        scheduleId: schedule?.id,
+        sampleAssignment: assignments[0]
+      });
+
       return assignments;
-      
+
     } catch (err) {
       debugError('❌ Error fetching assignments:', err);
+      console.error('📋 DRAG-DROP PANEL: Error fetching assignments:', err);
       throw err;
     }
   };
@@ -387,75 +396,76 @@ const DragDropAssignmentPanel = ({
       // Use fresh assignment data if provided, otherwise fall back to state
       const currentAssignments = assignmentsData || assignments;
       
-      // PERFORMANCE OPTIMIZATION: Only fetch users who have role mappings for courses in this schedule
-      // This reduces the query from 3000+ users to only the relevant functional area users (~200)
-      
-      // First, get role-course mappings for the current project to identify relevant roles
-      const { data: roleMappings, error: mappingsError } = await supabase
-        .from('role_course_mappings')
-        .select('*')
-        .eq('project_id', currentProject?.id);
-      if (mappingsError) throw mappingsError;
-      
-      // Get courses in this schedule to identify which roles are needed
+      // MS ACCESS FLAT TABLE APPROACH: Get users directly from training_data
+      // This queries the flat table instead of role_course_mappings + end_users
+
+      // Get courses in this schedule to identify which users are needed
       const scheduleCourses = getScheduleCourses();
       const scheduleCourseIds = scheduleCourses.map(c => c.course_id);
-      
-      // Find roles that have mappings to courses in this schedule
-      const relevantRoles = [...new Set(
-        roleMappings
-          .filter(mapping => scheduleCourseIds.includes(mapping.course_id))
-          .map(mapping => mapping.project_role_name)
-      )];
-      
-      console.log(`🎯 Performance Optimization: Filtering to ${relevantRoles.length} relevant roles for ${schedule?.functional_area || 'this schedule'}`);
-      
-      // Now fetch only users with roles that are relevant to this schedule
-      let usersQuery = supabase
-        .from('end_users')
-        .select('*')
-        .eq('project_id', currentProject?.id);
-      
-      // Add role filtering to dramatically reduce the dataset
-      if (relevantRoles.length > 0) {
-        usersQuery = usersQuery.in('project_role', relevantRoles);
-      } else {
-        // If no relevant roles found, return empty to avoid loading all users
-        console.log('⚠️ No relevant roles found for this schedule - no users to process');
-        setUserCategories({
-          allCoursesNeeded: [],
-          someCoursesNeeded: {},
-          unassigned: [],
-          partiallyAssigned: [],
-          courseNames: new Map()
-        });
-        return;
-      }
-      
+
+      console.log(`🎯 Flat Table Approach: Fetching users for ${scheduleCourseIds.length} courses in ${schedule?.functional_area || 'this schedule'}`);
+
+      // Query training_data to get users assigned to courses in this schedule
+      let trainingDataQuery = supabase
+        .from('training_data')
+        .select('user_id, user_name, user_email, user_project_role, training_location, functional_area, course_id')
+        .eq('project_id', currentProject?.id)
+        .in('course_id', scheduleCourseIds);
+
       if (selectedTrainingLocation) {
-        usersQuery = usersQuery.eq('training_location', selectedTrainingLocation);
+        trainingDataQuery = trainingDataQuery.eq('training_location', selectedTrainingLocation);
       }
 
       // Filter by stakeholder assignment editor's assigned areas and locations
       if (isStakeholder) {
         if (assignedTrainingLocations.length > 0) {
-          usersQuery = usersQuery.in('training_location', assignedTrainingLocations);
+          trainingDataQuery = trainingDataQuery.in('training_location', assignedTrainingLocations);
         }
       }
-      
-      const { data: allUsers, error: usersError } = await usersQuery.order('name');
-      if (usersError) throw usersError;
-      
+
+      const { data: trainingDataRecords, error: trainingDataError } = await trainingDataQuery;
+      if (trainingDataError) throw trainingDataError;
+
+      // Transform training_data to unique users
+      const userMap = new Map();
+      (trainingDataRecords || []).forEach(record => {
+        if (!userMap.has(record.user_id)) {
+          userMap.set(record.user_id, {
+            id: record.user_id,
+            name: record.user_name,
+            email: record.user_email,
+            project_role: record.user_project_role,
+            training_location: record.training_location,
+            project_id: currentProject?.id
+          });
+        }
+      });
+
+      const allUsers = Array.from(userMap.values());
+      console.log(`✅ Found ${allUsers.length} unique users from training_data`);
+
       console.log(`✅ Performance Optimized: Loaded ${allUsers?.length || 0} relevant users (instead of 3000+)`);
-      
+
       // Don't filter out users with assignments - we need to check all users
       // to properly categorize those with partial assignments
       const availableUsers = allUsers || [];
-      
+
       // Create course name mapping for the UI
       const courseNameMap = new Map();
       scheduleCourses.forEach(course => {
         courseNameMap.set(course.course_id, course.course_name);
+      });
+
+      // MS ACCESS FLAT TABLE: Build user-to-courses mapping from training_data
+      // This replaces the role-based mapping approach
+      const userCoursesMap = new Map();
+      (trainingDataRecords || []).forEach(record => {
+        if (!userCoursesMap.has(record.user_id)) {
+          userCoursesMap.set(record.user_id, []);
+        }
+        if (scheduleCourseIds.includes(record.course_id)) {
+          userCoursesMap.get(record.user_id).push(record.course_id);
+        }
       });
 
       // Categorize users
@@ -466,18 +476,31 @@ const DragDropAssignmentPanel = ({
         partiallyAssigned: [],
         courseNames: courseNameMap
       };
-      
+
+      // DIAGNOSTIC: Check first user and first assignment to see ID mismatch
+      if (availableUsers.length > 0 && currentAssignments.length > 0) {
+        console.log('🔍 ID MISMATCH CHECK:', {
+          firstUserId: availableUsers[0].id,
+          firstUserIdType: typeof availableUsers[0].id,
+          firstAssignmentEndUserId: currentAssignments[0].end_user_id,
+          firstAssignmentEndUserIdType: typeof currentAssignments[0].end_user_id,
+          sampleUser: availableUsers[0],
+          sampleAssignment: currentAssignments[0]
+        });
+      }
+
       for (const user of availableUsers) {
-        const userCourseRequirements = roleMappings
-          .filter(mapping => mapping.project_role_name === user.project_role)
-          .map(mapping => mapping.course_id);
-        
-        const requiredCoursesInSchedule = userCourseRequirements.filter(courseId => 
+        // Get user's course requirements from training_data (flat table approach)
+        const userCourseRequirements = userCoursesMap.get(user.id) || [];
+
+        const requiredCoursesInSchedule = userCourseRequirements.filter(courseId =>
           scheduleCourseIds.includes(courseId)
         );
-        
+
         // Get user's current assignments
-        const userAssignments = currentAssignments.filter(a => a.end_user_id === user.id);
+        // FIX: Convert user.id to number to match end_user_id type in assignments
+        const userId = parseInt(user.id);
+        const userAssignments = currentAssignments.filter(a => a.end_user_id === userId);
         const assignedCourseIds = [...new Set(userAssignments.map(a => a.course_id))];
         
         if (requiredCoursesInSchedule.length === scheduleCourseIds.length) {
@@ -566,6 +589,11 @@ const DragDropAssignmentPanel = ({
       
       console.log(`📊 User Categorization Summary for ${schedule?.functional_area || 'this schedule'}:`);
       console.log(`  ✅ Total relevant users processed: ${totalUsers}`);
+      console.log(`  📋 All Courses Needed: ${categories.allCoursesNeeded.length}`);
+      console.log(`  📋 Some Courses Needed: ${Object.values(categories.someCoursesNeeded).flat().length}`);
+      console.log(`  📋 Partially Assigned: ${categories.partiallyAssigned.length}`);
+      console.log(`  📋 Unassigned: ${categories.unassigned.length}`);
+      console.log(`  📋 Total Assignments Checked: ${currentAssignments.length}`);
       console.log(`  🚀 Performance: Query optimized to relevant roles only (no 3000+ user scan)`);
       
     } catch (err) {
@@ -581,8 +609,8 @@ const DragDropAssignmentPanel = ({
   };
 
   // Direct assignment function to bypass parsing issues during auto-assignment
-  const directUserAssignment = async (userId, assignmentData, sessionData) => {
-    console.log('🎯 DIRECT ASSIGNMENT:', { userId, assignmentData, sessionData });
+  const directUserAssignment = async (userId, assignmentData, sessionData, userName = null, userEmail = null) => {
+    console.log('🎯 DIRECT ASSIGNMENT:', { userId, userName, assignmentData, sessionData });
 
     try {
       // Use the actual session ID from the session data if available
@@ -600,6 +628,8 @@ const DragDropAssignmentPanel = ({
       // Create assignment record directly using actual table schema with all required fields
       const assignmentRecord = {
         end_user_id: parseInt(userId),
+        user_name: userName, // ✅ ADDED: User name
+        user_email: userEmail, // ✅ ADDED: User email
         project_id: currentProject?.id,
         schedule_id: schedule?.id,
         course_id: assignmentData.courseId,
@@ -1222,7 +1252,12 @@ const DragDropAssignmentPanel = ({
       if (otherUsers.length > 0) {
         for (const userId of otherUsers) {
           try {
-            
+            // Look up user details for name and email
+            const user = userCategories.allCoursesNeeded.find(u => u.id.toString() === userId) ||
+                        Object.values(userCategories.someCoursesNeeded).flat().find(u => u.id.toString() === userId) ||
+                        userCategories.unassigned.find(u => u.id.toString() === userId) ||
+                        userCategories.partiallyAssigned.find(u => u.id.toString() === userId);
+
             // Create single session assignment (skip the category detection in handleUserAssignment)
             // Find the session_id from training_sessions table using session identifier
             let sessionId = null;
@@ -1238,7 +1273,7 @@ const DragDropAssignmentPanel = ({
                 .single();
               sessionId = sessionLookup?.id;
             }
-            
+
             // Generate proper session identifier and extract functional area
             const sessionIdentifier = generateStableSessionId(sessionData);
             const functionalArea = sessionData?.functional_area || sessionData?._functionalArea || assignmentData.functionalArea || 'General';
@@ -1247,6 +1282,8 @@ const DragDropAssignmentPanel = ({
             const insertData = {
               schedule_id: schedule.id,
               end_user_id: parseInt(userId),
+              user_name: user?.name || null, // ✅ ADDED: User name
+              user_email: user?.email || null, // ✅ ADDED: User email
               assignment_level: 'session',
               course_id: assignmentData.courseId,
               group_identifier: assignmentData.groupIdentifier,
@@ -1552,6 +1589,8 @@ const DragDropAssignmentPanel = ({
       const insertData = {
         schedule_id: schedule.id,
         end_user_id: parseInt(userId),
+        user_name: draggedUser?.name || null, // ✅ ADDED: User name from draggedUser
+        user_email: draggedUser?.email || null, // ✅ ADDED: User email from draggedUser
         assignment_level: 'session',
         course_id: assignmentData.courseId,
         group_identifier: assignmentData.groupIdentifier,
@@ -1858,8 +1897,14 @@ const DragDropAssignmentPanel = ({
     console.log(`  User ID: ${userId}`);
     console.log(`  Assignment Data:`, assignmentData);
     console.log(`  Session Data:`, sessionData);
-    
-    try {
+
+    // Look up user details for name and email
+    const user = userCategories.allCoursesNeeded.find(u => u.id.toString() === userId) ||
+                Object.values(userCategories.someCoursesNeeded).flat().find(u => u.id.toString() === userId) ||
+                userCategories.unassigned.find(u => u.id.toString() === userId) ||
+                userCategories.partiallyAssigned.find(u => u.id.toString() === userId);
+
+    try{
       // Get all sessions for the specific course in the same training location and functional area
       const allSessions = getAllSessionsFlat();
       const targetLocation = assignmentData.trainingLocation;
@@ -1956,6 +2001,8 @@ const DragDropAssignmentPanel = ({
         const courseAssignmentData = {
           schedule_id: schedule.id,
           end_user_id: parseInt(userId),
+          user_name: user?.name || null, // ✅ ADDED: User name
+          user_email: user?.email || null, // ✅ ADDED: User email
           assignment_level: 'session',
           course_id: targetCourseId,
           session_identifier: sessionIdentifier, // ✅ FIXED: Use proper session identifier
@@ -3356,7 +3403,7 @@ const DragDropAssignmentPanel = ({
             };
             
             try {
-              await directUserAssignment(user.id.toString(), assignmentData, session);
+              await directUserAssignment(user.id.toString(), assignmentData, session, user.name, user.email);
               successCount++;
               console.log(`  ✅ Assigned to session: ${session.title || assignmentData.course_name}`);
             } catch (error) {
@@ -3644,7 +3691,7 @@ const DragDropAssignmentPanel = ({
                       baseEventId: targetSession.eventId || targetSession.id
                     };
                     
-                    await directUserAssignment(user.id.toString(), assignmentData, targetSession);
+                    await directUserAssignment(user.id.toString(), assignmentData, targetSession, user.name, user.email);
                     assignmentSuccessCount++;
                     console.log(`  ✅ Assigned to course session: ${targetSession.title || assignmentData.course_name}`);
                   } catch (error) {
@@ -4055,6 +4102,13 @@ const DragDropAssignmentPanel = ({
 
           {/* Right: Enhanced Calendar */}
           <div className="calendar-section">
+            {/* DIAGNOSTIC: Log what we're passing to calendar */}
+            {console.log('📋 DRAG-DROP PANEL: Passing to calendar:', {
+              assignmentsCount: assignments?.length,
+              flattenedSessionsCount: flattenedSessions?.length,
+              scheduleId: schedule?.id,
+              currentScheduleId: currentSchedule?.id
+            })}
             <EnhancedScheduleCalendar
               sessions={flattenedSessions || []}
               onSessionUpdated={() => {}} // Would connect to existing handler

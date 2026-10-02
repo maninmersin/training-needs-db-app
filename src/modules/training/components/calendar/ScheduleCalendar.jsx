@@ -38,6 +38,7 @@ const ScheduleCalendar = ({ sessions, onSessionUpdated, criteria, selectionMode 
   const calendarRefs = useRef({});
   const workingSessionsRef = useRef(null); // Persist working sessions across re-renders
   const hasInitializedSessionsRef = useRef(false); // Track if we've initialized working sessions
+  const [sessionVersion, setSessionVersion] = useState(0); // Force re-render when sessions change
 
   // Helper function to extract all session dates from the nested structure
   const extractSessionDates = (sessionsData) => {
@@ -181,13 +182,44 @@ const ScheduleCalendar = ({ sessions, onSessionUpdated, criteria, selectionMode 
 
   // Initialize working sessions ONCE and persist them across re-renders
   // This prevents the calendar from refreshing when switching windows
+  // BUT also update when sessions prop changes (e.g., when adding new courses)
   useEffect(() => {
     if (!hasInitializedSessionsRef.current && sessions) {
-      console.log('📅 ScheduleCalendar initializing working sessions (ONCE ONLY)');
+      console.log('📅 ScheduleCalendar initializing working sessions (FIRST TIME)');
       workingSessionsRef.current = JSON.parse(JSON.stringify(sessions)); // Deep clone to break reference
       hasInitializedSessionsRef.current = true;
+      setSessionVersion(v => v + 1); // Force re-render
+    } else if (hasInitializedSessionsRef.current && sessions) {
+      // Check if sessions prop has actually changed (different reference or different content)
+      const currentSessionCount = countTotalSessions(workingSessionsRef.current);
+      const newSessionCount = countTotalSessions(sessions);
+
+      if (currentSessionCount !== newSessionCount) {
+        console.log('📅 ScheduleCalendar: Detected session count change, updating working sessions', {
+          before: currentSessionCount,
+          after: newSessionCount
+        });
+        workingSessionsRef.current = JSON.parse(JSON.stringify(sessions)); // Deep clone to break reference
+        setSessionVersion(v => v + 1); // Force re-render with new sessions
+      }
     }
-  }, []); // Empty dependency - initialize once and never update from props
+  }, [sessions]); // Update when sessions prop changes
+
+  // Helper function to count total sessions in nested structure
+  function countTotalSessions(sessionsData) {
+    if (!sessionsData) return 0;
+    let count = 0;
+    Object.values(sessionsData).forEach(locations => {
+      Object.values(locations || {}).forEach(classrooms => {
+        Object.values(classrooms || {}).forEach(sessionList => {
+          if (Array.isArray(sessionList)) {
+            count += sessionList.length;
+          }
+        });
+      });
+    });
+    return count;
+  }
 
   // Use working sessions ref for rendering, fallback to props if not initialized
   // CRITICAL: Always use ref, never use sessions prop after initialization
@@ -687,39 +719,120 @@ const ScheduleCalendar = ({ sessions, onSessionUpdated, criteria, selectionMode 
 
             <button
               onClick={() => {
-                const start = startOfWeek(new Date());
+                const firstSessionDate = findFirstSessionDate();
+                const start = firstSessionDate
+                  ? startOfWeek(firstSessionDate)
+                  : startOfWeek(new Date());
+
+                setDateRangeStart(start);
+                setDateRangeEnd(addWeeks(start, 2));
+                setWeekCount(2);
+                setIsAutoDetected(false);
+
+                if (firstSessionDate) {
+                  console.log('📅 2 Week view: Navigating to first session:', firstSessionDate.toISOString());
+                }
+              }}
+              className={weekCount === 2 && !isAutoDetected ? 'active' : ''}
+              title={findFirstSessionDate()
+                ? `Jump to week of first session (${format(findFirstSessionDate(), 'MMM d, yyyy')})`
+                : 'Show current 2 weeks'}
+            >
+              2 Weeks
+            </button>
+
+            <button
+              onClick={() => {
+                const firstSessionDate = findFirstSessionDate();
+                const start = firstSessionDate
+                  ? startOfWeek(firstSessionDate)
+                  : startOfWeek(new Date());
+
+                setDateRangeStart(start);
+                setDateRangeEnd(addWeeks(start, 3));
+                setWeekCount(3);
+                setIsAutoDetected(false);
+
+                if (firstSessionDate) {
+                  console.log('📅 3 Week view: Navigating to first session:', firstSessionDate.toISOString());
+                }
+              }}
+              className={weekCount === 3 && !isAutoDetected ? 'active' : ''}
+              title={findFirstSessionDate()
+                ? `Jump to week of first session (${format(findFirstSessionDate(), 'MMM d, yyyy')})`
+                : 'Show current 3 weeks'}
+            >
+              3 Weeks
+            </button>
+
+            <button
+              onClick={() => {
+                const firstSessionDate = findFirstSessionDate();
+                const start = firstSessionDate
+                  ? startOfWeek(firstSessionDate)
+                  : startOfWeek(new Date());
+
                 setDateRangeStart(start);
                 setDateRangeEnd(addWeeks(start, 4));
                 setWeekCount(4);
                 setIsAutoDetected(false);
+
+                if (firstSessionDate) {
+                  console.log('📅 4 Week view: Navigating to first session:', firstSessionDate.toISOString());
+                }
               }}
               className={weekCount === 4 && !isAutoDetected ? 'active' : ''}
+              title={findFirstSessionDate()
+                ? `Jump to week of first session (${format(findFirstSessionDate(), 'MMM d, yyyy')})`
+                : 'Show current 4 weeks'}
             >
               4 Weeks
             </button>
 
             <button
               onClick={() => {
-                const start = startOfWeek(new Date());
+                const firstSessionDate = findFirstSessionDate();
+                const start = firstSessionDate
+                  ? startOfWeek(firstSessionDate)
+                  : startOfWeek(new Date());
+
                 setDateRangeStart(start);
                 setDateRangeEnd(addWeeks(start, 8));
                 setWeekCount(8);
                 setIsAutoDetected(false);
+
+                if (firstSessionDate) {
+                  console.log('📅 8 Week view: Navigating to first session:', firstSessionDate.toISOString());
+                }
               }}
               className={weekCount === 8 && !isAutoDetected ? 'active' : ''}
+              title={findFirstSessionDate()
+                ? `Jump to week of first session (${format(findFirstSessionDate(), 'MMM d, yyyy')})`
+                : 'Show current 8 weeks'}
             >
               8 Weeks
             </button>
 
             <button
               onClick={() => {
-                const start = startOfWeek(new Date());
+                const firstSessionDate = findFirstSessionDate();
+                const start = firstSessionDate
+                  ? startOfWeek(firstSessionDate)
+                  : startOfWeek(new Date());
+
                 setDateRangeStart(start);
                 setDateRangeEnd(addWeeks(start, 12));
                 setWeekCount(12);
                 setIsAutoDetected(false);
+
+                if (firstSessionDate) {
+                  console.log('📅 12 Week view: Navigating to first session:', firstSessionDate.toISOString());
+                }
               }}
               className={weekCount === 12 && !isAutoDetected ? 'active' : ''}
+              title={findFirstSessionDate()
+                ? `Jump to week of first session (${format(findFirstSessionDate(), 'MMM d, yyyy')})`
+                : 'Show current 12 weeks'}
             >
               12 Weeks
             </button>
@@ -956,27 +1069,6 @@ const ScheduleCalendar = ({ sessions, onSessionUpdated, criteria, selectionMode 
   );
 };
 
-// Wrap in React.memo to prevent re-renders when parent re-renders
-// This is critical to prevent calendar refresh when switching windows
-export default React.memo(ScheduleCalendar, (prevProps, nextProps) => {
-  // React.memo comparison function returns TRUE if props are EQUAL (no re-render needed)
-  // Returns FALSE if props changed (re-render needed)
-
-  // Check if props are equal (if all are same, return true = skip re-render)
-  const propsAreEqual =
-    prevProps.selectionMode === nextProps.selectionMode &&
-    (prevProps.selectedEventIds || []).length === (nextProps.selectedEventIds || []).length &&
-    JSON.stringify(prevProps.criteria) === JSON.stringify(nextProps.criteria) &&
-    prevProps.sessions === nextProps.sessions; // Check if sessions reference is same
-
-  console.log('🔍 React.memo comparison:', {
-    propsAreEqual,
-    willRerender: !propsAreEqual,
-    selectionModeChanged: prevProps.selectionMode !== nextProps.selectionMode,
-    selectedIdsChanged: (prevProps.selectedEventIds || []).length !== (nextProps.selectedEventIds || []).length,
-    criteriaChanged: JSON.stringify(prevProps.criteria) !== JSON.stringify(nextProps.criteria),
-    sessionsRefChanged: prevProps.sessions !== nextProps.sessions
-  });
-
-  return propsAreEqual; // TRUE = props equal, skip re-render
-});
+// TEMPORARILY DISABLED React.memo to debug calendar display issue
+// This will cause more re-renders but should fix the "new sessions not appearing" problem
+export default ScheduleCalendar;

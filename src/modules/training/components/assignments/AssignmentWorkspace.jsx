@@ -345,68 +345,75 @@ const AssignmentWorkspace = ({
           return;
         }
 
-        // Get users by training location only (functional area filtering happens via courses)
-        const { data: users, error } = await supabase
-          .from('end_users')
-          .select('*')
+        // MS Access flat table approach: Query training_data directly
+        // Get project_id from schedule
+        const projectId = schedule.project_id || schedule.criteria?.project_id;
+        debugLog('📋 Schedule object:', schedule);
+        debugLog('🆔 Project ID from schedule:', projectId);
+
+        let query = supabase
+          .from('training_data')
+          .select('user_id, user_name, user_email, user_project_role, training_location, functional_area')
           .in('training_location', locations);
 
+        // Filter by project if available
+        if (projectId) {
+          debugLog('✅ Filtering by project_id:', projectId);
+          query = query.eq('project_id', projectId);
+        } else {
+          debugWarn('⚠️ No project_id found in schedule - not filtering by project!')
+;
+        }
+
+        // If functional area is selected, filter by it
+        if (selectedFunctionalArea) {
+          debugLog('🔍 Filtering by functional area:', selectedFunctionalArea);
+          query = query.eq('functional_area', selectedFunctionalArea);
+        }
+
+        const { data: trainingData, error } = await query;
         if (error) throw error;
 
-        // If functional area is selected, filter users by courses in that functional area
-        if (selectedFunctionalArea) {
-          debugLog('🔍 Filtering users by functional area:', selectedFunctionalArea);
-          
-          // Get courses in the selected functional area
-          const { data: courses, error: coursesError } = await supabase
-            .from('courses')
-            .select('course_id')
-            .eq('functional_area', selectedFunctionalArea);
-            
-          if (coursesError) throw coursesError;
-          
-          if (courses.length === 0) {
-            debugLog('⚠️ No courses found for functional area:', selectedFunctionalArea);
-            setEligibleUsers([]);
-            return;
+        // Transform training_data to match end_users format (group by unique user)
+        const userMap = new Map();
+        trainingData.forEach(row => {
+          if (!userMap.has(row.user_id)) {
+            userMap.set(row.user_id, {
+              id: row.user_id,
+              name: row.user_name,
+              email: row.user_email,
+              project_role: row.user_project_role,
+              training_location: row.training_location
+            });
           }
-          
-          const courseIds = courses.map(c => c.course_id);
-          
-          // Get role mappings for these courses
-          const { data: roleMappings, error: mappingsError } = await supabase
-            .from('role_course_mappings')
-            .select('project_role_name')
-            .in('course_id', courseIds);
-            
-          if (mappingsError) throw mappingsError;
-          
-          const eligibleRoles = [...new Set(roleMappings.map(m => m.project_role_name))];
-          debugLog('🎭 Eligible roles for functional area:', eligibleRoles);
-          
-          // Filter users to only those with eligible roles
-          const filteredUsers = users.filter(user => eligibleRoles.includes(user.project_role));
-          
-          debugLog('👥 Found users for filters (with functional area):', filteredUsers.length);
-          setEligibleUsers(filteredUsers);
-        } else {
-          debugLog('👥 Found users for filters (no functional area filter):', users?.length || 0);
-          setEligibleUsers(users || []);
-        }
+        });
+
+        const users = Array.from(userMap.values());
+        debugLog('👥 Found unique users from training_data:', users.length);
+        setEligibleUsers(users);
       } 
       else if (assignmentLevel === 'course' && selectedCourse) {
-        // Show users eligible for this specific course via role mappings
+        // Show users eligible for this specific course via training_data
         debugLog('📚 Selected course:', selectedCourse);
-        
-        const { data: roleMappings, error: mappingsError } = await supabase
-          .from('role_course_mappings')
-          .select('project_role_name')
+
+        // MS Access flat table approach: Get users assigned to this course
+        const projectId = schedule.project_id || schedule.criteria?.project_id;
+
+        let courseQuery = supabase
+          .from('training_data')
+          .select('user_id, user_name, user_email, user_project_role, training_location')
           .eq('course_id', selectedCourse.course_id);
 
+        if (projectId) {
+          courseQuery = courseQuery.eq('project_id', projectId);
+        }
+
+        const { data: trainingData, error: mappingsError } = await courseQuery;
+
         if (mappingsError) throw mappingsError;
-        
-        debugLog('🎭 Role mappings for course:', roleMappings);
-        const eligibleRoles = roleMappings.map(m => m.project_role_name);
+
+        debugLog('👥 Training data for course:', trainingData);
+        const eligibleUserIds = trainingData.map(m => m.user_id);
         const criteriaData = schedule.criteria?.default || schedule.criteria || {};
         let locations = criteriaData.selected_training_locations || criteriaData.trainingLocations || [];
         
@@ -415,33 +422,41 @@ const AssignmentWorkspace = ({
           locations = [selectedTrainingLocation];
         }
         
-        debugLog('🎭 Eligible roles:', eligibleRoles);
-        debugLog('📍 Training locations to query:', locations);
+        debugLog('👥 Training data records:', trainingData.length);
+        debugLog('📍 Training locations to filter:', locations);
         debugLog('🎯 Selected filters:', { selectedTrainingLocation, selectedFunctionalArea });
 
-        if (eligibleRoles.length === 0) {
-          debugWarn('⚠️ No role mappings found for course:', selectedCourse.course_id);
-          debugLog('💡 To fix: Add role-course mappings in System Setup > Role-Course Mappings');
+        if (trainingData.length === 0) {
+          debugWarn('⚠️ No users found in training_data for course:', selectedCourse.course_id);
+          debugLog('💡 To fix: Check that CSV data was imported correctly');
           setEligibleUsers([]);
           return;
         }
-        
+
         if (locations.length === 0) {
           debugWarn('⚠️ No training locations found in schedule criteria');
           setEligibleUsers([]);
           return;
         }
 
-        // Get users by project role and training location (course already defines functional area)
-        const { data: users, error: usersError } = await supabase
-          .from('end_users')
-          .select('*')
-          .in('project_role', eligibleRoles)
-          .in('training_location', locations);
+        // Transform training_data to user format and filter by location
+        const userMap = new Map();
+        trainingData
+          .filter(row => locations.includes(row.training_location))
+          .forEach(row => {
+            if (!userMap.has(row.user_id)) {
+              userMap.set(row.user_id, {
+                id: row.user_id,
+                name: row.user_name,
+                email: row.user_email,
+                project_role: row.user_project_role,
+                training_location: row.training_location
+              });
+            }
+          });
 
-        if (usersError) throw usersError;
-
-        debugLog('👥 Found users for course (with filters):', users?.length || 0);
+        const users = Array.from(userMap.values());
+        debugLog('👥 Found users for course (with filters):', users.length);
         setEligibleUsers(users || []);
       }
       else if (assignmentLevel === 'group' && selectedGroup) {
@@ -477,99 +492,111 @@ const AssignmentWorkspace = ({
           return;
         }
 
-        const { data: roleMappings, error: mappingsError } = await supabase
-          .from('role_course_mappings')
-          .select('project_role_name')
+        // MS Access flat table approach: Get users assigned to these courses
+        const projectId = schedule.project_id || schedule.criteria?.project_id;
+
+        let groupQuery = supabase
+          .from('training_data')
+          .select('user_id, user_name, user_email, user_project_role, training_location')
           .in('course_id', uniqueCourseIds);
+
+        if (projectId) {
+          groupQuery = groupQuery.eq('project_id', projectId);
+        }
+
+        const { data: trainingData, error: mappingsError } = await groupQuery;
 
         if (mappingsError) throw mappingsError;
 
-        debugLog('🎭 Role mappings for group courses:', roleMappings);
-        const eligibleRoles = [...new Set(roleMappings.map(m => m.project_role_name))];
+        debugLog('👥 Training data for group courses:', trainingData);
+        const eligibleUserIds = [...new Set(trainingData.map(m => m.user_id))];
         const criteriaData = schedule.criteria?.default || schedule.criteria || {};
         let locations = criteriaData.selected_training_locations || criteriaData.trainingLocations || [];
-        
+
         // If user has selected specific training location, filter to that
         if (selectedTrainingLocation) {
           locations = [selectedTrainingLocation];
         }
-        
-        debugLog('🎭 Eligible roles for group:', eligibleRoles);
+
+        debugLog('👥 Eligible user IDs for group:', eligibleUserIds);
         debugLog('📍 Training locations to query:', locations);
         debugLog('🎯 Selected filters:', { selectedTrainingLocation, selectedFunctionalArea });
 
-        if (eligibleRoles.length === 0) {
-          debugWarn('⚠️ No role mappings found for group courses:', uniqueCourseIds);
-          debugLog('💡 To fix: Add role-course mappings in System Setup > Role-Course Mappings for these course IDs');
-          
-          // Let's also check what user roles exist in the system
-          debugLog('🔍 Checking available user roles in the system...');
-          const { data: sampleUsers } = await supabase
-            .from('end_users')
-            .select('project_role')
-            .limit(10);
-          
-          const availableRoles = [...new Set(sampleUsers?.map(u => u.project_role).filter(r => r))];
-          debugLog('👥 Available user roles:', availableRoles);
-          debugLog('💡 Create mappings between these roles and courses:', uniqueCourseIds);
-          
-          // Let's also check what course IDs should be used from the courses table
-          debugLog('🔍 Checking courses table for proper course IDs...');
-          const { data: allCourses } = await supabase
-            .from('courses')
-            .select('id, course_name, course_id');
-          
-          debugLog('📚 Available courses from courses table:', allCourses);
-          debugLog('🔄 Sessions are using course names, but we should use course IDs from the courses table');
-          
+        if (eligibleUserIds.length === 0) {
+          debugWarn('⚠️ No users found in training_data for group courses:', uniqueCourseIds);
+          debugLog('💡 To fix: Check that CSV data was imported correctly');
           setEligibleUsers([]);
           return;
         }
-        
+
         if (locations.length === 0) {
           debugWarn('⚠️ No training locations found in schedule criteria');
           setEligibleUsers([]);
           return;
         }
 
-        // Get users by project role and training location (group already defines courses and their functional areas)
-        const { data: users, error: usersError } = await supabase
-          .from('end_users')
-          .select('*')
-          .in('project_role', eligibleRoles)
-          .in('training_location', locations);
+        // Transform training_data to user format and filter by location
+        const userMap = new Map();
+        trainingData
+          .filter(row => locations.includes(row.training_location))
+          .forEach(row => {
+            if (!userMap.has(row.user_id)) {
+              userMap.set(row.user_id, {
+                id: row.user_id,
+                name: row.user_name,
+                email: row.user_email,
+                project_role: row.user_project_role,
+                training_location: row.training_location
+              });
+            }
+          });
 
-        if (usersError) throw usersError;
-
-        debugLog('👥 Found users for group (with filters):', users?.length || 0);
-        setEligibleUsers(users || []);
+        const users = Array.from(userMap.values());
+        debugLog('👥 Found users for group (with filters):', users.length);
+        setEligibleUsers(users);
       }
       else if (assignmentLevel === 'session' && selectedSession) {
-        // Show users eligible for this session's course via role mappings
-        const { data: roleMappings, error: mappingsError } = await supabase
-          .from('role_course_mappings')
-          .select('project_role_name')
+        // Show users eligible for this session's course via training_data
+        const projectId = schedule.project_id || schedule.criteria?.project_id;
+
+        let sessionQuery = supabase
+          .from('training_data')
+          .select('user_id, user_name, user_email, user_project_role, training_location')
           .eq('course_id', selectedSession.course_id);
+
+        if (projectId) {
+          sessionQuery = sessionQuery.eq('project_id', projectId);
+        }
+
+        const { data: trainingData, error: mappingsError } = await sessionQuery;
 
         if (mappingsError) throw mappingsError;
 
-        const eligibleRoles = roleMappings.map(m => m.project_role_name);
         const locations = schedule.criteria?.selected_training_locations || [];
 
-        if (eligibleRoles.length === 0 || locations.length === 0) {
+        if (trainingData.length === 0 || locations.length === 0) {
           setEligibleUsers([]);
           return;
         }
 
-        const { data: users, error: usersError } = await supabase
-          .from('end_users')
-          .select('*')
-          .in('project_role', eligibleRoles)
-          .in('training_location', locations);
+        // Transform training_data to user format and filter by location
+        const userMap = new Map();
+        trainingData
+          .filter(row => locations.includes(row.training_location))
+          .forEach(row => {
+            if (!userMap.has(row.user_id)) {
+              userMap.set(row.user_id, {
+                id: row.user_id,
+                name: row.user_name,
+                email: row.user_email,
+                project_role: row.user_project_role,
+                training_location: row.training_location
+              });
+            }
+          });
 
-        if (usersError) throw usersError;
-
-        setEligibleUsers(users || []);
+        const users = Array.from(userMap.values());
+        setEligibleUsers(users);
       }
       else {
         setEligibleUsers([]);

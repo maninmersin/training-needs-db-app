@@ -191,12 +191,17 @@ export const calculateSessionsNeeded = (users, maxAttendees) => {
 export const createSessionGroups = (users, maxAttendees) => {
   const groups = [];
   const sessionsNeeded = calculateSessionsNeeded(users, maxAttendees);
-  
+
+  // CRITICAL DEBUG: Log the calculation
+  console.log(`🔢 createSessionGroups: ${users.length} users ÷ ${maxAttendees} max = ${sessionsNeeded} sessions (Math.ceil(${users.length}/${maxAttendees}))`);
+
   for (let sessionNum = 1; sessionNum <= sessionsNeeded; sessionNum++) {
     const startIndex = (sessionNum - 1) * maxAttendees;
     const endIndex = Math.min(sessionNum * maxAttendees, users.length);
     const sessionUsers = users.slice(startIndex, endIndex);
-    
+
+    console.log(`   📋 Group ${sessionNum}: users ${startIndex + 1}-${endIndex} (${sessionUsers.length} attendees)`);
+
     groups.push({
       sessionNumber: sessionNum,
       users: sessionUsers,
@@ -204,7 +209,8 @@ export const createSessionGroups = (users, maxAttendees) => {
       userRange: `${startIndex + 1}-${endIndex}`
     });
   }
-  
+
+  console.log(`✅ Created ${groups.length} session groups`);
   return groups;
 };
 

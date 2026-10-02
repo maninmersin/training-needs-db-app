@@ -189,14 +189,34 @@ export class TimeBlockEngine {
    * @returns {Date} Modified date with time set
    */
   setDateToBlockStart(date, blockId = 1) {
+    console.log('🔧 setDateToBlockStart CALLED with blockId:', blockId, 'Available blocks:', this.timeBlocks.map(b => ({ id: b.id, start: b.start })));
+
     const block = this.timeBlocks.find(b => b.id === blockId);
     if (!block) {
       throw new Error(`Time block ${blockId} not found`);
     }
-    
+
     const [hours, minutes] = block.start.split(':').map(Number);
     const newDate = new Date(date);
+
+    console.log('🔧 setDateToBlockStart BEFORE setHours:', {
+      requestedBlockId: blockId,
+      foundBlock: { id: block.id, start: block.start },
+      inputDate: date.toString(),
+      inputHours: date.getHours(),
+      blockStart: block.start,
+      targetHours: hours,
+      targetMinutes: minutes
+    });
+
     newDate.setHours(hours, minutes, 0, 0);
+
+    console.log('🔧 setDateToBlockStart AFTER setHours:', {
+      resultDate: newDate.toString(),
+      resultHours: newDate.getHours(),
+      resultMinutes: newDate.getMinutes()
+    });
+
     return newDate;
   }
   

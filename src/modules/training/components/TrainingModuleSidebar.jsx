@@ -24,48 +24,13 @@ const TrainingModuleSidebar = ({ isOpen, onToggle }) => {
             </div>
             <ul>
               <li>
-                <NavLink to="/reference-data" className="sidebar-link">
-                  Reference Data
-                </NavLink>
-              </li>
-              <li>
-                <NavLink to="/dynamic-users" className="sidebar-link">
-                  End Users
-                </NavLink>
-              </li>
-              <li>
-                <NavLink to="/import-export" className="sidebar-link">
-                  Import/Export End Users
-                </NavLink>
-              </li>
-              <li>
-                <NavLink to="/courses" className="sidebar-link">
-                  Courses
-                </NavLink>
-              </li>
-              <li>
-                <NavLink to="/import-export-courses" className="sidebar-link">
-                  Import/Export Courses
-                </NavLink>
-              </li>
-              <li>
-                <NavLink to="/edit-mappings" className="sidebar-link">
-                  Role-Course Mappings
+                <NavLink to="/import-export-training-data" className="sidebar-link">
+                  Import/Export Training Data (MS Access)
                 </NavLink>
               </li>
               <li>
                 <NavLink to="/trainers" className="sidebar-link">
                   Trainers
-                </NavLink>
-              </li>
-              <li>
-                <NavLink to="/export-all-data" className="sidebar-link">
-                  Export All Data
-                </NavLink>
-              </li>
-              <li>
-                <NavLink to="/pivot-report" className="sidebar-link">
-                  Pivot Tables
                 </NavLink>
               </li>
             </ul>

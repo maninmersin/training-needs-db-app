@@ -3,10 +3,6 @@ import { useModule } from '@core/contexts';
 import TrainingModuleSidebar from '@modules/training/components/TrainingModuleSidebar';
 import AdminModuleSidebar from './sidebars/AdminModuleSidebar';
 import DashboardSidebar from './sidebars/DashboardSidebar';
-import PlaceholderSidebar from './sidebars/PlaceholderSidebar';
-import OtherToolsSidebar from '@modules/other-tools/components/OtherToolsSidebar';
-import StakeholderModuleSidebar from '@modules/stakeholders/components/StakeholderModuleSidebar';
-import ImpactAssessmentModuleSidebar from '@modules/impact-assessment/components/ImpactAssessmentModuleSidebar';
 
 const ModularSidebar = ({ isOpen, onToggle }) => {
   const { currentModule } = useModule();
@@ -22,35 +18,14 @@ const ModularSidebar = ({ isOpen, onToggle }) => {
         );
       case 'training':
         return (
-          <TrainingModuleSidebar 
-            isOpen={isOpen}
-            onToggle={onToggle}
-          />
-        );
-      case 'stakeholder-engagement':
-        return (
-          <StakeholderModuleSidebar 
-            isOpen={isOpen}
-            onToggle={onToggle}
-          />
-        );
-      case 'impact-assessment':
-        return (
-          <ImpactAssessmentModuleSidebar 
+          <TrainingModuleSidebar
             isOpen={isOpen}
             onToggle={onToggle}
           />
         );
       case 'admin':
         return (
-          <AdminModuleSidebar 
-            isOpen={isOpen}
-            onToggle={onToggle}
-          />
-        );
-      case 'other-tools':
-        return (
-          <OtherToolsSidebar 
+          <AdminModuleSidebar
             isOpen={isOpen}
             onToggle={onToggle}
           />

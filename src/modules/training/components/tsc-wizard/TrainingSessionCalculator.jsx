@@ -31,67 +31,27 @@ const TrainingSessionCalculator = () => {
           return;
         }
 
-        // Fetch project-specific data using separate queries and manual joins
-        // First get users for the current project
-        const { data: users, error: usersError } = await supabase
-          .from('end_users')
-          .select('id, name, country, training_location, project_role')
+        // Fetch training data from flat table (MS Access import approach)
+        const { data: flattenedData, error: dataError } = await supabase
+          .from('training_data')
+          .select('user_id, user_name, user_country, training_location, functional_area, course_id, duration_hrs')
           .eq('project_id', currentProject.id);
 
-        if (usersError) throw usersError;
+        if (dataError) throw dataError;
 
-        // Get role-course mappings for the current project
-        const { data: roleMappings, error: mappingsError } = await supabase
-          .from('role_course_mappings')
-          .select('project_role_name, course_id')
-          .eq('project_id', currentProject.id);
+        // Map to expected format
+        const mappedData = flattenedData?.map(row => ({
+          end_user_id: row.user_id,
+          name: row.user_name,
+          country: row.user_country,
+          training_location: row.training_location,
+          functional_area: row.functional_area,
+          course_id: row.course_id,
+          duration_hrs: row.duration_hrs
+        })) || [];
 
-        if (mappingsError) throw mappingsError;
-
-        // Get courses for the current project
-        const { data: courses, error: coursesError } = await supabase
-          .from('courses')
-          .select('course_id, course_name, functional_area, duration_hrs')
-          .eq('project_id', currentProject.id);
-
-        if (coursesError) throw coursesError;
-
-        // Create lookup maps for efficient joining
-        const courseMap = new Map();
-        courses?.forEach(course => {
-          courseMap.set(course.course_id, course);
-        });
-
-        const roleCourseMap = new Map();
-        roleMappings?.forEach(mapping => {
-          if (!roleCourseMap.has(mapping.project_role_name)) {
-            roleCourseMap.set(mapping.project_role_name, []);
-          }
-          roleCourseMap.get(mapping.project_role_name).push(mapping.course_id);
-        });
-
-        // Build flattened data by joining the data manually
-        const flattenedData = [];
-        users?.forEach(user => {
-          const userCourses = roleCourseMap.get(user.project_role) || [];
-          userCourses.forEach(courseId => {
-            const course = courseMap.get(courseId);
-            if (course) {
-              flattenedData.push({
-                end_user_id: user.id,
-                name: user.name,
-                country: user.country,
-                training_location: user.training_location,
-                functional_area: course.functional_area,
-                course_id: courseId,
-                duration_hrs: course.duration_hrs
-              });
-            }
-          });
-        });
-
-        if (flattenedData.length && criteria.max_attendees > 0) {
-          const grouped = groupUsers(flattenedData);
+        if (mappedData.length && criteria.max_attendees > 0) {
+          const grouped = groupUsers(mappedData);
           const results = calculateSessions(grouped);
           setCalculations(results);
         } else {

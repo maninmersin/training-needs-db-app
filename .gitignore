@@ -51,3 +51,15 @@ temp/
 # Vercel
 .vercel
 .vercel
+
+# Vercel CLI env pulls (contain tokens)
+.env.vercel
+.env*.local
+
+# Supabase CLI cache, company data files, machine-specific scripts
+supabase/.temp/
+*.xlsx
+setup-vercel-env.bat
+
+# Local tooling binaries (PostgREST etc.)
+tools/

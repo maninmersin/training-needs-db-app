@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { supabase } from '@core/services/supabaseClient';
 import { useProject } from '@core/contexts/ProjectContext';
+import { fromLocalDateTime } from '@core/utils/dateTimeUtils';
 import ScheduleList from './ScheduleList';
 import ExcelExportDialog from '@shared/components/ExcelExportDialog';
 import ExcelImportWizard from '@shared/components/ExcelImportWizard';
@@ -136,8 +137,9 @@ const ScheduleManager = () => {
         }
         
         // Transform session to match calendar format
-        const startDate = new Date(session.start_datetime);
-        const endDate = new Date(session.end_datetime);
+        // Use fromLocalDateTime to prevent timezone conversion issues
+        const startDate = fromLocalDateTime(session.start_datetime);
+        const endDate = fromLocalDateTime(session.end_datetime);
         
         const calendarSession = {
           course_id: session.course_id,

@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { calculateSessions } from './TrainingCalculations';
-import { 
-  calculateClassroomsNeeded, 
+import {
+  calculateClassroomsNeeded,
   ClassroomOccupancyTracker,
-  validateClassroomCapacity 
+  validateClassroomCapacity
 } from '@core/utils/classroomCalculations';
+import { createLocalDateFromString } from '@core/utils/dateTimeUtils';
 
 const TSCProcessDataStage = ({
   criteria,
@@ -51,11 +52,21 @@ const TSCProcessDataStage = ({
             const locationClassroomReqs = new Map();
             const warnings = [];
 
+            // CRITICAL DEBUG: Check what users we're starting with
+            console.log(`\n🔍 CRITICAL DEBUG - Starting with ${endUsers.length} total endUsers`);
+            console.log(`   Grouping by keys:`, groupingKeys);
+
             const groupedEndUsers = endUsers.reduce((groups, user) => {
               const key = groupingKeys.map(k => user[k]?.toString().trim() || 'Unknown').join('|');
               (groups[key] = groups[key] || []).push(user);
               return groups;
             }, {});
+
+            // CRITICAL DEBUG: Show grouping results
+            console.log(`\n📊 GROUPING RESULTS:`);
+            for (const [groupKey, users] of Object.entries(groupedEndUsers)) {
+              console.log(`   ${groupKey}: ${users.length} users`);
+            }
 
             const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
@@ -78,6 +89,15 @@ const TSCProcessDataStage = ({
                 [pmStartHour, pmStartMin] = criteria.start_time_pm.split(':').map(Number);
                 [pmEndHour, pmEndMin] = criteria.end_time_pm.split(':').map(Number);
                 pmBlockHours = (pmEndHour + pmEndMin / 60) - (pmStartHour + pmStartMin / 60);
+                console.log('🕐 PM Time Parsing:', {
+                  start_time_pm_input: criteria.start_time_pm,
+                  end_time_pm_input: criteria.end_time_pm,
+                  pmStartHour,
+                  pmStartMin,
+                  pmEndHour,
+                  pmEndMin,
+                  pmBlockHours
+                });
               }
             }
 
@@ -136,7 +156,9 @@ const TSCProcessDataStage = ({
               }
               console.log(`🏫 SETUP: ${groupName} has ${maxClassrooms} classrooms available`);
 
-              let currentDate = new Date(criteria.start_date);
+              // TIMEZONE FIX: Create Date in LOCAL timezone, not UTC
+              // new Date("2025-12-21") treats it as UTC midnight, causing 3-hour shift in GMT+0300
+              let currentDate = createLocalDateFromString(criteria.start_date);
               // Set initial time based on scheduling preference
               if (schedulingPreference === 'pm_only') {
                 currentDate.setHours(pmStartHour, pmStartMin, 0, 0);
@@ -535,7 +557,9 @@ const TSCProcessDataStage = ({
                   
                   // If we just finished an AM session and PM is available, move to PM start time
                   if (schedulingPreference === 'both' && sessionEndHour <= (pmStartHour + pmStartMin / 60)) {
+                    console.log('⏰ Setting PM time:', { pmStartHour, pmStartMin, beforeSet: currentDate.toISOString() });
                     currentDate.setHours(pmStartHour, pmStartMin, 0, 0);
+                    console.log('⏰ After PM time set:', currentDate.toISOString());
                   } else {
                     // Otherwise move to next day
                     do {

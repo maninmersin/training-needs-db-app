@@ -1,24 +1,11 @@
-import React, { useContext } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { 
-  FaHome, 
-  FaGraduationCap, 
-  FaUsers, 
-  FaChartLine, 
-  FaCogs,
-  FaToolbox,
-  FaProjectDiagram
+import {
+  FaGraduationCap,
+  FaCogs
 } from 'react-icons/fa';
 import './ModuleSwitcher.css';
 
 const modules = [
-  {
-    id: 'dashboard',
-    name: 'Home',
-    icon: FaHome,
-    path: '/',
-    description: 'Overview & Analytics'
-  },
   {
     id: 'training',
     name: 'TNA',
@@ -27,32 +14,11 @@ const modules = [
     description: 'Training Needs & Scheduling'
   },
   {
-    id: 'stakeholder-engagement',
-    name: 'Stakeholder Engagement',
-    icon: FaUsers,
-    path: '/stakeholder-engagement',
-    description: 'Stakeholder Management & Communication'
-  },
-  {
-    id: 'impact-assessment',
-    name: 'Impact Assessment',
-    icon: FaChartLine,
-    path: '/impact-assessment',
-    description: 'Business Process Impact & Change Analysis'
-  },
-  {
     id: 'admin',
     name: 'Administration',
     icon: FaCogs,
     path: '/admin',
     description: 'System Configuration & User Management'
-  },
-  {
-    id: 'other-tools',
-    name: 'Other Tools',
-    icon: FaToolbox,
-    path: '/other-tools',
-    description: 'Additional Planning & Visualization Tools'
   }
 ];
 
@@ -62,32 +28,25 @@ const ModuleSwitcher = () => {
 
   const getCurrentModule = () => {
     const path = location.pathname;
-    if (path === '/') return 'dashboard';
     if (path.startsWith('/training')) return 'training';
-    if (path.startsWith('/stakeholder-engagement') || 
-        path.startsWith('/stakeholder-directory') || 
-        path.startsWith('/influence-interest-matrix') ||
-        path.startsWith('/stakeholder-reference-data')) return 'stakeholder-engagement';
-    if (path.startsWith('/impact-assessment')) return 'impact-assessment';
     if (path.startsWith('/admin')) return 'admin';
-    if (path.startsWith('/other-tools')) return 'other-tools';
-    
+
     // Legacy paths - map to appropriate modules
     const legacyTrainingPaths = [
-      '/training-sessions', '/training-scheduler', '/schedule-manager', 
-      '/drag-drop-assignments', '/schedule-calendar', '/stakeholder-calendar',
+      '/training-sessions', '/training-scheduler', '/schedule-manager',
+      '/drag-drop-assignments', '/schedule-calendar',
       '/courses', '/import-export-courses', '/reference-data', '/dynamic-users',
       '/import-export', '/edit-mappings', '/export-all-data', '/trainers',
       '/pivot-report', '/attendance-tracker', '/attendance-reports', '/attendance-compliance'
     ];
     const legacyAdminPaths = [
-      '/user-management', '/stakeholder-access', '/role-permissions', '/projects'
+      '/user-management', '/role-permissions', '/projects'
     ];
-    
+
     if (legacyTrainingPaths.some(p => path.startsWith(p))) return 'training';
     if (legacyAdminPaths.some(p => path.startsWith(p))) return 'admin';
-    
-    return 'dashboard';
+
+    return 'training'; // Default to training instead of dashboard
   };
 
   const activeModule = getCurrentModule();

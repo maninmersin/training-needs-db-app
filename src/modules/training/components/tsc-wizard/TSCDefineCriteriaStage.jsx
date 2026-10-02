@@ -61,66 +61,68 @@ const TSCDefineCriteriaStage = ({
   };
 
   // Fetch available functional areas and training locations
+  // Re-fetch whenever project changes OR when component becomes visible (to catch new imports)
   useEffect(() => {
     const fetchSelectionData = async () => {
       try {
         setLoading(true);
+        console.log('🔍 Fetching selection data for project:', currentProject?.id);
 
-        // Fetch functional areas from reference table for current project only
-        const { data: areasData, error: areasError } = await supabase
-          .from('functional_areas')
-          .select('name')
+        // Fetch distinct functional areas directly from training_data (MS Access flat table approach)
+        // Use increased limit to ensure we get all rows (default is 1000)
+        const { data: functionalAreasData, error: functionalAreasError } = await supabase
+          .from('training_data')
+          .select('functional_area')
           .eq('project_id', currentProject?.id)
-          .eq('active', true)
-          .order('display_order');
-        
-        let uniqueAreas;
-        if (areasError) {
-          console.warn('Reference table not available, falling back to courses extraction');
-          // Fallback: Fetch distinct functional areas from courses for current project
-          const { data: courses, error: coursesError } = await supabase
-            .from('courses')
-            .select('functional_area')
-            .eq('project_id', currentProject?.id)
-            .order('functional_area');
-          
-          if (coursesError) throw coursesError;
-          uniqueAreas = [...new Set(courses.map(c => c.functional_area).filter(Boolean))];
-        } else {
-          uniqueAreas = areasData.map(area => area.name);
-        }
+          .limit(10000);
 
-        // Fetch training locations from reference table for current project only
-        const { data: locationsData, error: locationsError } = await supabase
-          .from('training_locations')
-          .select('name')
-          .eq('project_id', currentProject?.id)
-          .eq('active', true)
-          .order('display_order');
-        
+        console.log('📊 training_data functional_area query result:', {
+          count: functionalAreasData?.length,
+          sampleData: functionalAreasData?.slice(0, 5),
+          error: functionalAreasError
+        });
+
+        if (functionalAreasError) throw functionalAreasError;
+        const uniqueAreas = [...new Set(functionalAreasData.map(c => c.functional_area).filter(Boolean))];
+        console.log('📋 Unique functional areas extracted:', uniqueAreas);
+
+        // Fetch distinct training locations using RPC call to avoid row limit issues
+        // This is more efficient than fetching all rows and deduplicating in JavaScript
+        const { data: trainingLocationsData, error: trainingLocationsError } = await supabase
+          .rpc('get_distinct_training_locations', { p_project_id: currentProject?.id });
+
+        console.log('📊 training_data training_location RPC result:', {
+          count: trainingLocationsData?.length,
+          locations: trainingLocationsData,
+          error: trainingLocationsError
+        });
+
+        // If RPC function doesn't exist, fall back to fetching all rows with increased limit
         let uniqueLocations;
-        if (locationsError) {
-          console.warn('Reference table not available, falling back to users extraction');
-          // Fallback: Fetch distinct training locations from end users for current project
-          const { data: users, error: usersError } = await supabase
-            .from('end_users')
+        if (trainingLocationsError) {
+          console.warn('⚠️ RPC function not available, using fallback approach with increased row limit');
+          const { data: allLocationRows, error: fallbackError } = await supabase
+            .from('training_data')
             .select('training_location')
             .eq('project_id', currentProject?.id)
-            .order('training_location');
-          
-          if (usersError) throw usersError;
-          uniqueLocations = [...new Set(users.map(u => u.training_location).filter(Boolean))];
+            .limit(10000); // Increase limit to ensure we get all rows
+
+          if (fallbackError) throw fallbackError;
+          uniqueLocations = [...new Set(allLocationRows.map(u => u.training_location).filter(Boolean))];
+          console.log('📋 Unique training locations extracted (fallback):', uniqueLocations);
         } else {
-          uniqueLocations = locationsData.map(location => location.name);
+          // RPC returns array of objects like [{training_location: "Dubai"}, ...], extract values
+          uniqueLocations = (trainingLocationsData || []).map(item => item.training_location).filter(Boolean);
+          console.log('📋 Unique training locations from RPC:', uniqueLocations);
         }
 
         setAvailableFunctionalAreas(uniqueAreas);
         setAvailableTrainingLocations(uniqueLocations);
-        
-        console.log('✅ Loaded selection data:', { 
-          functionalAreas: uniqueAreas.length, 
+
+        console.log('✅ Loaded selection data:', {
+          functionalAreas: uniqueAreas.length,
           trainingLocations: uniqueLocations.length,
-          usingReferenceTables: !areasError && !locationsError
+          source: 'training_data (MS Access flat table)'
         });
 
       } catch (error) {
@@ -130,8 +132,13 @@ const TSCDefineCriteriaStage = ({
       }
     };
 
-    fetchSelectionData();
-  }, []);
+    if (currentProject?.id) {
+      fetchSelectionData();
+    }
+    // Note: We intentionally don't add dependencies here so it re-fetches every time component mounts
+    // This ensures fresh data after imports
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentProject?.id]);
 
 
   // Update formValues when criteria prop changes
@@ -261,59 +268,124 @@ const TSCDefineCriteriaStage = ({
         return;
       }
 
-      // Fetch filtered data for current project
-      const { data: users } = await supabase.from('end_users').select('*').eq('project_id', currentProject?.id);
-      const { data: roles } = await supabase.from('project_roles').select('*').eq('project_id', currentProject?.id);
-      const { data: mappings } = await supabase.from('role_course_mappings').select('*').eq('project_id', currentProject?.id);
-      const { data: courses } = await supabase.from('courses').select('*').eq('project_id', currentProject?.id);
+      // Fetch training data from flat table for current project
+      // CRITICAL FIX: Fetch in batches because Supabase has max page size of 1000
+      console.log(`\n📥 FETCHING DATA FROM SUPABASE (with pagination)...`);
+      console.log(`   Project ID: ${currentProject?.id}`);
 
-      // Filter users by selected training locations
-      const filteredUsers = users.filter(user =>
-        values.selected_training_locations.includes(user.training_location)
+      // First get the count
+      const { count } = await supabase
+        .from('training_data')
+        .select('*', { count: 'exact', head: true })
+        .eq('project_id', currentProject?.id);
+
+      console.log(`   Total rows in DB: ${count}`);
+
+      // Fetch ALL rows in batches of 1000 (Supabase max page size)
+      const batchSize = 1000;
+      const batches = Math.ceil(count / batchSize);
+      let trainingData = [];
+      let trainingError = null;
+
+      console.log(`   Fetching ${batches} batches of ${batchSize} rows...`);
+
+      for (let i = 0; i < batches; i++) {
+        const start = i * batchSize;
+        const end = Math.min(start + batchSize - 1, count - 1);
+
+        console.log(`   Batch ${i + 1}/${batches}: rows ${start}-${end}`);
+
+        const { data, error } = await supabase
+          .from('training_data')
+          .select('*')
+          .eq('project_id', currentProject?.id)
+          .range(start, end);
+
+        if (error) {
+          trainingError = error;
+          break;
+        }
+
+        trainingData = trainingData.concat(data);
+      }
+
+      console.log(`\n🚨🚨🚨 SUPABASE RESPONSE (BATCHED):`);
+      console.log(`   Rows returned: ${trainingData?.length}`);
+      console.log(`   Total count in DB: ${count}`);
+      console.log(`   Missing: ${count - (trainingData?.length || 0)}`);
+      if (count === trainingData?.length) {
+        console.log(`   ✅ SUCCESS: All rows fetched!`);
+      } else {
+        console.log(`   ⚠️ WARNING: Still missing ${count - trainingData?.length} rows!`);
+      }
+      console.log(`🚨🚨🚨\n`);
+
+      if (trainingError) {
+        console.error('Error fetching training data:', trainingError);
+        return;
+      }
+
+      console.log('🔍 Debug - Training Data:', {
+        totalRecords: trainingData?.length,
+        sampleData: trainingData?.slice(0, 3)
+      });
+
+      // Filter by selected training locations and functional areas
+      const filteredData = trainingData.filter(row =>
+        values.selected_training_locations.includes(row.training_location) &&
+        values.selected_functional_areas.includes(row.functional_area)
       );
 
-      console.log('🔍 Debug - Filtered Users:', {
-        totalUsers: users?.length,
-        filteredUsers: filteredUsers.length,
+      console.log('🔍 Debug - Filtered Data:', {
+        totalRecords: trainingData?.length,
+        filteredRecords: filteredData.length,
         selectedLocations: values.selected_training_locations,
-        sampleUserLocations: users?.slice(0, 3).map(u => u.training_location)
+        selectedAreas: values.selected_functional_areas
       });
 
-      // Filter courses by selected functional areas
-      const filteredCourses = courses.filter(course =>
-        values.selected_functional_areas.includes(course.functional_area)
-      );
+      // CRITICAL DEBUG: Check General Ledger course specifically
+      const glBeforeFilter = trainingData.filter(r => r.course_id === '27');
+      const glAfterFilter = filteredData.filter(r => r.course_id === '27');
+      console.log(`\n🚨 GENERAL LEDGER DEBUG:`);
+      console.log(`   Before filter: ${glBeforeFilter.length} users with course_id='27'`);
+      console.log(`   After filter: ${glAfterFilter.length} users with course_id='27'`);
+      console.log(`   Missing: ${glBeforeFilter.length - glAfterFilter.length} users`);
 
-      console.log('🔍 Debug - Filtered Courses:', {
-        totalCourses: courses?.length,
-        filteredCourses: filteredCourses.length,
-        selectedAreas: values.selected_functional_areas,
-        sampleCourseFunctionalAreas: courses?.slice(0, 3).map(c => c.functional_area)
-      });
+      if (glBeforeFilter.length > glAfterFilter.length) {
+        const missing = glBeforeFilter.filter(before =>
+          !glAfterFilter.find(after => after.user_id === before.user_id)
+        );
+        console.log(`   Missing users sample:`, missing.slice(0, 3).map(u => ({
+          user_id: u.user_id,
+          user_name: u.user_name,
+          functional_area: u.functional_area,
+          training_location: u.training_location
+        })));
+      }
 
-      // Build user-course combinations using role mappings
-      const combinedData = filteredUsers.flatMap(user => {
-        const userMappings = mappings.filter(m => m.project_role_name === user.project_role);
-        return userMappings.map(mapping => {
-          const course = filteredCourses.find(c => c.course_id === mapping.course_id);
-          if (course) {
-            return {
-              ...user,
-              ...course,
-              course_id: course.course_id,
-              course_name: course.course_name,
-              mapping_status: mapping.status,
-              unique_key: `${user.id}-${mapping.course_id}`
-            };
-          }
-          return null;
-        }).filter(Boolean);
-      });
+      // Transform to expected format
+      const combinedData = filteredData.map(row => ({
+        id: row.user_id,
+        name: row.user_name,
+        email: row.user_email,
+        training_location: row.training_location,
+        project_role: row.user_project_role,
+        course_id: row.course_id,
+        course_name: row.course_name,
+        functional_area: row.functional_area,
+        duration_hrs: row.duration_hrs,
+        business_unit: row.business_unit,
+        organization: row.organization,
+        country: row.user_country,
+        department: row.user_department,
+        job_title: row.user_job_title,
+        location: row.user_location,
+        unique_key: `${row.user_id}-${row.course_id}`
+      }));
 
       console.log('🔍 Debug - Combined Data:', {
-        totalMappings: mappings?.length,
         combinedDataLength: combinedData.length,
-        sampleUserRoles: filteredUsers.slice(0, 3).map(u => ({ id: u.id, role: u.project_role }))
+        sampleRecords: combinedData.slice(0, 3)
       });
 
       // Remove duplicates
@@ -351,18 +423,22 @@ const TSCDefineCriteriaStage = ({
 
       setClassroomRequirements(requirements);
 
+      // Calculate unique users and courses from the filtered data
+      const uniqueUserIds = new Set(filteredData.map(row => row.user_id));
+      const uniqueCourseIds = new Set(filteredData.map(row => row.course_id));
+
       // Update preview and pass data to parent components
-      setSelectionPreview({ 
-        users: filteredUsers.length, 
-        courses: filteredCourses.length 
+      setSelectionPreview({
+        users: uniqueUserIds.size,
+        courses: uniqueCourseIds.size
       });
 
       if (setEndUsers) setEndUsers(uniqueData);
       if (setGroupingKeys) setGroupingKeys(['training_location', 'functional_area']);
 
-      console.log('✅ Selection preview updated:', { 
-        users: filteredUsers.length, 
-        courses: filteredCourses.length,
+      console.log('✅ Selection preview updated:', {
+        users: uniqueUserIds.size,
+        courses: uniqueCourseIds.size,
         combinations: uniqueData.length,
         classroomRequirements: requirements
       });
@@ -845,3 +921,4 @@ const TSCDefineCriteriaStage = ({
 };
 
 export default TSCDefineCriteriaStage;
+// Force rebuild
