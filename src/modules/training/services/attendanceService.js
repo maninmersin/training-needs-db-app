@@ -1,61 +1,11 @@
 import { supabase } from '@core/services/supabaseClient';
+import { fetchUserDirectory, userOrPlaceholder } from './userDirectoryService';
 
 /**
  * Attendance Service Layer
  * Handles all CRUD operations for attendance tracking
  * Follows the same patterns as scheduleService.js for consistency
  */
-
-/**
- * Look up people's names for a set of end user ids.
- *
- * Attendance rows only store the id. Names come from end_users (projects whose people are managed
- * in the app), falling back to the imported training data (MS Access projects have assignments but
- * no end_users rows). There is deliberately no foreign key from assignments or attendance to
- * end_users, so this is looked up here rather than embedded in the query.
- * @param {string} projectId - The project ID
- * @param {Array<number>} userIds - end user ids
- * @returns {Promise<Map>} id -> { id, name, email, job_title, division }
- */
-const fetchUserDirectory = async (projectId, userIds) => {
-  const ids = [...new Set((userIds || []).filter((id) => id !== null && id !== undefined))];
-  const directory = new Map();
-  if (ids.length === 0) return directory;
-
-  const { data: endUsers, error: endUsersError } = await supabase
-    .from('end_users')
-    .select('id, name, email, job_title, division')
-    .eq('project_id', projectId)
-    .in('id', ids);
-  if (endUsersError) throw endUsersError;
-  (endUsers || []).forEach((user) => directory.set(user.id, user));
-
-  const missing = ids.filter((id) => !directory.has(id));
-  // The training data has one row per person per course, and the API returns at most 1000 rows per
-  // request, so look people up in small batches
-  const BATCH_SIZE = 40;
-  for (let i = 0; i < missing.length; i += BATCH_SIZE) {
-    const { data: rows, error: rowsError } = await supabase
-      .from('training_data_combined')
-      .select('user_id, user_name, user_email, user_job_title, business_unit')
-      .eq('project_id', projectId)
-      .in('user_id', missing.slice(i, i + BATCH_SIZE).map(String));
-    if (rowsError) throw rowsError;
-    (rows || []).forEach((row) => {
-      const id = Number(row.user_id);
-      if (!directory.has(id)) {
-        directory.set(id, {
-          id, name: row.user_name, email: row.user_email, job_title: row.user_job_title, division: row.business_unit
-        });
-      }
-    });
-  }
-
-  return directory;
-};
-
-// A person we can't find a name for is still listed, so attendance can be recorded for them
-const userOrPlaceholder = (directory, id) => directory.get(id) || { id, name: `User ${id}`, email: null };
 
 /**
  * Get all attendance statuses

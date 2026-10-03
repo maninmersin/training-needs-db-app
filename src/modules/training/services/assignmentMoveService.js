@@ -1,23 +1,10 @@
 import { supabase } from '@core/services/supabaseClient';
+import { fetchAllRows as fetchAll } from '@core/utils/fetchAllRows';
 
 /**
  * Database access for moving a person between sessions. The decisions about where they can go live in
  * moveUserAssignments.js (pure); this file only reads the data that logic needs and saves the result.
  */
-
-const PAGE_SIZE = 1000; // the API returns at most 1000 rows per request
-
-// Read every row of a query, a page at a time, in a stable order
-const fetchAll = async (buildQuery) => {
-  const rows = [];
-  for (let from = 0; ; from += PAGE_SIZE) {
-    const { data, error } = await buildQuery().order('id', { ascending: true }).range(from, from + PAGE_SIZE - 1);
-    if (error) throw error;
-    rows.push(...(data || []));
-    if (!data || data.length < PAGE_SIZE) break;
-  }
-  return rows;
-};
 
 const SESSION_COLUMNS = [
   'id', 'course_id', 'course_name', 'session_number', 'session_part_number', 'session_identifier',

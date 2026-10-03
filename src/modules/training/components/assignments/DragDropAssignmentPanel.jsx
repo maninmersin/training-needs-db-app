@@ -10,6 +10,7 @@ import AssignmentStats from './AssignmentStats';
 import CalendarDayControls from '../calendar/CalendarDayControls';
 import UserContextMenu from './UserContextMenu';
 import MoveUserDialog from './MoveUserDialog';
+import { loadAssignmentsForExport } from '../../services/assignmentExportService';
 import AssignmentStatsModal from './AssignmentStatsModal';
 import AssignmentExportDialog from './AssignmentExportDialog';
 import { generateEventIdFromSession } from '@core/utils/eventIdUtils';
@@ -2368,35 +2369,19 @@ const DragDropAssignmentPanel = ({
 
       console.log('📄 Starting assignment data export...');
 
-      // Query user assignments with joined user data and session data for functional area filtering
-      let query = supabase
-        .from('user_assignments')
-        .select(`
-          *,
-          end_users!inner(id, name, training_location, project_role),
-          training_sessions!inner(id, functional_area, training_location, course_id)
-        `)
-        .eq('schedule_id', schedule.id);
-
-      // Filter by training location if specified
-      if (selectedTrainingLocation) {
-        query = query.eq('end_users.training_location', selectedTrainingLocation);
-      }
-
-      // Filter by stakeholder assignment editor's assigned areas and locations
-      if (isStakeholder) {
-        if (assignedTrainingLocations.length > 0) {
-          query = query.in('end_users.training_location', assignedTrainingLocations);
-        }
-        if (assignedFunctionalAreas.length > 0) {
-          // Filter by functional area from training_sessions, not end_users
-          query = query.in('training_sessions.functional_area', assignedFunctionalAreas);
-        }
-      }
-
-      const { data: assignmentData, error } = await query;
-      
-      if (error) {
+      // People and sessions are looked up separately: assignments have no foreign key to end_users or
+      // training_sessions here, so embedding them fails ("Could not find a relationship ... schema cache").
+      // A stakeholder only sees their assigned locations and functional areas.
+      let assignmentData;
+      try {
+        assignmentData = await loadAssignmentsForExport({
+          scheduleId: schedule.id,
+          projectId: currentProject?.id,
+          locations: selectedTrainingLocation ? [selectedTrainingLocation] : null,
+          stakeholderLocations: isStakeholder ? assignedTrainingLocations : null,
+          functionalAreas: isStakeholder ? assignedFunctionalAreas : null
+        });
+      } catch (error) {
         throw new Error(`Failed to fetch assignment data: ${error.message}`);
       }
 
