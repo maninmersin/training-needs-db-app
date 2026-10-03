@@ -17,7 +17,6 @@
  * 5. Clean, maintainable code with utility functions
  */
 
-import { physicalLocationOf } from '@core/utils/classroomCalculations';
 import {
   initializeSchedulingEngines,
   sortCoursesByPriority,
@@ -44,10 +43,6 @@ export const scheduleByGroupComplete = async (
     const sortedCourses = sortCoursesByPriority(courses);
     logCoursePriorityOrder(sortedCourses);
     
-    // Groups are keyed "location|functional_area", but classrooms are physical: every group at a
-    // location shares one set of classroom states, so groups queue for the same rooms
-    const classroomStatesByLocation = {};
-
     for (const locationName in groupedEndUsers) {
       const usersInLocation = groupedEndUsers[locationName];
       const maxClassrooms = locationClassroomReqs.get(locationName)?.numberOfClassrooms || 1;
@@ -60,17 +55,13 @@ export const scheduleByGroupComplete = async (
       
       console.log(`📊 Maximum groups needed across all courses: ${maxGroupsNeeded}`);
       
-      // Initialize classroom states for sequential scheduling (once per physical location)
-      const physicalLocation = physicalLocationOf(locationName);
-      if (!classroomStatesByLocation[physicalLocation]) {
-        classroomStatesByLocation[physicalLocation] = _initializeClassroomStates(
-          maxClassrooms,
-          currentCriteria,
-          timeBlockEngine,
-          dayNames
-        );
-      }
-      const classroomStates = classroomStatesByLocation[physicalLocation];
+      // Initialize classroom states for sequential scheduling
+      const classroomStates = _initializeClassroomStates(
+        maxClassrooms, 
+        currentCriteria, 
+        timeBlockEngine, 
+        dayNames
+      );
       
       // Schedule each group sequentially through all courses
       for (let groupNum = 1; groupNum <= maxGroupsNeeded; groupNum++) {

@@ -98,49 +98,67 @@ export const calculateGroupedClassroomRequirements = (groupedData, criteria) => 
 };
 
 /**
- * The TSC Wizard schedules "groups" keyed "training_location|functional_area". Classrooms are
- * physical, so every group at a location shares that location's classrooms. The location is the
+ * The TSC Wizard schedules one group per "training_location|functional_area". The location is the
  * first segment of the key (the same convention the save code uses to split the key).
  * @param {string} groupKey - e.g. "London|Finance" (or just "London")
  * @returns {string} The physical training location, e.g. "London"
  */
 export const physicalLocationOf = (groupKey) => String(groupKey).split('|')[0].trim();
 
+const classroomNumberOf = (classroomKey) => Number(String(classroomKey).replace('Classroom ', ''));
+
+// "London|HR Group 1-6 Classroom 1" -> "... Classroom 3" (and add the suffix if it is now > 1)
+const renameClassroomInGroupName = (groupName, newNumber) => {
+  if (typeof groupName !== 'string') return groupName;
+  if (/Classroom \d+$/.test(groupName)) return groupName.replace(/Classroom \d+$/, `Classroom ${newNumber}`);
+  return newNumber > 1 ? `${groupName} Classroom ${newNumber}` : groupName;
+};
+
 /**
- * Classroom requirements per scheduling group, sized per physical location so that groups at the
- * same location share one pool of classrooms instead of each getting their own.
+ * Give every functional area its own physical classrooms at a location.
  *
- * A location's pool is the workload estimate over ALL groups at that location (the same figure
- * Stage 1 shows as "classrooms needed" for the location).
+ * Each group ("location|functional_area") is scheduled with classrooms numbered from 1, so London's
+ * Finance and HR groups both had a "Classroom 1". Saved sessions are grouped by location and
+ * classroom number, so those separate rooms collapsed into one and were double-booked. This
+ * renumbers the classrooms that are actually used so they are unique within each location
+ * (e.g. Finance 1, HR 2, Procurement 3 ...). Empty classrooms are dropped.
  *
- * @param {Object} groupedEndUsers - groupKey -> users (one row per user-course)
- * @param {Array} courses - Courses with course_id and duration_hrs
- * @param {Object} criteria - Training criteria
- * @returns {Map} groupKey -> requirement, with numberOfClassrooms = the location's pool size
+ * @param {Object} sessionsGrouped - functional_area -> group key -> "Classroom N" -> [sessions]
+ * @returns {Object} A new structure with location-unique classroom numbers
  */
-export const calculateSharedClassroomRequirements = (groupedEndUsers, courses, criteria) => {
-  const hoursByLocation = {};
-  for (const [groupKey, users] of Object.entries(groupedEndUsers)) {
-    let hours = 0;
-    for (const course of courses) {
-      const attendees = users.filter(user => user.course_id === course.course_id).length;
-      const duration = Number(course.duration_hrs);
-      if (attendees > 0 && !isNaN(duration)) {
-        hours += attendees * duration;
+export const assignPhysicalClassrooms = (sessionsGrouped) => {
+  const roomsAssigned = {}; // location -> classrooms already given to earlier groups there
+  const result = {};
+
+  for (const [area, groups] of Object.entries(sessionsGrouped || {})) {
+    result[area] = {};
+    for (const [groupKey, classrooms] of Object.entries(groups || {})) {
+      const usedKeys = Object.keys(classrooms)
+        .filter((key) => Array.isArray(classrooms[key]) && classrooms[key].length > 0)
+        .sort((a, b) => classroomNumberOf(a) - classroomNumberOf(b));
+
+      if (usedKeys.length === 0) {
+        result[area][groupKey] = classrooms;
+        continue;
       }
+
+      const location = physicalLocationOf(groupKey);
+      const offset = roomsAssigned[location] || 0;
+      result[area][groupKey] = {};
+
+      usedKeys.forEach((key, index) => {
+        const newNumber = offset + index + 1;
+        result[area][groupKey][`Classroom ${newNumber}`] = classrooms[key].map((session) => ({
+          ...session,
+          classroomNumber: newNumber,
+          groupName: renameClassroomInGroupName(session.groupName, newNumber)
+        }));
+      });
+
+      roomsAssigned[location] = offset + usedKeys.length;
     }
-    const location = physicalLocationOf(groupKey);
-    hoursByLocation[location] = (hoursByLocation[location] || 0) + hours;
   }
-
-  const requirements = new Map();
-  for (const groupKey of Object.keys(groupedEndUsers)) {
-    const location = physicalLocationOf(groupKey);
-    const computed = calculateClassroomsNeeded(hoursByLocation[location], criteria);
-
-    requirements.set(groupKey, { ...computed, location });
-  }
-  return requirements;
+  return result;
 };
 
 /**
