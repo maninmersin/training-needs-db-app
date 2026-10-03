@@ -15,6 +15,7 @@ import { debugLog, debugWarn, debugError } from '@core/utils/consoleUtils';
  * @param {Array} assignments - Array of user assignments
  * @param {Function} setGeneratingCalendar - State setter for loading state
  * @param {Function} setCalendarError - State setter for error messages
+ * @param {string} projectId - The project the schedule belongs to (needed to look up attendees)
  * @returns {Promise<void>}
  */
 export const handleGenerateAssignmentCalendar = async (
@@ -22,7 +23,8 @@ export const handleGenerateAssignmentCalendar = async (
   sessions,
   assignments,
   setGeneratingCalendar,
-  setCalendarError
+  setCalendarError,
+  projectId
 ) => {
   try {
     setGeneratingCalendar(true);
@@ -49,8 +51,8 @@ export const handleGenerateAssignmentCalendar = async (
       throw new Error('No user assignments found. Please assign users to sessions first.');
     }
     
-    // Generate calendar file
-    const result = await generateTrainingCalendar(schedule, flatSessions, assignments);
+    // Generate calendar file (the schedule record carries its project; the caller's project is the fallback)
+    const result = await generateTrainingCalendar(schedule, flatSessions, assignments, schedule.project_id || projectId);
     
     if (!result.success) {
       throw new Error(result.error);

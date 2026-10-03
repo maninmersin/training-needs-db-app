@@ -2731,7 +2731,8 @@ const DragDropAssignmentPanel = ({
       sessions,
       assignments,
       setGeneratingCalendar,
-      setCalendarError
+      setCalendarError,
+      currentProject?.id
     );
   };
 
