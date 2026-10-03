@@ -3,6 +3,8 @@
 // Fills an in-app TNA project (training_data_source = 'app') with fictional demo data:
 // functional areas, training locations, roles, courses, people, role-course mappings, a
 // few individual course assignments and trainers. Only adds rows - safe to re-run, never deletes.
+// People are topped up per location and role to the PEOPLE targets below, so re-running after
+// you delete a location or edit users won't recreate them or duplicate anyone.
 import { pathToFileURL } from 'node:url';
 import pg from 'pg';
 import { databaseUrl } from '../scripts/local/config.js';
@@ -11,8 +13,7 @@ const FUNCTIONAL_AREAS = ['Finance', 'Procurement', 'Supply Chain', 'HR'];
 
 const LOCATIONS = [
   { name: 'London', capacity: 12, classrooms_count: 2 },
-  { name: 'Manchester', capacity: 10, classrooms_count: 1 },
-  { name: 'Leeds', capacity: 8, classrooms_count: 1 }
+  { name: 'Manchester', capacity: 10, classrooms_count: 1 }
 ];
 
 // course_id is unique across all projects, hence the ACME- prefix
@@ -28,14 +29,14 @@ const COURSES = [
   ['ACME-HR-201', 'Core HR Administration', 'HR', 5, 2]
 ];
 
-// role -> [division, courses]; weight = how many people per location have the role
+// role -> division and courses (everyone with the role gets these)
 const ROLES = {
-  'Finance Manager': { division: 'Finance', weight: 1, courses: ['ACME-FIN-101', 'ACME-FIN-201', 'ACME-PRC-101', 'ACME-HR-101'] },
-  'Accounts Payable Clerk': { division: 'Finance', weight: 4, courses: ['ACME-FIN-101', 'ACME-FIN-102', 'ACME-HR-101'] },
-  'Buyer': { division: 'Procurement', weight: 3, courses: ['ACME-PRC-101', 'ACME-PRC-201', 'ACME-HR-101'] },
-  'Warehouse Supervisor': { division: 'Operations', weight: 3, courses: ['ACME-SCM-101', 'ACME-SCM-201', 'ACME-PRC-101', 'ACME-HR-101'] },
-  'Store Manager': { division: 'Operations', weight: 4, courses: ['ACME-SCM-101', 'ACME-PRC-101', 'ACME-HR-101'] },
-  'HR Advisor': { division: 'HR', weight: 2, courses: ['ACME-HR-101', 'ACME-HR-201'] }
+  'Finance Manager': { division: 'Finance', courses: ['ACME-FIN-101', 'ACME-FIN-201', 'ACME-PRC-101', 'ACME-HR-101'] },
+  'Accounts Payable Clerk': { division: 'Finance', courses: ['ACME-FIN-101', 'ACME-FIN-102', 'ACME-HR-101'] },
+  'Buyer': { division: 'Procurement', courses: ['ACME-PRC-101', 'ACME-PRC-201', 'ACME-HR-101'] },
+  'Warehouse Supervisor': { division: 'Operations', courses: ['ACME-SCM-101', 'ACME-SCM-201', 'ACME-PRC-101', 'ACME-HR-101'] },
+  'Store Manager': { division: 'Operations', courses: ['ACME-SCM-101', 'ACME-PRC-101', 'ACME-HR-101'] },
+  'HR Advisor': { division: 'HR', courses: ['ACME-HR-101', 'ACME-HR-201'] }
 };
 
 const FIRST = ['Amelia', 'Oliver', 'Isla', 'George', 'Ava', 'Harry', 'Mia', 'Noah', 'Sophia', 'Jack',
@@ -56,6 +57,15 @@ const TRAINERS = [
 
 const FIRST_USER_ID = 100001;
 
+// How many people each location should have per role. Sized against the capacities above so
+// courses land on both sides of a class: London (12 seats, 2 rooms) gets exactly-full, over-full
+// and 25+ attendee courses (several sessions, parallel classrooms); Manchester (10 seats, 1 room)
+// needs many sessions in sequence.
+const PEOPLE = {
+  London: { 'Finance Manager': 2, 'Accounts Payable Clerk': 10, 'Buyer': 7, 'Warehouse Supervisor': 7, 'Store Manager': 9, 'HR Advisor': 5 },
+  Manchester: { 'Finance Manager': 3, 'Accounts Payable Clerk': 12, 'Buyer': 9, 'Warehouse Supervisor': 9, 'Store Manager': 12, 'HR Advisor': 5 }
+};
+
 // Exceptions to the role baseline: people who need a course outside their role
 const INDIVIDUAL = [
   { personIndex: 1, course: 'ACME-FIN-201', notes: 'Covering month-end for Finance Manager' },
@@ -65,30 +75,40 @@ const INDIVIDUAL = [
   { personIndex: 31, course: 'ACME-SCM-201', notes: 'Moving to warehouse role' }
 ];
 
-const buildPeople = () => {
-  const people = [];
-  for (const location of LOCATIONS) {
-    for (const [role, { division, weight }] of Object.entries(ROLES)) {
-      for (let i = 0; i < weight; i++) {
-        const n = people.length;
+// Adds the shortfall for each location + role; new people get the next free ids
+const topUpPeople = async (client, projectId) => {
+  const { rows: existing } = await client.query(
+    'SELECT training_location, project_role, count(*)::int AS n FROM public.end_users WHERE project_id = $1 GROUP BY 1, 2',
+    [projectId]);
+  const have = new Map(existing.map((r) => [`${r.training_location}|${r.project_role}`, r.n]));
+  const { rows: [{ max }] } = await client.query('SELECT max(id) FROM public.end_users');
+  let nextId = Math.max(FIRST_USER_ID, (max ?? 0) + 1);
+
+  let added = 0;
+  for (const [location, roles] of Object.entries(PEOPLE)) {
+    for (const [role, target] of Object.entries(roles)) {
+      const missing = target - (have.get(`${location}|${role}`) || 0);
+      for (let i = 0; i < missing; i++) {
+        const id = nextId++;
+        const n = id - FIRST_USER_ID;
         const first = FIRST[n % FIRST.length];
         const last = LAST[(n * 7) % LAST.length];
-        people.push({
-          id: FIRST_USER_ID + n,
+        added += await insertIfMissing(client, 'end_users', { id }, {
           name: `${first} ${last}`,
           email: `${first}.${last}${n}@acme.example`.toLowerCase(),
           job_title: role,
           country: 'United Kingdom',
-          division,
-          sub_division: location.name,
-          location_name: `${location.name} Office`,
-          training_location: location.name,
-          project_role: role
+          division: ROLES[role].division,
+          sub_division: location,
+          location_name: `${location} Office`,
+          training_location: location,
+          project_role: role,
+          project_id: projectId
         });
       }
     }
   }
-  return people;
+  return added;
 };
 
 const insertIfMissing = async (client, table, match, values) => {
@@ -143,14 +163,14 @@ export const seedTnaDemo = async ({ projectTitle, connectionString = databaseUrl
           { project_id: projectId, project_role_name: role, course_id }, {}));
       }
     }
-    const people = buildPeople();
-    for (const person of people) {
-      const { id, ...rest } = person;
-      count('end_users', await insertIfMissing(client, 'end_users', { id }, { ...rest, project_id: projectId }));
-    }
+    count('end_users', await topUpPeople(client, projectId));
     for (const { personIndex, course, notes } of INDIVIDUAL) {
+      const end_user_id = FIRST_USER_ID + personIndex;
+      const { rowCount } = await client.query(
+        'SELECT 1 FROM public.end_users WHERE id = $1 AND project_id = $2', [end_user_id, projectId]);
+      if (!rowCount) continue; // that person was deleted
       count('user_course_mappings', await insertIfMissing(client, 'user_course_mappings',
-        { end_user_id: people[personIndex].id, course_id: course },
+        { end_user_id, course_id: course },
         { project_id: projectId, assigned_by: 'admin', notes }));
     }
     for (const { name, ...trainer } of TRAINERS) {
