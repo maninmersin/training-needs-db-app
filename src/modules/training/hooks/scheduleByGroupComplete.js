@@ -282,7 +282,7 @@ function _findEarliestAvailableClassroom(classroomStates) {
  * Advance time to next valid scheduling time
  * @private
  */
-function _advanceToNextSchedulingTime(currentTime, timeBlockEngine, dayNames) {
+export function _advanceToNextSchedulingTime(currentTime, timeBlockEngine, dayNames) {
   // Check which time block the current time falls into
   const timeBlocks = timeBlockEngine.getTimeBlocks();
   const currentHour = currentTime.getHours();
@@ -300,8 +300,8 @@ function _advanceToNextSchedulingTime(currentTime, timeBlockEngine, dayNames) {
     if (currentTimeInMinutes < blockStartMinutes) {
       // We're before this block starts, so start from this block
       nextBlockId = block.id;
-      nextStartTime = new Date(currentTime);
-      nextStartTime.setHours(block.startHours, 0, 0, 0);
+      // setDateToBlockStart keeps the minutes (setHours(13.5, ...) would truncate to 13:00)
+      nextStartTime = timeBlockEngine.setDateToBlockStart(currentTime, block.id);
       break;
     } else if (currentTimeInMinutes >= blockStartMinutes && currentTimeInMinutes < blockEndMinutes) {
       // We're currently in this block, move to next block
@@ -310,8 +310,7 @@ function _advanceToNextSchedulingTime(currentTime, timeBlockEngine, dayNames) {
         // Move to next block today
         const nextBlock = timeBlocks[nextBlockIndex];
         nextBlockId = nextBlock.id;
-        nextStartTime = new Date(currentTime);
-        nextStartTime.setHours(nextBlock.startHours, 0, 0, 0);
+        nextStartTime = timeBlockEngine.setDateToBlockStart(currentTime, nextBlock.id);
         break;
       } else {
         // No more blocks today, move to next day, first block
