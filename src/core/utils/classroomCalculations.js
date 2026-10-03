@@ -98,6 +98,52 @@ export const calculateGroupedClassroomRequirements = (groupedData, criteria) => 
 };
 
 /**
+ * The TSC Wizard schedules "groups" keyed "training_location|functional_area". Classrooms are
+ * physical, so every group at a location shares that location's classrooms. The location is the
+ * first segment of the key (the same convention the save code uses to split the key).
+ * @param {string} groupKey - e.g. "London|Finance" (or just "London")
+ * @returns {string} The physical training location, e.g. "London"
+ */
+export const physicalLocationOf = (groupKey) => String(groupKey).split('|')[0].trim();
+
+/**
+ * Classroom requirements per scheduling group, sized per physical location so that groups at the
+ * same location share one pool of classrooms instead of each getting their own.
+ *
+ * A location's pool is the workload estimate over ALL groups at that location (the same figure
+ * Stage 1 shows as "classrooms needed" for the location).
+ *
+ * @param {Object} groupedEndUsers - groupKey -> users (one row per user-course)
+ * @param {Array} courses - Courses with course_id and duration_hrs
+ * @param {Object} criteria - Training criteria
+ * @returns {Map} groupKey -> requirement, with numberOfClassrooms = the location's pool size
+ */
+export const calculateSharedClassroomRequirements = (groupedEndUsers, courses, criteria) => {
+  const hoursByLocation = {};
+  for (const [groupKey, users] of Object.entries(groupedEndUsers)) {
+    let hours = 0;
+    for (const course of courses) {
+      const attendees = users.filter(user => user.course_id === course.course_id).length;
+      const duration = Number(course.duration_hrs);
+      if (attendees > 0 && !isNaN(duration)) {
+        hours += attendees * duration;
+      }
+    }
+    const location = physicalLocationOf(groupKey);
+    hoursByLocation[location] = (hoursByLocation[location] || 0) + hours;
+  }
+
+  const requirements = new Map();
+  for (const groupKey of Object.keys(groupedEndUsers)) {
+    const location = physicalLocationOf(groupKey);
+    const computed = calculateClassroomsNeeded(hoursByLocation[location], criteria);
+
+    requirements.set(groupKey, { ...computed, location });
+  }
+  return requirements;
+};
+
+/**
  * Validate if classroom capacity is sufficient for planned sessions
  * @param {number} requiredClassrooms - Number of classrooms needed
  * @param {number} availableClassrooms - Number of classrooms available (optional, defaults to checking feasibility)

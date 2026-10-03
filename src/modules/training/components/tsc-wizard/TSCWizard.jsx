@@ -9,7 +9,7 @@ import TSCReviewAdjustStage from './TSCReviewAdjustStage';
 import './TSCWizard.css';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
-  calculateClassroomsNeeded,
+  calculateSharedClassroomRequirements,
   ClassroomOccupancyTracker,
   validateClassroomCapacity
 } from '@core/utils/classroomCalculations';
@@ -207,24 +207,16 @@ const TSCWizard = () => {
         return groups;
       }, {});
 
-      // First pass: Calculate classroom requirements per location
-      for (const groupName in groupedEndUsers) {
-        const usersInGroup = groupedEndUsers[groupName];
-        let totalTrainingHours = 0;
-        
-        // Calculate total training hours for this group
-        for (const course of courses) {
-          const attendees = usersInGroup.filter(user => user.course_id === course.course_id).length;
-          const duration = Number(course.duration_hrs);
-          if (attendees > 0 && !isNaN(duration)) {
-            totalTrainingHours += attendees * duration;
-          }
-        }
-        
-        // Calculate classroom requirements for this location
-        const classroomReq = calculateClassroomsNeeded(totalTrainingHours, currentCriteria);
+      // First pass: classroom requirements. Classrooms are physical, so every group at a location
+      // (one per functional area) shares that location's pool, sized from the workload at the
+      // whole location (matching the "classrooms needed" shown in Define Criteria).
+      const sharedRequirements = calculateSharedClassroomRequirements(
+        groupedEndUsers, courses, currentCriteria
+      );
+
+      for (const [groupName, classroomReq] of sharedRequirements) {
         locationClassroomReqs.set(groupName, classroomReq);
-        
+
         // Validate classroom capacity
         const validation = validateClassroomCapacity(classroomReq.numberOfClassrooms);
         if (validation.severity === 'warning' || validation.severity === 'error') {
