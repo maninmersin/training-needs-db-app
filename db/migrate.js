@@ -6,6 +6,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
+import net from 'node:net';
 import { pathToFileURL } from 'node:url';
 import pg from 'pg';
 import { ROOT, config, databaseUrl } from '../scripts/local/config.js';
@@ -14,6 +15,13 @@ const MIGRATIONS_DIR = path.join(ROOT, 'db', 'migrations');
 const POST_MIGRATE = path.join(ROOT, 'db', 'post-migrate.sql');
 
 const checksum = (sql) => crypto.createHash('sha256').update(sql).digest('hex');
+
+const portInUse = (port) =>
+  new Promise((resolve) => {
+    const socket = net.connect({ port, host: '127.0.0.1' });
+    socket.once('connect', () => { socket.destroy(); resolve(true); });
+    socket.once('error', () => resolve(false));
+  });
 
 export const migrate = async ({ log = console.log, connectionString = databaseUrl(), migrationsDir = MIGRATIONS_DIR } = {}) => {
   const client = new pg.Client({ connectionString });
@@ -65,6 +73,14 @@ export const migrate = async ({ log = console.log, connectionString = databaseUr
     await client.query(`ALTER ROLE authenticator WITH LOGIN PASSWORD '${config.authenticatorPassword.replace(/'/g, "''")}'`);
 
     log(count ? `✓ ${count} migration(s) applied` : '✓ database schema is up to date');
+
+    // A running PostgREST reloads new tables on the NOTIFY above, but not new foreign-key
+    // relationships or functions, which then fail with "could not find ... in the schema cache".
+    // Starting it fresh (npm run local / start-local.bat) always loads everything.
+    if (count && (await portInUse(config.postgrestPort))) {
+      log('⚠  The local API is running. Restart it (Ctrl+C, then npm run local / start-local.bat) so it');
+      log('   picks up new relationships and functions; a running instance only notices new tables.');
+    }
   } finally {
     await client.end();
   }
