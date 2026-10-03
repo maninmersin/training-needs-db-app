@@ -46,6 +46,14 @@
   background-color: #e9ecef;
 }
 
+.move-user:hover {
+  background-color: #e7f1ff;
+}
+
+.move-user:hover .menu-text {
+  color: #0a58ca;
+}
+
 .remove-from-group:hover {
   background-color: #fff3cd;
   color: #856404;

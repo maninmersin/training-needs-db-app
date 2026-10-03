@@ -9,6 +9,7 @@ import EnhancedScheduleCalendar from '../calendar/EnhancedScheduleCalendar';
 import AssignmentStats from './AssignmentStats';
 import CalendarDayControls from '../calendar/CalendarDayControls';
 import UserContextMenu from './UserContextMenu';
+import MoveUserDialog from './MoveUserDialog';
 import AssignmentStatsModal from './AssignmentStatsModal';
 import AssignmentExportDialog from './AssignmentExportDialog';
 import { generateEventIdFromSession } from '@core/utils/eventIdUtils';
@@ -144,7 +145,14 @@ const DragDropAssignmentPanel = ({
     userInfo: null,
     sessionInfo: null
   });
-  
+
+  // "Move to another session" dialog state
+  const [moveDialog, setMoveDialog] = useState({
+    isOpen: false,
+    userInfo: null,
+    sessionInfo: null
+  });
+
   // Filters
   const [selectedTrainingLocation, setSelectedTrainingLocation] = useState('');
   
@@ -2194,6 +2202,27 @@ const DragDropAssignmentPanel = ({
     }
   };
 
+  // Open the "Move to another session" dialog for a person (after the same permission checks as
+  // removing and assigning, since a move does both)
+  const handleMoveUser = async (userInfo, sessionInfo) => {
+    try {
+      await ActionValidators.validateRemoveUserFromSession(userInfo, sessionInfo);
+      await ActionValidators.validateAssignUserToSession(userInfo, sessionInfo);
+    } catch (authError) {
+      alert(`Access denied: ${authError.message}`);
+      return;
+    }
+    setMoveDialog({ isOpen: true, userInfo, sessionInfo });
+  };
+
+  // Called by the dialog once the move is saved: reload assignments the same way a removal does
+  const handleUserMoved = async () => {
+    await initializeAssignmentData();
+    if (onAssignmentUpdate) {
+      onAssignmentUpdate();
+    }
+  };
+
   // Remove user from all sessions of a specific course
   const removeUserFromCourse = async (userInfo, sessionInfo) => {
     try {
@@ -4133,8 +4162,20 @@ const DragDropAssignmentPanel = ({
           userInfo={contextMenu.userInfo}
           sessionInfo={contextMenu.sessionInfo}
           onClose={() => setContextMenu(prev => ({ ...prev, visible: false }))}
+          onMoveUser={handleMoveUser}
           onRemoveFromGroup={removeUserFromGroup}
           onRemoveFromCourse={removeUserFromCourse}
+        />
+
+        {/* Move person dialog */}
+        <MoveUserDialog
+          isOpen={moveDialog.isOpen}
+          userInfo={moveDialog.userInfo}
+          sessionInfo={moveDialog.sessionInfo}
+          schedule={schedule}
+          projectId={currentProject?.id}
+          onClose={() => setMoveDialog(prev => ({ ...prev, isOpen: false }))}
+          onMoved={handleUserMoved}
         />
         
         {/* Assignment Stats Modal */}

@@ -6,6 +6,7 @@ const UserContextMenu = ({
   y, 
   visible, 
   onClose, 
+  onMoveUser,
   onRemoveFromGroup, 
   onRemoveFromCourse,
   userInfo,
@@ -39,6 +40,11 @@ const UserContextMenu = ({
 
   if (!visible) return null;
 
+  const handleMoveUser = () => {
+    onMoveUser(userInfo, sessionInfo);
+    onClose();
+  };
+
   const handleRemoveFromGroup = () => {
     onRemoveFromGroup(userInfo, sessionInfo);
     onClose();
@@ -65,6 +71,16 @@ const UserContextMenu = ({
       </div>
       
       <div className="context-menu-items">
+        {onMoveUser && (
+          <button
+            className="context-menu-item move-user"
+            onClick={handleMoveUser}
+          >
+            <span className="menu-icon">↔️</span>
+            <span className="menu-text">Move to another session...</span>
+          </button>
+        )}
+
         <button 
           className="context-menu-item remove-from-group"
           onClick={handleRemoveFromGroup}
