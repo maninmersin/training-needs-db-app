@@ -6,7 +6,7 @@ import { fetchAllRows as fetchAll } from '@core/utils/fetchAllRows';
  * moveUserAssignments.js (pure); this file only reads the data that logic needs and saves the result.
  */
 
-const SESSION_COLUMNS = [
+export const SESSION_COLUMNS = [
   'id', 'course_id', 'course_name', 'session_number', 'session_part_number', 'session_identifier',
   'session_title', 'start_datetime', 'end_datetime', 'training_location', 'functional_area',
   'classroom_number', 'max_attendees', 'instructor_name'

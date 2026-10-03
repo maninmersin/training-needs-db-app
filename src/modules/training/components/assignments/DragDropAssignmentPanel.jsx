@@ -10,7 +10,10 @@ import AssignmentStats from './AssignmentStats';
 import CalendarDayControls from '../calendar/CalendarDayControls';
 import UserContextMenu from './UserContextMenu';
 import MoveUserDialog from './MoveUserDialog';
-import { loadAssignmentsForExport } from '../../services/assignmentExportService';
+import ImportReviewDialog from './ImportReviewDialog';
+import { loadReviewData } from '../../services/assignmentReviewService';
+import { buildReviewModel, scopeList, combineScopeLists } from './reviewSheet';
+import { writeReviewWorkbook, reviewFilename } from './reviewWorkbook';
 import AssignmentStatsModal from './AssignmentStatsModal';
 import AssignmentExportDialog from './AssignmentExportDialog';
 import { generateEventIdFromSession } from '@core/utils/eventIdUtils';
@@ -135,8 +138,6 @@ const DragDropAssignmentPanel = ({
   });
   const [showStatsModal, setShowStatsModal] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
-  const [importFile, setImportFile] = useState(null);
-  const [importPreview, setImportPreview] = useState(null);
 
   // Context menu state
   const [contextMenu, setContextMenu] = useState({
@@ -2361,204 +2362,50 @@ const DragDropAssignmentPanel = ({
     }
   };
 
-  // Export user assignment data to CSV
+  // Export the stakeholder review sheet (Excel): one row per person per course, with a "Move To Group"
+  // column to fill in. Reading it back is done by ImportReviewDialog.
   const handleExportAssignments = async () => {
     try {
       setLoading(true);
       setError(null);
 
-      console.log('📄 Starting assignment data export...');
-
-      // People and sessions are looked up separately: assignments have no foreign key to end_users or
-      // training_sessions here, so embedding them fails ("Could not find a relationship ... schema cache").
-      // A stakeholder only sees their assigned locations and functional areas.
-      let assignmentData;
-      try {
-        assignmentData = await loadAssignmentsForExport({
-          scheduleId: schedule.id,
-          projectId: currentProject?.id,
-          locations: selectedTrainingLocation ? [selectedTrainingLocation] : null,
-          stakeholderLocations: isStakeholder ? assignedTrainingLocations : null,
-          functionalAreas: isStakeholder ? assignedFunctionalAreas : null
-        });
-      } catch (error) {
-        throw new Error(`Failed to fetch assignment data: ${error.message}`);
-      }
-
-      // Get course data separately
-      const courseIds = [...new Set(assignmentData.map(assignment => assignment.course_id).filter(Boolean))];
-      let coursesData = [];
-      
-      if (courseIds.length > 0) {
-        const { data: courses, error: coursesError } = await supabase
-          .from('courses')
-          .select('course_id, course_name, duration_hrs')
-          .in('course_id', courseIds);
-        
-        if (coursesError) {
-          console.warn('Could not fetch course details:', coursesError.message);
-        } else {
-          coursesData = courses || [];
-        }
-      }
-
-      // Create a course lookup map
-      const courseMap = {};
-      coursesData.forEach(course => {
-        courseMap[course.course_id] = course;
+      const { sessions, assignments: assignmentRows, directory } = await loadReviewData({
+        scheduleId: schedule.id,
+        projectId: currentProject?.id
       });
 
-      if (!assignmentData || assignmentData.length === 0) {
+      // A stakeholder only receives the locations and functional areas they look after. No list means no
+      // restriction; lists that share nothing allow nothing.
+      const locations = combineScopeLists(
+        selectedTrainingLocation ? [selectedTrainingLocation] : null,
+        isStakeholder ? scopeList(assignedTrainingLocations) : null
+      );
+      const functionalAreas = isStakeholder ? scopeList(assignedFunctionalAreas) : null;
+
+      const model = buildReviewModel({
+        sessions,
+        assignments: assignmentRows,
+        directory,
+        filters: { locations, functionalAreas }
+      });
+
+      if (model.rows.length === 0) {
         alert('📄 No assignment data to export for the current selection.');
         return;
       }
 
-      // Get session details for context
-      const sessions = getAllSessionsFlat();
-      console.log('🔍 Export: Found', sessions.length, 'sessions');
-      console.log('🔍 Export: Sample session structure:', sessions[0]);
-      
-      // Create session map using multiple matching strategies since session_identifier formats don't match
-      const sessionMap = {};
-      
-      sessions.forEach(session => {
-        // Strategy 1: Use session_identifier if available
-        if (session.session_identifier) {
-          sessionMap[session.session_identifier] = session;
-        }
-        
-        // Strategy 2: Create composite key for more reliable matching
-        // Using course_id, session_number, training_location, functional_area
-        const compositeKey = `${session.course_id}-session${session.session_number || session.sessionNumber}-${session.training_location?.toLowerCase().replace(/\s+/g, '-')}-${session.functional_area?.toLowerCase().replace(/\s+/g, '-')}`;
-        sessionMap[compositeKey] = session;
-        
-        // Strategy 3: Also try with part information for multi-part sessions
-        if (session.title && session.title.includes('Part')) {
-          const partMatch = session.title.match(/Part (\d+)/);
-          if (partMatch) {
-            const partKey = `${compositeKey}-part${partMatch[1]}`;
-            sessionMap[partKey] = session;
-          }
-        }
-      });
-      
-      console.log('🔍 Export: Created sessionMap with', Object.keys(sessionMap).length, 'entries');
-      console.log('🔍 Export: SessionMap sample keys:', Object.keys(sessionMap).slice(0, 10));
+      const scopeParts = [];
+      if (locations) scopeParts.push(`Locations: ${locations.join(', ')}`);
+      if (functionalAreas) scopeParts.push(`Functional areas: ${functionalAreas.join(', ')}`);
 
-      // Transform data for CSV export with stakeholder-friendly format
-      const csvData = assignmentData.map((assignment, index) => {
-        const course = courseMap[assignment.course_id] || {};
-        
-        // Try multiple strategies to find the matching session
-        let session = {};
-        
-        // Strategy 1: Direct session_identifier match
-        if (assignment.session_identifier && sessionMap[assignment.session_identifier]) {
-          session = sessionMap[assignment.session_identifier];
-        }
-        // Strategy 2: Try composite key matching
-        else if (assignment.course_id && assignment.training_location && assignment.functional_area) {
-          // Extract session number from group_identifier if available
-          const sessionNumber = assignment.group_identifier?.match(/session(\d+)/)?.[1] || '1';
-          const compositeKey = `${assignment.course_id}-session${sessionNumber}-${assignment.training_location.toLowerCase().replace(/\s+/g, '-')}-${assignment.functional_area.toLowerCase().replace(/\s+/g, '-')}`;
-          
-          if (sessionMap[compositeKey]) {
-            session = sessionMap[compositeKey];
-          }
-          // Strategy 3: Try with part information if session_identifier suggests it's a multi-part session
-          else if (assignment.session_identifier && assignment.session_identifier.includes('part')) {
-            const partMatch = assignment.session_identifier.match(/part(\d+)/);
-            if (partMatch) {
-              const partKey = `${compositeKey}-part${partMatch[1]}`;
-              if (sessionMap[partKey]) {
-                session = sessionMap[partKey];
-              }
-            }
-          }
-        }
-        
-        // Debug first few assignments
-        if (index < 3) {
-          console.log(`🔍 Export: Assignment ${index}:`, {
-            assignmentSessionId: assignment.session_identifier,
-            courseId: assignment.course_id,
-            trainingLocation: assignment.training_location,
-            functionalArea: assignment.functional_area,
-            groupIdentifier: assignment.group_identifier,
-            sessionFound: Object.keys(session).length > 0,
-            sessionKeys: Object.keys(session),
-            sessionStart: session.start,
-            sessionEnd: session.end
-          });
-        }
-        
-        return {
-          // Core assignment info
-          'User Name': assignment.end_users?.name || 'Unknown',
-          'Training Location': assignment.end_users?.training_location || 'Unknown',
-          'Project Role': assignment.end_users?.project_role || 'Unknown',
-          
-          // Course details
-          'Course Name': course.course_name || 'Unknown',
-          'Course Duration (Hours)': course.duration_hrs || 'Unknown',
-          
-          // Current assignment details
-          'Current Group': assignment.group_identifier || 'N/A',
-          'Functional Area': assignment.functional_area || 'Unknown',
-          
-          // Session schedule context (if available)
-          'Session Start Date': session.start ? new Date(session.start).toLocaleDateString('en-GB') : 'N/A',
-          'Session Start Time': session.start ? new Date(session.start).toLocaleTimeString('en-GB', {hour: '2-digit', minute: '2-digit'}) : 'N/A',
-          'Session End Time': session.end ? new Date(session.end).toLocaleTimeString('en-GB', {hour: '2-digit', minute: '2-digit'}) : 'N/A',
-          
-          // Stakeholder input columns
-          'Proposed Group Change': '', // Empty for stakeholder to fill
-          'Proposed Course Change': '', // Empty for stakeholder to fill
-          'Reviewer Comments': '', // Empty for stakeholder to fill
-          'Change Reason': '', // Empty for stakeholder to fill
-          
-          // Technical details (hidden in later columns for reference)
-          'Course ID': assignment.course_id || 'Unknown',
-          'Session Identifier': assignment.session_identifier || 'N/A',
-          'Assignment Type': assignment.assignment_type || 'Unknown',
-          'Assignment Level': assignment.assignment_level || 'Unknown',
-          'Current Notes': assignment.notes || '',
-          'Created At': assignment.created_at ? new Date(assignment.created_at).toLocaleString('en-GB') : 'Unknown'
-        };
+      const bytes = writeReviewWorkbook({
+        model,
+        schedule: { id: schedule.id, name: schedule.name, project_id: schedule.project_id || currentProject?.id },
+        scopeNote: scopeParts.join(' | ') || 'All locations and functional areas'
       });
 
-      // Convert to CSV using the same utility pattern as ExportAllData
-      const convertToCSV = (objArray) => {
-        const array = typeof objArray !== 'object' ? JSON.parse(objArray) : objArray;
-        let str = `${Object.keys(array[0])
-          .map((value) => `"${value}"`)
-          .join(',')}\r\n`;
-
-        return (
-          str +
-          array
-            .map((obj) => {
-              return Object.values(obj)
-                .map((value) => `"${value || ''}"`)
-                .join(',');
-            })
-            .join('\r\n')
-        );
-      };
-
-      const csv = convertToCSV(csvData);
-      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-      
-      // Generate filename with schedule name and date
-      const scheduleName = schedule?.name?.replace(/[^a-zA-Z0-9]/g, '_') || 'schedule';
-      const locationSuffix = selectedTrainingLocation ? `_${selectedTrainingLocation.replace(/\s+/g, '_')}` : '';
-      const dateStr = new Date().toISOString().split('T')[0];
-      const filename = `assignments_for_review_${scheduleName}${locationSuffix}_${dateStr}.csv`;
-      
-      saveAs(blob, filename);
-      
-      console.log(`✅ Successfully exported ${csvData.length} assignment records to ${filename}`);
-
+      const blob = new Blob([bytes], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      saveAs(blob, reviewFilename(schedule));
     } catch (err) {
       console.error('❌ Error exporting assignment data:', err);
       setError(`Failed to export assignment data: ${err.message}`);
@@ -2567,136 +2414,20 @@ const DragDropAssignmentPanel = ({
     }
   };
 
-  // Import user assignment data from CSV
-  const handleImportAssignments = async (csvData) => {
-    try {
-      setLoading(true);
-      setError(null);
-      
-      console.log('📥 Starting assignment data import...');
-      
-      const results = {
-        processed: 0,
-        successful: 0,
-        failed: 0,
-        errors: [],
-        changes: []
-      };
+  // What a stakeholder is allowed to change when importing a review sheet
+  const importFilters = {
+    locations: isStakeholder ? scopeList(assignedTrainingLocations) : null,
+    functionalAreas: isStakeholder ? scopeList(assignedFunctionalAreas) : null
+  };
 
-      // Parse CSV data and validate changes
-      for (let i = 0; i < csvData.length; i++) {
-        const row = csvData[i];
-        results.processed++;
-        
-        try {
-          // Skip rows without proposed changes
-          if (!row['Proposed Group Change'] && !row['Proposed Course Change']) {
-            continue;
-          }
-          
-          const userName = row['User Name'];
-          const currentGroup = row['Current Group'];
-          const proposedGroup = row['Proposed Group Change'];
-          const proposedCourse = row['Proposed Course Change'];
-          const reason = row['Change Reason'] || 'Stakeholder review';
-          
-          // Find user in database
-          const { data: users, error: userError } = await supabase
-            .from('end_users')
-            .select('id, name, training_location')
-            .eq('name', userName)
-            .limit(1);
-            
-          if (userError || !users || users.length === 0) {
-            results.failed++;
-            results.errors.push(`Row ${i + 1}: User "${userName}" not found`);
-            continue;
-          }
-          
-          const user = users[0];
-          
-          // Process group change
-          if (proposedGroup && proposedGroup !== currentGroup) {
-            // Remove user from current assignments
-            const { error: deleteError } = await supabase
-              .from('user_assignments')
-              .delete()
-              .eq('schedule_id', schedule.id)
-              .eq('end_user_id', user.id)
-              .eq('group_identifier', currentGroup);
-              
-            if (deleteError) {
-              results.failed++;
-              results.errors.push(`Row ${i + 1}: Failed to remove user from group "${currentGroup}": ${deleteError.message}`);
-              continue;
-            }
-            
-            // Add user to new group (this would need to be implemented based on your group assignment logic)
-            // For now, we'll log the change
-            results.changes.push({
-              user: userName,
-              type: 'group_change',
-              from: currentGroup,
-              to: proposedGroup,
-              reason: reason
-            });
-          }
-          
-          results.successful++;
-          
-        } catch (rowError) {
-          results.failed++;
-          results.errors.push(`Row ${i + 1}: ${rowError.message}`);
-        }
-      }
-      
-      // Refresh assignment data
-      await initializeAssignmentData();
-      
-      console.log(`✅ Import completed: ${results.successful} successful, ${results.failed} failed`);
-      
-      return results;
-      
-    } catch (err) {
-      console.error('❌ Error importing assignment data:', err);
-      throw err;
-    } finally {
-      setLoading(false);
+  // After an import: reload assignments the same way a move or removal does
+  const handleReviewImported = async () => {
+    await initializeAssignmentData();
+    if (onAssignmentUpdate) {
+      onAssignmentUpdate();
     }
   };
 
-  // Parse CSV file for import preview
-  const parseCSVFile = (file) => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        try {
-          const text = e.target.result;
-          const lines = text.split('\n');
-          const headers = lines[0].split(',').map(h => h.replace(/"/g, '').trim());
-          
-          const data = lines.slice(1)
-            .filter(line => line.trim())
-            .map(line => {
-              const values = line.split(',').map(v => v.replace(/"/g, '').trim());
-              const row = {};
-              headers.forEach((header, index) => {
-                row[header] = values[index] || '';
-              });
-              return row;
-            });
-          
-          resolve(data);
-        } catch (error) {
-          reject(error);
-        }
-      };
-      reader.onerror = () => reject(new Error('Failed to read file'));
-      reader.readAsText(file);
-    });
-  };
-
-  // Calendar generation handler
   const handleCalendarGeneration = async () => {
     const sessions = getAllSessionsFlat();
     
@@ -3984,18 +3715,18 @@ const DragDropAssignmentPanel = ({
               onClick={handleExportAssignments}
               disabled={loading || !schedule?.id}
               className="export-assignments-btn"
-              title="Export user assignment data to CSV for stakeholder review"
+              title="Export an Excel review sheet: one row per person per course, with a Move To Group column for stakeholders to fill in"
             >
-              📄 Export Assignments
+              📄 Export Review Sheet
             </button>
             
             <button 
               onClick={() => setShowImportModal(true)}
               disabled={loading || !schedule?.id}
               className="import-assignments-btn"
-              title="Import assignment changes from stakeholder review CSV"
+              title="Import a review sheet that stakeholders have filled in (you will see what it would do before anything changes)"
             >
-              📥 Import Changes
+              📥 Import Review Sheet
             </button>
             
             <button 
@@ -4172,118 +3903,15 @@ const DragDropAssignmentPanel = ({
           selectedTrainingLocation={selectedTrainingLocation}
         />
         
-        {/* Import Assignments Modal */}
-        {showImportModal && (
-          <div className="import-modal-overlay">
-            <div className="import-modal">
-              <div className="modal-header">
-                <h3>📥 Import Assignment Changes</h3>
-                <button onClick={() => {
-                  setShowImportModal(false);
-                  setImportFile(null);
-                  setImportPreview(null);
-                }} className="close-btn">✕</button>
-              </div>
-              
-              <div className="modal-content">
-                <div className="import-instructions">
-                  <p><strong>Instructions:</strong></p>
-                  <ol>
-                    <li>Export assignments using the "Export Assignments" button</li>
-                    <li>Share the CSV file with stakeholders for review</li>
-                    <li>Ask stakeholders to fill in the "Proposed Group Change" and "Change Reason" columns</li>
-                    <li>Upload the modified CSV file here to import changes</li>
-                  </ol>
-                </div>
-                
-                {!importFile && (
-                  <div className="file-upload-section">
-                    <input
-                      type="file"
-                      accept=".csv"
-                      onChange={async (e) => {
-                        const file = e.target.files[0];
-                        if (file) {
-                          try {
-                            setImportFile(file);
-                            const csvData = await parseCSVFile(file);
-                            setImportPreview(csvData);
-                          } catch (error) {
-                            setError(`Failed to parse CSV file: ${error.message}`);
-                          }
-                        }
-                      }}
-                      className="file-input"
-                    />
-                    <p className="file-help">Select a CSV file with stakeholder changes</p>
-                  </div>
-                )}
-                
-                {importPreview && (
-                  <div className="import-preview-section">
-                    <h4>Preview of Changes</h4>
-                    <div className="preview-table">
-                      <div className="preview-header">
-                        <span>User</span>
-                        <span>Current Group</span>
-                        <span>Proposed Group</span>
-                        <span>Reason</span>
-                      </div>
-                      {importPreview
-                        .filter(row => row['Proposed Group Change'])
-                        .slice(0, 5)
-                        .map((row, index) => (
-                        <div key={index} className="preview-row">
-                          <span>{row['User Name']}</span>
-                          <span>{row['Current Group']}</span>
-                          <span>{row['Proposed Group Change']}</span>
-                          <span>{row['Change Reason'] || 'No reason provided'}</span>
-                        </div>
-                      ))}
-                      {importPreview.filter(row => row['Proposed Group Change']).length > 5 && (
-                        <div className="preview-more">
-                          ... and {importPreview.filter(row => row['Proposed Group Change']).length - 5} more changes
-                        </div>
-                      )}
-                    </div>
-                    
-                    <div className="import-actions">
-                      <button 
-                        onClick={() => {
-                          setImportFile(null);
-                          setImportPreview(null);
-                        }}
-                        className="cancel-import-btn"
-                      >
-                        Cancel
-                      </button>
-                      <button 
-                        onClick={async () => {
-                          try {
-                            const results = await handleImportAssignments(importPreview);
-                            alert(`Import completed:\n${results.successful} successful changes\n${results.failed} failed changes`);
-                            if (results.errors.length > 0) {
-                              console.log('Import errors:', results.errors);
-                            }
-                            setShowImportModal(false);
-                            setImportFile(null);
-                            setImportPreview(null);
-                          } catch (error) {
-                            setError(`Import failed: ${error.message}`);
-                          }
-                        }}
-                        className="apply-import-btn"
-                        disabled={loading}
-                      >
-                        {loading ? 'Importing...' : 'Apply Changes'}
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
+        {/* Import stakeholder review sheet */}
+        <ImportReviewDialog
+          isOpen={showImportModal}
+          onClose={() => setShowImportModal(false)}
+          schedule={schedule}
+          projectId={currentProject?.id}
+          filters={importFilters}
+          onApplied={handleReviewImported}
+        />
 
         {/* Assignment Export Dialog */}
         {showExportDialog && (

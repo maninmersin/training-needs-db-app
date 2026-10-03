@@ -82,6 +82,9 @@ const seatsTaken = (group, seatRows) => {
   return people.size;
 };
 
+/** A session group with its seat count, as shown to the person choosing where to move someone. */
+export const describeGroupSeats = (group, seatRows) => withSeats(group, seatRows);
+
 const withSeats = (group, seatRows) => {
   const taken = seatsTaken(group, seatRows);
   return {
@@ -197,11 +200,11 @@ export const findMoveOptions = ({ sessions, userRows, seatRows, source, scope })
  * The exact changes for one move: rows to remove and rows to create.
  *
  * The new rows match what auto-assign writes (session level, "Group N"), plus a note saying where the
- * person was moved from, so there is a trail of what changed.
+ * person was moved from (and why, if a reason is given), so there is a trail of what changed.
  *
  * @returns {{ deleteIds: string[], newRows: Object[], summary: string }}
  */
-export const buildMovePlan = ({ option, sessions, userRows, user, schedule, source, now = new Date() }) => {
+export const buildMovePlan = ({ option, sessions, userRows, user, schedule, source, reason, now = new Date() }) => {
   const groups = buildSessionGroups(sessions);
   const mine = personsGroups(userRows, groups);
 
@@ -241,7 +244,8 @@ export const buildMovePlan = ({ option, sessions, userRows, user, schedule, sour
   const template = fromGroups[0].rows[0];
   const stamp = now.toISOString();
   const destinationNumber = toGroups[0].sessionNumber;
-  const note = `Moved from Group ${source.sessionNumber} to Group ${destinationNumber} on ${stamp.slice(0, 10)}`;
+  const cleanReason = typeof reason === 'string' ? reason.trim().slice(0, 200) : '';
+  const note = `Moved from Group ${source.sessionNumber} to Group ${destinationNumber} on ${stamp.slice(0, 10)}${cleanReason ? ` - Reason: ${cleanReason}` : ''}`;
 
   const deleteIds = fromGroups.flatMap(({ rows }) => rows.map((r) => r.id));
   const newRows = toGroups.flatMap((group) =>
