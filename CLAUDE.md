@@ -34,7 +34,8 @@ This repo is the MS Access version (own Supabase project `syrdm…`; the main ap
 - Migration `0005` points `get_distinct_functional_areas/training_locations` (TSC Stage 1 lists) at `training_data_combined`, as SECURITY INVOKER. Any new RPC that lists TNA data must read the view too.
 - TSC wizard classrooms: each `location|functional_area` group is scheduled with its own rooms numbered from 1, then `assignPhysicalClassrooms()` (classroomCalculations.js) renumbers them to be unique per location before the preview/save. Saved `classroom_number` is therefore a physical room: each functional area at a location gets its own rooms (Finance 1, HR 2, ...).
 - `npm run db:seed-tna -- "<project title>"` loads fictional demo data into an in-app project (add-only, re-runnable).
-- Still missing RPCs (pre-existing, both modes): `get_project_roles_data`, `get_user_assigned_functional_areas`, `get_user_assigned_training_locations`, `load_schedule`, `save_schedule`, `bulk_mark_attendance`, `bulk_register_attendees`.
+- Migration `0006_attendance.sql` added `attendance_statuses` (global; Present/Late/Absent/Excused) and `attendance_records` (unique per session + attendee; FK name `fk_attendance_records_status` is used by PostgREST embeds). `attendee_id` has no FK to `end_users` on purpose (Access projects have no end_users rows), so attendanceService looks names up via `fetchUserDirectory` (end_users, falling back to `training_data_combined`) instead of embedding.
+- Still missing RPCs (pre-existing, both modes): `get_project_roles_data`, `get_user_assigned_functional_areas`, `get_user_assigned_training_locations`, `load_schedule`, `save_schedule`, `bulk_mark_attendance`, `bulk_register_attendees` (the attendance UI doesn't call the two bulk ones).
 - Not brought across (deliberately, for now): Stakeholders, Impact Assessment, Other Tools/POAP.
 
 ## Database Cleanup Initiative (2025-01-28)

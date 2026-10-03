@@ -7,6 +7,57 @@ import { supabase } from '@core/services/supabaseClient';
  */
 
 /**
+ * Look up people's names for a set of end user ids.
+ *
+ * Attendance rows only store the id. Names come from end_users (projects whose people are managed
+ * in the app), falling back to the imported training data (MS Access projects have assignments but
+ * no end_users rows). There is deliberately no foreign key from assignments or attendance to
+ * end_users, so this is looked up here rather than embedded in the query.
+ * @param {string} projectId - The project ID
+ * @param {Array<number>} userIds - end user ids
+ * @returns {Promise<Map>} id -> { id, name, email, job_title, division }
+ */
+const fetchUserDirectory = async (projectId, userIds) => {
+  const ids = [...new Set((userIds || []).filter((id) => id !== null && id !== undefined))];
+  const directory = new Map();
+  if (ids.length === 0) return directory;
+
+  const { data: endUsers, error: endUsersError } = await supabase
+    .from('end_users')
+    .select('id, name, email, job_title, division')
+    .eq('project_id', projectId)
+    .in('id', ids);
+  if (endUsersError) throw endUsersError;
+  (endUsers || []).forEach((user) => directory.set(user.id, user));
+
+  const missing = ids.filter((id) => !directory.has(id));
+  // The training data has one row per person per course, and the API returns at most 1000 rows per
+  // request, so look people up in small batches
+  const BATCH_SIZE = 40;
+  for (let i = 0; i < missing.length; i += BATCH_SIZE) {
+    const { data: rows, error: rowsError } = await supabase
+      .from('training_data_combined')
+      .select('user_id, user_name, user_email, user_job_title, business_unit')
+      .eq('project_id', projectId)
+      .in('user_id', missing.slice(i, i + BATCH_SIZE).map(String));
+    if (rowsError) throw rowsError;
+    (rows || []).forEach((row) => {
+      const id = Number(row.user_id);
+      if (!directory.has(id)) {
+        directory.set(id, {
+          id, name: row.user_name, email: row.user_email, job_title: row.user_job_title, division: row.business_unit
+        });
+      }
+    });
+  }
+
+  return directory;
+};
+
+// A person we can't find a name for is still listed, so attendance can be recorded for them
+const userOrPlaceholder = (directory, id) => directory.get(id) || { id, name: `User ${id}`, email: null };
+
+/**
  * Get all attendance statuses
  * @returns {Promise<Array>} Array of attendance status options
  */
@@ -93,12 +144,7 @@ export const getSessionAttendees = async (sessionId, projectId) => {
         id,
         end_user_id,
         created_at,
-        assignment_type,
-        end_users!end_user_id (
-          id,
-          name,
-          email
-        )
+        assignment_type
       `)
       .eq('session_id', sessionId)
       .eq('project_id', projectId)
@@ -109,6 +155,8 @@ export const getSessionAttendees = async (sessionId, projectId) => {
       throw error;
     }
 
+    const directory = await fetchUserDirectory(projectId, (data || []).map(a => a.end_user_id));
+
     // Transform the data to match the expected format
     const attendees = (data || []).map(assignment => ({
       id: assignment.id,
@@ -117,7 +165,7 @@ export const getSessionAttendees = async (sessionId, projectId) => {
       is_confirmed: true, // Assignments are considered confirmed
       waitlist_position: null,
       notes: assignment.assignment_type,
-      user: assignment.end_users
+      user: userOrPlaceholder(directory, assignment.end_user_id)
     }));
 
     console.log(`✅ Loaded ${attendees.length} assigned attendees for session ${sessionId}`);
@@ -191,11 +239,6 @@ export const getSessionAttendanceRecords = async (sessionId, projectId) => {
           status_name,
           is_present,
           color_code
-        ),
-        end_users (
-          id,
-          name,
-          email
         )
       `)
       .eq('session_id', sessionId)
@@ -206,6 +249,8 @@ export const getSessionAttendanceRecords = async (sessionId, projectId) => {
       console.error('❌ Error fetching attendance records:', error);
       throw error;
     }
+
+    const directory = await fetchUserDirectory(projectId, (data || []).map(r => r.attendee_id));
 
     // Transform the data
     const records = (data || []).map(record => ({
@@ -219,7 +264,7 @@ export const getSessionAttendanceRecords = async (sessionId, projectId) => {
       marked_at: record.marked_at,
       marked_by: record.marked_by,
       status: record.attendance_statuses,
-      user: record.end_users
+      user: userOrPlaceholder(directory, record.attendee_id)
     }));
 
     return records;
@@ -624,13 +669,6 @@ export const exportAttendanceData = async (projectId, filters = {}) => {
         attendance_statuses!fk_attendance_records_status (
           status_name
         ),
-        end_users!fk_attendance_records_attendee (
-          name,
-          email,
-          job_title,
-          division,
-          organisation
-        ),
         training_sessions!inner (
           course_name,
           session_title,
@@ -639,6 +677,7 @@ export const exportAttendanceData = async (projectId, filters = {}) => {
           training_location,
           functional_area
         ),
+        attendee_id,
         check_in_time,
         check_out_time,
         notes,
@@ -657,20 +696,26 @@ export const exportAttendanceData = async (projectId, filters = {}) => {
       query = query.eq('training_sessions.functional_area', filters.functionalArea);
     }
 
-    const { data, error } = await query.order('training_sessions.start_datetime', { ascending: true });
+    const { data, error } = await query;
 
     if (error) {
       console.error('❌ Error exporting attendance data:', error);
       throw error;
     }
 
+    const directory = await fetchUserDirectory(projectId, (data || []).map(r => r.attendee_id));
+
+    // Order by session start (PostgREST can't order by an embedded column in this query)
+    const sorted = [...(data || [])].sort(
+      (a, b) => new Date(a.training_sessions.start_datetime) - new Date(b.training_sessions.start_datetime)
+    );
+
     // Transform data for export
-    const exportData = (data || []).map(record => ({
-      'Attendee Name': record.end_users.name,
-      'Email': record.end_users.email,
-      'Job Title': record.end_users.job_title,
-      'Division': record.end_users.division,
-      'Organisation': record.end_users.organisation,
+    const exportData = sorted.map(record => ({
+      'Attendee Name': userOrPlaceholder(directory, record.attendee_id).name,
+      'Email': userOrPlaceholder(directory, record.attendee_id).email,
+      'Job Title': directory.get(record.attendee_id)?.job_title || '',
+      'Division': directory.get(record.attendee_id)?.division || '',
       'Course Name': record.training_sessions.course_name,
       'Session Title': record.training_sessions.session_title,
       'Training Location': record.training_sessions.training_location,
