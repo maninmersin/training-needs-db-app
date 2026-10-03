@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '@core/services/supabaseClient';
 import { useProject } from '@core/contexts/ProjectContext';
 import { calculateClassroomsNeeded, validateClassroomCapacity } from '@core/utils/classroomCalculations';
+import NumberInput from './NumberInput';
 
 const TSCDefineCriteriaStage = ({ 
   criteria, 
@@ -738,27 +739,27 @@ const TSCDefineCriteriaStage = ({
 
         <label>
           Max Attendees:
-          <input type="number" value={formValues.max_attendees} onChange={e => handleChange('max_attendees', Number(e.target.value))} />
+          <NumberInput value={formValues.max_attendees} onValueChange={n => handleChange('max_attendees', n)} />
         </label>
 
         <label>
           Total Weeks:
-        <input type="number" value={formValues.total_weeks} onChange={e => handleChange('total_weeks', Number(e.target.value))} />
+        <NumberInput value={formValues.total_weeks} onValueChange={n => handleChange('total_weeks', n)} />
       </label>
 
       <label>
         Daily Hours:
-        <input type="number" value={formValues.daily_hours} onChange={e => handleChange('daily_hours', Number(e.target.value))} />
+        <NumberInput value={formValues.daily_hours} onValueChange={n => handleChange('daily_hours', n)} />
       </label>
 
       <label>
         Days Per Week:
-        <input type="number" value={formValues.days_per_week} onChange={e => handleChange('days_per_week', Number(e.target.value))} />
+        <NumberInput value={formValues.days_per_week} onValueChange={n => handleChange('days_per_week', n)} />
       </label>
 
       <label>
         Contingency Factor:
-        <input type="number" step="0.1" value={formValues.contingency} onChange={e => handleChange('contingency', Number(e.target.value))} />
+        <NumberInput step="0.1" value={formValues.contingency} onValueChange={n => handleChange('contingency', n)} />
       </label>
 
       <label>
