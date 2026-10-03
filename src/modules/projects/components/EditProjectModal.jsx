@@ -9,6 +9,7 @@ const EditProjectModal = ({ isOpen, onClose, onSubmit, project }) => {
     project_code: '',
     start_date: '',
     target_end_date: '',
+    training_data_source: 'access',
     settings: {},
     branding: {}
   });
@@ -25,6 +26,7 @@ const EditProjectModal = ({ isOpen, onClose, onSubmit, project }) => {
         project_code: project.project_code || '',
         start_date: project.start_date || '',
         target_end_date: project.target_end_date || '',
+        training_data_source: project.training_data_source || 'access',
         settings: project.settings || {},
         branding: project.branding || {}
       });
@@ -231,6 +233,24 @@ const EditProjectModal = ({ isOpen, onClose, onSubmit, project }) => {
               {errors.target_end_date && <span className="error-text">{errors.target_end_date}</span>}
               <small>When do you plan to complete this project?</small>
             </div>
+          </div>
+
+          <div className="form-group">
+            <label htmlFor="training_data_source">Training Data Source</label>
+            <select
+              id="training_data_source"
+              name="training_data_source"
+              value={formData.training_data_source}
+              onChange={handleChange}
+              disabled={isSubmitting}
+            >
+              <option value="access">MS Access import</option>
+              <option value="app">Managed in app (people, roles, courses, mappings)</option>
+            </select>
+            <small>
+              Where the Schedule Creator, Session Calculator and User Assignments get their
+              people and courses. Switching doesn't delete either set of data.
+            </small>
           </div>
 
           {errors.submit && (

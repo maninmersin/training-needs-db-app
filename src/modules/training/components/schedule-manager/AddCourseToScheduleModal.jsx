@@ -160,7 +160,7 @@ const AddCourseToScheduleModal = ({ isOpen, onClose, schedule, currentSessions, 
 
         // Fetch training data from flat file (same as TSC Wizard)
         const { data: trainingData, error: trainingError } = await supabase
-          .from('training_data')
+          .from('training_data_combined')
           .select('*')
           .eq('project_id', currentProject?.id);
 

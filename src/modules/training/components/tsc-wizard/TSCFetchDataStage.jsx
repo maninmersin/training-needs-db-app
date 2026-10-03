@@ -27,7 +27,7 @@ const TSCFetchDataStage = ({ setSchedulesList, setLoadingSchedules, onNextStage,
         console.log('📥 Fetching ALL training data for project...');
 
         const { data: trainingData, error: trainingError, count } = await supabase
-          .from('training_data')
+          .from('training_data_combined')
           .select('*', { count: 'exact' })
           .eq('project_id', currentProject.id)
           .limit(100000); // Set high limit to fetch all rows (Supabase supports up to 100k)

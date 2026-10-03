@@ -352,7 +352,7 @@ const AssignmentWorkspace = ({
         debugLog('🆔 Project ID from schedule:', projectId);
 
         let query = supabase
-          .from('training_data')
+          .from('training_data_combined')
           .select('user_id, user_name, user_email, user_project_role, training_location, functional_area')
           .in('training_location', locations);
 
@@ -400,7 +400,7 @@ const AssignmentWorkspace = ({
         const projectId = schedule.project_id || schedule.criteria?.project_id;
 
         let courseQuery = supabase
-          .from('training_data')
+          .from('training_data_combined')
           .select('user_id, user_name, user_email, user_project_role, training_location')
           .eq('course_id', selectedCourse.course_id);
 
@@ -496,7 +496,7 @@ const AssignmentWorkspace = ({
         const projectId = schedule.project_id || schedule.criteria?.project_id;
 
         let groupQuery = supabase
-          .from('training_data')
+          .from('training_data_combined')
           .select('user_id, user_name, user_email, user_project_role, training_location')
           .in('course_id', uniqueCourseIds);
 
@@ -560,7 +560,7 @@ const AssignmentWorkspace = ({
         const projectId = schedule.project_id || schedule.criteria?.project_id;
 
         let sessionQuery = supabase
-          .from('training_data')
+          .from('training_data_combined')
           .select('user_id, user_name, user_email, user_project_role, training_location')
           .eq('course_id', selectedSession.course_id);
 

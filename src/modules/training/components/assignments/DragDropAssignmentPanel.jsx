@@ -407,7 +407,7 @@ const DragDropAssignmentPanel = ({
 
       // Query training_data to get users assigned to courses in this schedule
       let trainingDataQuery = supabase
-        .from('training_data')
+        .from('training_data_combined')
         .select('user_id, user_name, user_email, user_project_role, training_location, functional_area, course_id')
         .eq('project_id', currentProject?.id)
         .in('course_id', scheduleCourseIds);

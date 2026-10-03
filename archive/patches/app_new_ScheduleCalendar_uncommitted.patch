@@ -1,0 +1,80 @@
+diff --git a/src/modules/training/components/calendar/ScheduleCalendar.jsx b/src/modules/training/components/calendar/ScheduleCalendar.jsx
+index 7bb9a28..1cd830a 100644
+--- a/src/modules/training/components/calendar/ScheduleCalendar.jsx
++++ b/src/modules/training/components/calendar/ScheduleCalendar.jsx
+@@ -687,39 +687,72 @@ const ScheduleCalendar = ({ sessions, onSessionUpdated, criteria, selectionMode
+ 
+             <button
+               onClick={() => {
+-                const start = startOfWeek(new Date());
++                const firstSessionDate = findFirstSessionDate();
++                const start = firstSessionDate
++                  ? startOfWeek(firstSessionDate)
++                  : startOfWeek(new Date());
++
+                 setDateRangeStart(start);
+                 setDateRangeEnd(addWeeks(start, 4));
+                 setWeekCount(4);
+                 setIsAutoDetected(false);
++
++                if (firstSessionDate) {
++                  console.log('📅 4 Week view: Navigating to first session:', firstSessionDate.toISOString());
++                }
+               }}
+               className={weekCount === 4 && !isAutoDetected ? 'active' : ''}
++              title={findFirstSessionDate()
++                ? `Jump to week of first session (${format(findFirstSessionDate(), 'MMM d, yyyy')})`
++                : 'Show current 4 weeks'}
+             >
+               4 Weeks
+             </button>
+ 
+             <button
+               onClick={() => {
+-                const start = startOfWeek(new Date());
++                const firstSessionDate = findFirstSessionDate();
++                const start = firstSessionDate
++                  ? startOfWeek(firstSessionDate)
++                  : startOfWeek(new Date());
++
+                 setDateRangeStart(start);
+                 setDateRangeEnd(addWeeks(start, 8));
+                 setWeekCount(8);
+                 setIsAutoDetected(false);
++
++                if (firstSessionDate) {
++                  console.log('📅 8 Week view: Navigating to first session:', firstSessionDate.toISOString());
++                }
+               }}
+               className={weekCount === 8 && !isAutoDetected ? 'active' : ''}
++              title={findFirstSessionDate()
++                ? `Jump to week of first session (${format(findFirstSessionDate(), 'MMM d, yyyy')})`
++                : 'Show current 8 weeks'}
+             >
+               8 Weeks
+             </button>
+ 
+             <button
+               onClick={() => {
+-                const start = startOfWeek(new Date());
++                const firstSessionDate = findFirstSessionDate();
++                const start = firstSessionDate
++                  ? startOfWeek(firstSessionDate)
++                  : startOfWeek(new Date());
++
+                 setDateRangeStart(start);
+                 setDateRangeEnd(addWeeks(start, 12));
+                 setWeekCount(12);
+                 setIsAutoDetected(false);
++
++                if (firstSessionDate) {
++                  console.log('📅 12 Week view: Navigating to first session:', firstSessionDate.toISOString());
++                }
+               }}
+               className={weekCount === 12 && !isAutoDetected ? 'active' : ''}
++              title={findFirstSessionDate()
++                ? `Jump to week of first session (${format(findFirstSessionDate(), 'MMM d, yyyy')})`
++                : 'Show current 12 weeks'}
+             >
+               12 Weeks
+             </button>

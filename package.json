@@ -15,6 +15,7 @@
     "setup:postgrest": "node scripts/local/fetch-postgrest.js",
     "db:migrate": "node db/migrate.js",
     "db:seed": "node db/seed.js",
+    "db:seed-tna": "node db/seed-tna-demo.js",
     "db:pull-schema": "node db/pull-from-supabase.js schema",
     "db:pull-data": "node db/pull-from-supabase.js data",
     "auth-server": "node server/auth/index.js",

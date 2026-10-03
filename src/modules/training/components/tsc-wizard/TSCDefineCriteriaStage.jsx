@@ -68,22 +68,19 @@ const TSCDefineCriteriaStage = ({
         setLoading(true);
         console.log('🔍 Fetching selection data for project:', currentProject?.id);
 
-        // Fetch distinct functional areas directly from training_data (MS Access flat table approach)
-        // Use increased limit to ensure we get all rows (default is 1000)
+        // Distinct values come from RPCs: the API caps plain selects at 1000 rows, so
+        // de-duplicating fetched rows in JS can miss values in larger projects
         const { data: functionalAreasData, error: functionalAreasError } = await supabase
-          .from('training_data')
-          .select('functional_area')
-          .eq('project_id', currentProject?.id)
-          .limit(10000);
+          .rpc('get_distinct_functional_areas', { p_project_id: currentProject?.id });
 
-        console.log('📊 training_data functional_area query result:', {
+        console.log('📊 training_data functional_area RPC result:', {
           count: functionalAreasData?.length,
-          sampleData: functionalAreasData?.slice(0, 5),
+          areas: functionalAreasData,
           error: functionalAreasError
         });
 
         if (functionalAreasError) throw functionalAreasError;
-        const uniqueAreas = [...new Set(functionalAreasData.map(c => c.functional_area).filter(Boolean))];
+        const uniqueAreas = functionalAreasData.map(item => item.functional_area).filter(Boolean);
         console.log('📋 Unique functional areas extracted:', uniqueAreas);
 
         // Fetch distinct training locations using RPC call to avoid row limit issues
@@ -102,7 +99,7 @@ const TSCDefineCriteriaStage = ({
         if (trainingLocationsError) {
           console.warn('⚠️ RPC function not available, using fallback approach with increased row limit');
           const { data: allLocationRows, error: fallbackError } = await supabase
-            .from('training_data')
+            .from('training_data_combined')
             .select('training_location')
             .eq('project_id', currentProject?.id)
             .limit(10000); // Increase limit to ensure we get all rows
@@ -275,7 +272,7 @@ const TSCDefineCriteriaStage = ({
 
       // First get the count
       const { count } = await supabase
-        .from('training_data')
+        .from('training_data_combined')
         .select('*', { count: 'exact', head: true })
         .eq('project_id', currentProject?.id);
 
@@ -296,9 +293,10 @@ const TSCDefineCriteriaStage = ({
         console.log(`   Batch ${i + 1}/${batches}: rows ${start}-${end}`);
 
         const { data, error } = await supabase
-          .from('training_data')
+          .from('training_data_combined')
           .select('*')
           .eq('project_id', currentProject?.id)
+          .order('id') // stable order so pages don't overlap or skip rows
           .range(start, end);
 
         if (error) {

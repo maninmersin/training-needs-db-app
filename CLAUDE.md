@@ -20,6 +20,22 @@ The app can run against **Supabase** or a **local PostgreSQL stack** (no cloud),
 - **Lint**: `eslint.config.js` added. Existing warnings are tolerated; keep errors at zero.
 - **Production builds** strip `console.log/info/debug` (Vite `esbuild.pure`).
 
+## TNA Data Source per Project (2026-10-02)
+
+This repo is the MS Access version (own Supabase project `syrdm…`; the main app at `training_needs_db_app_new` uses `dcjgy…`). It now supports both ways of supplying TNA data, chosen per project by `projects.training_data_source`:
+- `access` (default): people/courses come from `training_data`, filled by Import/Export Training Data (MS Access).
+- `app`: people, roles, courses and mappings managed in-app (`end_users`, `project_roles`, `courses`, `role_course_mappings`, `user_course_mappings`). A person's courses = role courses + individual assignments.
+
+- Screens that read TNA data (TSC wizard, Session Calculator, Assignments, Add Course to Schedule) query the view **`training_data_combined`**, never `training_data` directly. Only `ImportExportTrainingData` writes to `training_data`.
+- Set the source in Admin > Projects > Edit Project. The TNA sidebar shows the matching Setup links.
+- Migration `0002_tna_dual_data_source.sql` also added the main app's project columns (title, dates, owner, etc.) and write policies for `projects`, `end_users`, `project_roles`.
+- Migration `0003_tna_in_app_screen_columns.sql` renamed `role_name` → `project_role_name` (`project_roles`, `role_course_mappings`) to match the app code, added `training_locations.capacity/classrooms_count`, and added `get_table_columns()` (used by End Users).
+- Migration `0004_trainers.sql` added the `trainers` table (uuid ids, project-scoped) and changed `training_sessions.instructor_id` from integer to a uuid FK to `trainers` (the UI saves the trainer id there).
+- Migration `0005` points `get_distinct_functional_areas/training_locations` (TSC Stage 1 lists) at `training_data_combined`, as SECURITY INVOKER. Any new RPC that lists TNA data must read the view too.
+- `npm run db:seed-tna -- "<project title>"` loads fictional demo data into an in-app project (add-only, re-runnable).
+- Still missing RPCs (pre-existing, both modes): `get_project_roles_data`, `get_user_assigned_functional_areas`, `get_user_assigned_training_locations`, `load_schedule`, `save_schedule`, `bulk_mark_attendance`, `bulk_register_attendees`.
+- Not brought across (deliberately, for now): Stakeholders, Impact Assessment, Other Tools/POAP.
+
 ## Database Cleanup Initiative (2025-01-28)
 
 ### Overview

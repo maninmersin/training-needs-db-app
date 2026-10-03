@@ -13,6 +13,8 @@ export const startEmbeddedDb = async () => {
     password: config.superuserPassword,
     port: config.dbPort,
     persistent: true,
+    // Supabase is UTF-8; without this Windows initdb defaults to WIN1252 and data copies fail.
+    initdbFlags: ['--encoding=UTF8', '--locale=C'],
     onLog: () => {},
     onError: (msg) => console.error('[postgres]', String(msg).trim())
   });
@@ -32,7 +34,7 @@ export const startEmbeddedDb = async () => {
   });
   await admin.connect();
   const { rowCount } = await admin.query('select 1 from pg_database where datname = $1', [config.dbName]);
-  if (rowCount === 0) await admin.query(`create database "${config.dbName}"`);
+  if (rowCount === 0) await admin.query(`create database "${config.dbName}" encoding 'UTF8' template template0`);
   await admin.end();
 
   return server;

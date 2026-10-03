@@ -33,7 +33,7 @@ const TrainingSessionCalculator = () => {
 
         // Fetch training data from flat table (MS Access import approach)
         const { data: flattenedData, error: dataError } = await supabase
-          .from('training_data')
+          .from('training_data_combined')
           .select('user_id, user_name, user_country, training_location, functional_area, course_id, duration_hrs')
           .eq('project_id', currentProject.id);
 

@@ -17,6 +17,7 @@ const PivotReport = lazy(() => import('@shared/components/PivotReport'));
 const CoursesForm = lazy(() => import('@shared/components/CoursesForm'));
 const ImportExportCourses = lazy(() => import('@shared/components/ImportExportCourses'));
 const ImportExportTrainingData = lazy(() => import('@shared/components/ImportExportTrainingData'));
+const ImportExportUserCourseMappings = lazy(() => import('@shared/components/ImportExportUserCourseMappings'));
 const ExportAllData = lazy(() => import('@shared/components/ExportAllData'));
 const TrainingSessionCalculator = lazy(() => import('@modules/training/components/tsc-wizard/TrainingSessionCalculator'));
 const TrainingSessionCalendar = lazy(() => import('@modules/training/components/calendar/TrainingSessionCalendar'));
@@ -136,6 +137,7 @@ function App() {
               <Route path="/courses" element={<CoursesForm />} />
               <Route path="/import-export-courses" element={<ImportExportCourses />} />
               <Route path="/import-export-training-data" element={<ImportExportTrainingData />} />
+              <Route path="/import-export-user-course-mappings" element={<ImportExportUserCourseMappings />} />
               <Route path="/reference-data" element={<ReferenceDataManager />} />
               <Route path="/export-all-data" element={<ExportAllData />} />
               <Route path="/training-sessions" element={<TrainingSessionCalculator/>} />

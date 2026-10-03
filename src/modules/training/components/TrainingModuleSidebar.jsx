@@ -3,8 +3,13 @@ import {
   FaBars, FaTimes
 } from 'react-icons/fa';
 import '../../../core/components/Sidebar.css';
+import { useProject } from '@core/contexts/ProjectContext';
 
 const TrainingModuleSidebar = ({ isOpen, onToggle }) => {
+  const { currentProject } = useProject();
+  // 'access' = training data imported from MS Access; 'app' = managed in the app
+  const usesAccessData = (currentProject?.training_data_source || 'access') === 'access';
+
   return (
     <div 
       className={`custom-sidebar ${isOpen ? 'open' : ''}`} 
@@ -20,14 +25,64 @@ const TrainingModuleSidebar = ({ isOpen, onToggle }) => {
         <ul>
           <li className="sidebar-submenu">
             <div className="submenu-header">
-              <span>Setup</span>
+              <span>Setup ({usesAccessData ? 'MS Access data' : 'in-app data'})</span>
             </div>
             <ul>
-              <li>
-                <NavLink to="/import-export-training-data" className="sidebar-link">
-                  Import/Export Training Data (MS Access)
-                </NavLink>
-              </li>
+              {usesAccessData ? (
+                <li>
+                  <NavLink to="/import-export-training-data" className="sidebar-link">
+                    Import/Export Training Data (MS Access)
+                  </NavLink>
+                </li>
+              ) : (
+                <>
+                  <li>
+                    <NavLink to="/reference-data" className="sidebar-link">
+                      Reference Data
+                    </NavLink>
+                  </li>
+                  <li>
+                    <NavLink to="/dynamic-users" className="sidebar-link">
+                      End Users
+                    </NavLink>
+                  </li>
+                  <li>
+                    <NavLink to="/import-export" className="sidebar-link">
+                      Import/Export End Users
+                    </NavLink>
+                  </li>
+                  <li>
+                    <NavLink to="/courses" className="sidebar-link">
+                      Courses
+                    </NavLink>
+                  </li>
+                  <li>
+                    <NavLink to="/import-export-courses" className="sidebar-link">
+                      Import/Export Courses
+                    </NavLink>
+                  </li>
+                  <li>
+                    <NavLink to="/edit-mappings" className="sidebar-link">
+                      Role-Course Mappings
+                    </NavLink>
+                  </li>
+                  <li>
+                    <NavLink to="/import-export-user-course-mappings" className="sidebar-link">
+                      Individual Course Assignments
+                    </NavLink>
+                  </li>
+                  <li>
+                    <NavLink to="/export-all-data" className="sidebar-link">
+                      Export All Data
+                    </NavLink>
+                  </li>
+                  <li>
+                    <NavLink to="/pivot-report" className="sidebar-link">
+                      Pivot Tables
+                    </NavLink>
+                  </li>
+                </>
+              )}
               <li>
                 <NavLink to="/trainers" className="sidebar-link">
                   Trainers
