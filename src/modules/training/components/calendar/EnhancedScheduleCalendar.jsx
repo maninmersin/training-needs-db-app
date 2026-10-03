@@ -4,7 +4,7 @@ import FullCalendar from '@fullcalendar/react';
 import timeGridPlugin from '@fullcalendar/timegrid';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import interactionPlugin from '@fullcalendar/interaction';
-import { getColorByCourseTitle } from '@core/utils/colorUtils';
+import { getColorByCourseTitle, buildCourseColorMapFromSessions } from '@core/utils/colorUtils';
 import { supabase } from '@core/services/supabaseClient';
 import { generateEventIdFromSession } from '@core/utils/eventIdUtils';
 import { fromLocalDateTime } from '@core/utils/dateTimeUtils';
@@ -70,6 +70,9 @@ const EnhancedScheduleCalendar = ({
   const calendarViewRef = useRef('timeGridWeek');
   // Calculate initial date from sessions on first render
   const initialCalendarDate = useMemo(() => calculateInitialDate(sessions), []);
+
+  // One distinct color per course (matches the Schedule calendar)
+  const courseColorMap = useMemo(() => buildCourseColorMapFromSessions(sessions), [sessions]);
   const calendarDateRef = useRef(initialCalendarDate);
 
   // Track when user navigates to different dates/views using refs to prevent re-renders.
@@ -937,7 +940,7 @@ const EnhancedScheduleCalendar = ({
                   if (courseTitle && !sessionCopy.course?.course_name) {
                     courseTitle = courseTitle.replace(/\s*-\s*Group\s+\d+.*$/, '').trim();
                   }
-                  const autoColor = getColorByCourseTitle(courseTitle);
+                  const autoColor = getColorByCourseTitle(courseTitle, courseColorMap);
                   
                   // Use auto-assigned color for consistent display (Schedule Manager approach)
                   const sessionColor = autoColor;

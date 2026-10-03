@@ -146,7 +146,9 @@ export const sortCoursesByPriority = (courses) => {
   return [...courses].sort((a, b) => {
     const aPriority = a.priority || 999;
     const bPriority = b.priority || 999;
-    return aPriority - bPriority;
+    if (aPriority !== bPriority) return aPriority - bPriority;
+    // Equal priority: order by course id (numeric-aware) so the sequence doesn't depend on data order
+    return String(a.course_id ?? '').localeCompare(String(b.course_id ?? ''), undefined, { numeric: true });
   });
 };
 

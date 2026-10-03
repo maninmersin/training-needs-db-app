@@ -38,7 +38,7 @@ const SessionEditModal = ({ session, isOpen, onClose, onSave, onDelete, criteria
       
       // Get auto-assigned color if no custom color is set
       const courseTitle = session.course?.course_name || session.title;
-      const autoColor = getColorByCourseTitle(courseTitle);
+      const autoColor = session.autoColor || getColorByCourseTitle(courseTitle);
       const defaultColor = session.color || autoColor.backgroundColor;
       
       setFormData({

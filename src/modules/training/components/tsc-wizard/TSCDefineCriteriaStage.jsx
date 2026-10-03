@@ -372,6 +372,7 @@ const TSCDefineCriteriaStage = ({
         course_name: row.course_name,
         functional_area: row.functional_area,
         duration_hrs: row.duration_hrs,
+        priority: row.course_priority, // scheduling order: lower number goes first
         business_unit: row.business_unit,
         organization: row.organization,
         country: row.user_country,

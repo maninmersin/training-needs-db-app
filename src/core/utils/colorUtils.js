@@ -83,14 +83,57 @@ export const COLOR_PALETTE = {
 // Hover/highlight effect color
 export const HOVER_BORDER_COLOR = '#8ca0b3';
 
+const COURSE_COLOR_TYPES = ['typeA', 'typeB', 'typeC', 'typeD', 'typeE', 'typeF', 'typeG', 'typeH', 'typeI', 'typeJ', 'typeK', 'typeL'];
+
+// Course name a session should be coloured by (strips "- Group 1 (Part 1)" when only a title exists)
+const courseNameOfSession = (session) => {
+  const name = session?.course?.course_name;
+  if (name) return name;
+  const title = session?.title;
+  return title ? title.replace(/\s*-\s*Group\s+\d+.*$/, '').trim() : null;
+};
+
+/**
+ * Give every distinct course in a calendar its own color (until the palette runs out), assigned in
+ * course-name order so the same schedule gets the same colors in the wizard preview and when reopened
+ * from the database, and two courses never share a color just because their names hash alike.
+ * @param {Array|Object} sessionsData - Flat session array, or nested functional_area -> location -> classroom -> [sessions]
+ * @returns {Object} course name -> color object (pass to getColorByCourseTitle)
+ */
+export const buildCourseColorMapFromSessions = (sessionsData) => {
+  const sessions = [];
+  const collect = (node) => {
+    if (Array.isArray(node)) node.forEach((item) => (item && item.start !== undefined ? sessions.push(item) : collect(item)));
+    else if (node && typeof node === 'object') Object.values(node).forEach(collect);
+  };
+  collect(sessionsData);
+
+  const courseNames = new Set();
+  for (const session of sessions) {
+    const name = courseNameOfSession(session);
+    if (name) courseNames.add(name);
+  }
+
+  const colorMap = {};
+  [...courseNames].sort((a, b) => a.localeCompare(b)).forEach((name, index) => {
+    colorMap[name] = COLOR_PALETTE[COURSE_COLOR_TYPES[index % COURSE_COLOR_TYPES.length]];
+  });
+  return colorMap;
+};
+
 /**
  * Generates a consistent color assignment based on course title
  * @param {string} courseTitle - The course title
+ * @param {Object} [colorMap] - Optional map from buildCourseColorMapFromSessions; guarantees distinct colors
  * @returns {object} Color object with backgroundColor, textColor, and borderColor
  */
-export const getColorByCourseTitle = (courseTitle) => {
+export const getColorByCourseTitle = (courseTitle, colorMap) => {
   if (!courseTitle) {
     return COLOR_PALETTE.default;
+  }
+
+  if (colorMap && colorMap[courseTitle]) {
+    return colorMap[courseTitle];
   }
 
   // Simple hash function to generate consistent color assignment

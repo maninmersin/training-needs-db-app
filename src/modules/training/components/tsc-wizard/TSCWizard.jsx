@@ -108,7 +108,8 @@ const TSCWizard = () => {
             course_id: user.course_id,
             course_name: user.course_name,
             functional_area: user.functional_area,
-            duration_hrs: user.duration_hrs
+            duration_hrs: user.duration_hrs,
+            priority: user.priority
           });
         }
       });

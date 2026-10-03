@@ -4,7 +4,7 @@ import timeGridPlugin from '@fullcalendar/timegrid';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import interactionPlugin from '@fullcalendar/interaction';
 import SessionEditModal from '../schedule-manager/SessionEditModal';
-import { getColorByCourseTitle } from '@core/utils/colorUtils';
+import { getColorByCourseTitle, buildCourseColorMapFromSessions } from '@core/utils/colorUtils';
 import { supabase } from '@core/services/supabaseClient';
 import { addWeeks, startOfWeek, format } from 'date-fns';
 import './ScheduleCalendar.css';
@@ -224,6 +224,9 @@ const ScheduleCalendar = ({ sessions, onSessionUpdated, criteria, selectionMode 
   // Use working sessions ref for rendering, fallback to props if not initialized
   // CRITICAL: Always use ref, never use sessions prop after initialization
   const sessionsToRender = workingSessionsRef.current || sessions;
+
+  // One distinct color per course across every calendar on this page
+  const courseColorMap = buildCourseColorMapFromSessions(sessionsToRender);
 
   console.log('🔍 ScheduleCalendar render check:', {
     hasInitialized: hasInitializedSessionsRef.current,
@@ -1006,7 +1009,7 @@ const ScheduleCalendar = ({ sessions, onSessionUpdated, criteria, selectionMode 
                     // e.g., "Transfers - Group 1 (Part 1)" becomes "Transfers"
                     courseTitle = courseTitle.replace(/\s*-\s*Group\s+\d+.*$/, '').trim();
                   }
-                  const autoColor = getColorByCourseTitle(courseTitle);
+                  const autoColor = getColorByCourseTitle(courseTitle, courseColorMap);
                   
                   // Use auto-assigned color for consistent display (ignore database colors)
                   const sessionColor = autoColor;
