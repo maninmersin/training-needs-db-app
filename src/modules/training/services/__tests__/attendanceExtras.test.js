@@ -131,4 +131,24 @@ describe('clearAttendanceRecord', () => {
     mockResults.attendance_records = { data: null, error: new Error('denied') };
     await expect(clearAttendanceRecord('s1', 'p1', 4)).rejects.toThrow('denied');
   });
+
+  test('by default the booking is left alone', async () => {
+    mockResults.attendance_records = { data: [{ id: 'r1' }], error: null };
+    await clearAttendanceRecord('s1', 'p1', 4);
+    expect(mockCalls.map((c) => c.table)).toEqual(['attendance_records']);
+  });
+
+  test('for a walk-in the booking made for them is removed too, but only if it was made as a walk-in', async () => {
+    mockResults.attendance_records = { data: [{ id: 'r1' }], error: null };
+    await clearAttendanceRecord('s1', 'p1', 4, { removeWalkInAssignment: true });
+    const booking = mockCalls.find((c) => c.table === 'user_assignments');
+    expect(booking.op).toBe('delete');
+    expect(booking.filters).toEqual([['session_id', 's1'], ['end_user_id', 4], ['project_id', 'p1'], ['assignment_method', 'walk-in']]);
+  });
+
+  test('a failure removing the booking is raised', async () => {
+    mockResults.attendance_records = { data: [{ id: 'r1' }], error: null };
+    mockResults.user_assignments = { data: null, error: new Error('blocked') };
+    await expect(clearAttendanceRecord('s1', 'p1', 4, { removeWalkInAssignment: true })).rejects.toThrow('blocked');
+  });
 });

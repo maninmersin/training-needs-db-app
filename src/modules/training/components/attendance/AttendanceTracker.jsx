@@ -15,7 +15,9 @@ import {
   clearAttendanceRecord,
   getSessionAttendanceSummary
 } from '../../services/attendanceService';
+import { applyWalkInPlan } from '../../services/walkInService';
 import WalkInDialog from './WalkInDialog';
+import { CHOICE } from './walkInPlan';
 import { FILTER_OPTIONS, filterAttendees, filterSessions, formatDateTime, recordFor, sessionLabel, withWalkIns } from './trackerLogic';
 
 // The comment boxes read their text from here rather than from the column definitions: if the columns
@@ -147,7 +149,7 @@ const AttendanceTracker = () => {
     async (attendee) => {
       try {
         setSubmitting(true);
-        await clearAttendanceRecord(selectedSession.id, currentProject.id, attendee.attendee_id);
+        await clearAttendanceRecord(selectedSession.id, currentProject.id, attendee.attendee_id, { removeWalkInAssignment: Boolean(attendee.added_as_walk_in) });
         await loadSessionDetails({ silent: true });
         toast.success(`Cleared the attendance mark for ${attendee.user.name}`);
       } catch (clearError) {
@@ -160,17 +162,38 @@ const AttendanceTracker = () => {
     [selectedSession, currentProject, loadSessionDetails]
   );
 
-  const handleAddWalkIn = async ({ person, status, notes }) => {
-    await markSingleAttendance(selectedSession.id, currentProject.id, {
-      attendee_id: person.id,
-      attendance_status_id: status.id,
-      check_in_time: new Date().toISOString(),
-      notes,
-      marked_by: user.id
-    });
+  const handleAddWalkIn = async ({ person, status, notes, choice, plan }) => {
+    const changesBookings = plan.newRows.length > 0 || plan.deleteIds.length > 0;
+    let result = { assigned: 0, removed: 0, clearedOldMarks: 0 };
+    if (changesBookings) {
+      result = await applyWalkInPlan({
+        plan,
+        projectId: currentProject.id,
+        endUserId: person.id,
+        absentStatusIds: attendanceStatuses.filter((candidate) => !candidate.is_present).map((candidate) => candidate.id)
+      });
+    }
+    try {
+      await markSingleAttendance(selectedSession.id, currentProject.id, {
+        attendee_id: person.id,
+        attendance_status_id: status.id,
+        check_in_time: new Date().toISOString(),
+        notes,
+        marked_by: user.id
+      });
+    } catch (markError) {
+      if (changesBookings) await loadSessionDetails({ silent: true });
+      throw new Error(`${person.name}'s booking was updated, but their attendance could not be saved: ${markError.message}. Mark them on the list.`);
+    }
     await loadSessionDetails({ silent: true });
     setWalkInOpen(false);
-    toast.success(`Added ${person.name} as ${status.status_name} (not assigned to this session)`);
+    const outcome = {
+      [CHOICE.MOVE]: `Moved ${person.name} to this session and marked them ${status.status_name}`,
+      [CHOICE.ASSIGN]: `Added ${person.name} as ${status.status_name} and assigned them to this session`,
+      [CHOICE.ALSO]: `Added ${person.name} to this session as well, marked ${status.status_name}`,
+      [CHOICE.ATTENDANCE_ONLY]: `Recorded ${person.name} as ${status.status_name} (not assigned to this session)`
+    }[choice];
+    toast.success(outcome, result.clearedOldMarks > 0 ? { description: 'Their old absence mark was removed.' } : undefined);
   };
 
   const filteredSessions = useMemo(() => filterSessions(sessions, sessionSearchTerm), [sessions, sessionSearchTerm]);
@@ -191,6 +214,7 @@ const AttendanceTracker = () => {
           <span className="inline-flex items-center gap-2">
             {row.original.user.name}
             {row.original.walkIn && <Badge variant="warning" title="Attended without being assigned to this session">Not assigned</Badge>}
+            {row.original.added_as_walk_in && <Badge variant="warning" title="Added to this session as a walk-in">Walk-in</Badge>}
           </span>
         )
       },
@@ -255,7 +279,7 @@ const AttendanceTracker = () => {
                   size="sm"
                   variant="ghost"
                   disabled={submitting}
-                  title={row.original.walkIn ? 'Remove this walk-in' : 'Clear the attendance mark'}
+                  title={row.original.walkIn ? 'Remove this walk-in' : row.original.added_as_walk_in ? 'Remove this walk-in and the booking made for them' : 'Clear the attendance mark'}
                   aria-label={`Clear - ${row.original.user.name}`}
                   onClick={() => handleClear(row.original)}
                 >
@@ -409,6 +433,7 @@ const AttendanceTracker = () => {
       <WalkInDialog
         open={walkInOpen}
         projectId={currentProject.id}
+        session={selectedSession}
         statuses={attendanceStatuses}
         rows={rows}
         onAdd={handleAddWalkIn}

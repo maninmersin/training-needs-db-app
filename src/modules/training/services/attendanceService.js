@@ -57,6 +57,9 @@ export const getSessionsForAttendance = async (projectId) => {
         functional_area,
         classroom_number,
         max_attendees,
+        schedule_id,
+        session_part_number,
+        session_identifier,
         instructor_id,
         instructor_name,
         session_status
@@ -95,7 +98,8 @@ export const getSessionAttendees = async (sessionId, projectId) => {
         id,
         end_user_id,
         created_at,
-        assignment_type
+        assignment_type,
+        assignment_method
       `)
       .eq('session_id', sessionId)
       .eq('project_id', projectId)
@@ -116,6 +120,7 @@ export const getSessionAttendees = async (sessionId, projectId) => {
       is_confirmed: true, // Assignments are considered confirmed
       waitlist_position: null,
       notes: assignment.assignment_type,
+      added_as_walk_in: assignment.assignment_method === 'walk-in',
       user: userOrPlaceholder(directory, assignment.end_user_id)
     }));
 
@@ -309,10 +314,12 @@ export const markSingleAttendance = async (sessionId, projectId, attendanceData)
 
 /**
  * Clear someone's attendance mark for a session, so they go back to "Not Marked".
- * Only the attendance record is removed; who is assigned to the session does not change.
+ * Only the attendance record is removed, and who is assigned to the session does not change, except that
+ * with `removeWalkInAssignment` the booking that was created when they were added as a walk-in is removed
+ * too (never a booking that came from the schedule).
  * @returns {Promise<boolean>} true when a record was removed
  */
-export const clearAttendanceRecord = async (sessionId, projectId, attendeeId) => {
+export const clearAttendanceRecord = async (sessionId, projectId, attendeeId, { removeWalkInAssignment = false } = {}) => {
   if (!projectId) {
     throw new Error('Project ID is required for all attendance operations');
   }
@@ -326,6 +333,19 @@ export const clearAttendanceRecord = async (sessionId, projectId, attendeeId) =>
   if (error) {
     console.error('❌ Error clearing attendance record:', error);
     throw error;
+  }
+  if (removeWalkInAssignment) {
+    const { error: assignmentError } = await supabase
+      .from('user_assignments')
+      .delete()
+      .eq('session_id', sessionId)
+      .eq('end_user_id', attendeeId)
+      .eq('project_id', projectId)
+      .eq('assignment_method', 'walk-in');
+    if (assignmentError) {
+      console.error('❌ Error removing walk-in booking:', assignmentError);
+      throw assignmentError;
+    }
   }
   return (data || []).length > 0;
 };
@@ -345,11 +365,12 @@ export const getSessionAttendanceSummary = async (sessionId, projectId) => {
     // Get all assigned attendees for the session
     const { data: attendees, error: attendeesError } = await supabase
       .from('user_assignments')
-      .select('end_user_id')
+      .select('end_user_id, assignment_method')
       .eq('session_id', sessionId)
       .eq('project_id', projectId);
 
     if (attendeesError) throw attendeesError;
+    // People added from attendance as walk-ins are not "planned": they are counted as walk-ins below
 
     // Get attendance records for this session
     const { data: records, error: recordsError } = await supabase
@@ -367,7 +388,8 @@ export const getSessionAttendanceSummary = async (sessionId, projectId) => {
 
     if (recordsError) throw recordsError;
 
-    return summariseAttendance((attendees || []).map((a) => a.end_user_id), records || []);
+    const planned = (attendees || []).filter((a) => a.assignment_method !== 'walk-in').map((a) => a.end_user_id);
+    return summariseAttendance(planned, records || []);
   } catch (error) {
     console.error('❌ Error in getSessionAttendanceSummary:', error);
     throw error;

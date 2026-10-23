@@ -21,6 +21,7 @@ jest.mock('../../../services/attendanceService', () => ({
   clearAttendanceRecord: jest.fn()
 }));
 jest.mock('../../../services/userDirectoryService', () => ({ searchUserDirectory: jest.fn() }));
+jest.mock('../../../services/walkInService', () => ({ loadWalkInContext: jest.fn(), applyWalkInPlan: jest.fn() }));
 
 beforeAll(() => {
   global.ResizeObserver = class { observe() {} unobserve() {} disconnect() {} };
