@@ -6,7 +6,6 @@ import { supabase } from '@core/services/supabaseClient';
 import { useProject } from '@core/contexts/ProjectContext';
 import UserPool from './UserPool';
 import EnhancedScheduleCalendar from '../calendar/EnhancedScheduleCalendar';
-import AssignmentStats from './AssignmentStats';
 import CalendarDayControls from '../calendar/CalendarDayControls';
 import UserContextMenu from './UserContextMenu';
 import MoveUserDialog from './MoveUserDialog';
@@ -3809,6 +3808,7 @@ const DragDropAssignmentPanel = ({
           isOpen={showStatsModal}
           onClose={() => setShowStatsModal(false)}
           schedule={schedule}
+          projectId={currentProject?.id}
           selectedTrainingLocation={selectedTrainingLocation}
         />
 

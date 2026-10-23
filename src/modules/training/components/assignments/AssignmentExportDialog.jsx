@@ -5,7 +5,52 @@ import { saveAs } from 'file-saver';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { debugLog, debugError } from '@core/utils/consoleUtils';
-import './AssignmentExportDialog.css';
+import { ChevronDown, Download } from 'lucide-react';
+import { toast } from 'sonner';
+import {
+  Button, Checkbox, Dialog, DialogBody, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, FormField, Input, Label,
+  Popover, PopoverContent, PopoverTrigger, StatCard
+} from '@/components/ui';
+
+// A pick-several dropdown. It lives outside the dialog component so it is not re-created on every render.
+const MultiSelectFilter = ({ label, options, value, onChange, displayKey = null }) => {
+  const toggle = (option) => {
+    const optionValue = displayKey ? option[displayKey] : option;
+    onChange(value.includes(optionValue) ? value.filter((v) => v !== optionValue) : [...value, optionValue]);
+  };
+
+  const summary =
+    value.length === 0 ? `Select ${label}`
+      : value.length <= 3 ? value.join(', ')
+        : `${value[0]}, ${value[1]} & ${value.length - 2} more`;
+
+  return (
+    <div className="flex flex-col gap-1">
+      <Label>{label}</Label>
+      <Popover>
+        <PopoverTrigger asChild>
+          <Button aria-label={label} className="w-full justify-between font-normal">
+            <span className="truncate">{summary}</span>
+            <ChevronDown className="opacity-60" />
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="max-h-64 w-72 overflow-y-auto p-1">
+          {options.length === 0 && <p className="px-2 py-1.5 text-sm text-muted-foreground">Nothing to choose from</p>}
+          {options.map((option) => {
+            const optionValue = displayKey ? option[displayKey] : option;
+            const optionLabel = displayKey && option.name ? option.name : option;
+            return (
+              <label key={optionValue} className="flex cursor-pointer items-center gap-2 rounded px-2 py-1.5 text-sm hover:bg-accent">
+                <Checkbox aria-label={optionLabel} checked={value.includes(optionValue)} onCheckedChange={() => toggle(option)} />
+                <span className="truncate">{optionLabel}</span>
+              </label>
+            );
+          })}
+        </PopoverContent>
+      </Popover>
+    </div>
+  );
+};
 
 /**
  * Advanced Export Dialog for Assignment Data
@@ -237,71 +282,6 @@ const AssignmentExportDialog = ({
     });
   };
 
-  // Multi-select component
-  const MultiSelectFilter = ({ label, options, value, onChange, displayKey = null }) => {
-    const [isOpen, setIsOpen] = useState(false);
-
-    const handleToggle = (option) => {
-      const optionValue = displayKey ? option[displayKey] : option;
-      const newValue = value.includes(optionValue)
-        ? value.filter(v => v !== optionValue)
-        : [...value, optionValue];
-      onChange(newValue);
-    };
-
-    // Create display text showing selected items
-    const getDisplayText = () => {
-      if (value.length === 0) {
-        return `Select ${label}`;
-      }
-      
-      if (value.length === 1) {
-        return value[0];
-      }
-      
-      if (value.length <= 3) {
-        return value.join(', ');
-      }
-      
-      return `${value[0]}, ${value[1]} & ${value.length - 2} more`;
-    };
-
-    return (
-      <div className="multi-select-filter">
-        <label>{label}</label>
-        <div className="multi-select-dropdown">
-          <button
-            className="multi-select-button"
-            onClick={() => setIsOpen(!isOpen)}
-          >
-            <span className="button-text">{getDisplayText()}</span>
-            <span className={`dropdown-arrow ${isOpen ? 'open' : ''}`}>▼</span>
-          </button>
-          
-          {isOpen && (
-            <div className="multi-select-options">
-              {options.map((option, index) => {
-                const optionValue = displayKey ? option[displayKey] : option;
-                const optionLabel = displayKey && option.name ? option.name : option;
-                
-                return (
-                  <label key={index} className="multi-select-option">
-                    <input
-                      type="checkbox"
-                      checked={value.includes(optionValue)}
-                      onChange={() => handleToggle(option)}
-                    />
-                    <span>{optionLabel}</span>
-                  </label>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      </div>
-    );
-  };
-
   // Export functionality
   const handleExport = async () => {
     try {
@@ -317,7 +297,7 @@ const AssignmentExportDialog = ({
       debugLog('✅ Export completed successfully');
     } catch (error) {
       debugError('❌ Export failed:', error);
-      alert(`Export failed: ${error.message}`);
+      toast.error('Export failed', { description: error.message });
     } finally {
       setExporting(false);
     }
@@ -484,7 +464,7 @@ const AssignmentExportDialog = ({
     });
     saveAs(blob, filename);
 
-    alert(`✅ Excel export completed: ${filename}`);
+    toast.success('Excel export completed', { description: filename });
   };
 
   const exportToPDF = async () => {
@@ -547,7 +527,7 @@ const AssignmentExportDialog = ({
     const filename = `assignment_export_${exportType}_${timestamp}.pdf`;
     pdf.save(filename);
 
-    alert(`✅ PDF export completed: ${filename}`);
+    toast.success('PDF export completed', { description: filename });
   };
 
   const calculateDuration = (start, end) => {
@@ -581,180 +561,72 @@ const AssignmentExportDialog = ({
     return appliedFilters.length > 0 ? appliedFilters.join('; ') : 'None';
   };
 
+  const radio = 'size-4 accent-primary';
+
   return (
-    <div className="assignment-export-dialog-overlay">
-      <div className="assignment-export-dialog">
-        {/* Header */}
-        <div className="export-dialog-header">
-          <h2>📊 Export Assignment Data</h2>
-          <button onClick={onClose} className="close-btn">❌</button>
-        </div>
+    <Dialog open onOpenChange={(open) => !open && !exporting && onClose()}>
+      <DialogContent className="max-w-3xl">
+        <DialogHeader>
+          <DialogTitle>Export Assignment Data</DialogTitle>
+          <DialogDescription>Choose what to include, then export to Excel or PDF.</DialogDescription>
+        </DialogHeader>
 
-        {/* Content */}
-        <div className="export-dialog-content">
-          {/* Filters Section */}
-          <div className="filters-section">
-            <div className="section-header">
-              <h3>🔍 Filters</h3>
-              <button onClick={clearAllFilters} className="clear-filters-btn">
-                Clear All
-              </button>
+        <DialogBody className="flex flex-col gap-5">
+          <section className="flex flex-col gap-3">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-semibold">Filters</h3>
+              <Button size="sm" variant="ghost" onClick={clearAllFilters}>Clear All</Button>
             </div>
-
-            <div className="filters-grid">
-              <MultiSelectFilter
-                label="Functional Areas"
-                options={filterOptions.functionalAreas}
-                value={filters.functionalAreas}
-                onChange={(value) => handleFilterChange('functionalAreas', value)}
-              />
-
-              <MultiSelectFilter
-                label="Training Locations"
-                options={filterOptions.trainingLocations}
-                value={filters.trainingLocations}
-                onChange={(value) => handleFilterChange('trainingLocations', value)}
-              />
-
-              <MultiSelectFilter
-                label="Classrooms"
-                options={filterOptions.classrooms}
-                value={filters.classrooms}
-                onChange={(value) => handleFilterChange('classrooms', value)}
-              />
-
-              <MultiSelectFilter
-                label="Courses"
-                options={filterOptions.courses}
-                value={filters.courses}
-                onChange={(value) => handleFilterChange('courses', value)}
-              />
-
-              <div className="date-range-filter">
-                <label>Date Range</label>
-                <div className="date-inputs">
-                  <input
-                    type="date"
-                    value={filters.dateRange.start}
-                    onChange={(e) => handleFilterChange('dateRange', {
-                      ...filters.dateRange,
-                      start: e.target.value
-                    })}
-                  />
-                  <span>to</span>
-                  <input
-                    type="date"
-                    value={filters.dateRange.end}
-                    onChange={(e) => handleFilterChange('dateRange', {
-                      ...filters.dateRange,
-                      end: e.target.value
-                    })}
-                  />
-                </div>
-              </div>
-
-              <MultiSelectFilter
-                label="Attendees"
-                options={filterOptions.attendees}
-                value={filters.attendees}
-                onChange={(value) => handleFilterChange('attendees', value)}
-                displayKey="name"
-              />
+            <div className="grid gap-3 sm:grid-cols-2">
+              <MultiSelectFilter label="Functional Areas" options={filterOptions.functionalAreas} value={filters.functionalAreas} onChange={(value) => handleFilterChange('functionalAreas', value)} />
+              <MultiSelectFilter label="Training Locations" options={filterOptions.trainingLocations} value={filters.trainingLocations} onChange={(value) => handleFilterChange('trainingLocations', value)} />
+              <MultiSelectFilter label="Classrooms" options={filterOptions.classrooms} value={filters.classrooms} onChange={(value) => handleFilterChange('classrooms', value)} />
+              <MultiSelectFilter label="Courses" options={filterOptions.courses} value={filters.courses} onChange={(value) => handleFilterChange('courses', value)} />
+              <FormField label="Date Range">
+                {(props) => (
+                  <div className="flex items-center gap-2 text-sm">
+                    <Input {...props} type="date" aria-label="Date range start" value={filters.dateRange.start} onChange={(e) => handleFilterChange('dateRange', { ...filters.dateRange, start: e.target.value })} />
+                    to
+                    <Input type="date" aria-label="Date range end" value={filters.dateRange.end} onChange={(e) => handleFilterChange('dateRange', { ...filters.dateRange, end: e.target.value })} />
+                  </div>
+                )}
+              </FormField>
+              <MultiSelectFilter label="Attendees" options={filterOptions.attendees} value={filters.attendees} onChange={(value) => handleFilterChange('attendees', value)} displayKey="name" />
             </div>
-          </div>
+          </section>
 
-          {/* Preview Section */}
-          <div className="preview-section">
-            <h3>📋 Export Preview</h3>
-            <div className="preview-stats">
-              <div className="stat-item">
-                <span className="stat-label">Sessions:</span>
-                <span className="stat-value">{filteredData.stats.totalSessions}</span>
-              </div>
-              <div className="stat-item">
-                <span className="stat-label">Assignments:</span>
-                <span className="stat-value">{filteredData.stats.totalAssignments}</span>
-              </div>
-              <div className="stat-item">
-                <span className="stat-label">Attendees:</span>
-                <span className="stat-value">{filteredData.stats.uniqueAttendees}</span>
-              </div>
-              <div className="stat-item">
-                <span className="stat-label">Courses:</span>
-                <span className="stat-value">{filteredData.stats.uniqueCourses}</span>
-              </div>
+          <section className="flex flex-col gap-2">
+            <h3 className="text-sm font-semibold">Export Preview</h3>
+            <div className="flex flex-wrap gap-2">
+              <StatCard value={filteredData.stats.totalSessions} label="Sessions" />
+              <StatCard value={filteredData.stats.totalAssignments} label="Assignments" />
+              <StatCard value={filteredData.stats.uniqueAttendees} label="Attendees" />
+              <StatCard value={filteredData.stats.uniqueCourses} label="Courses" />
             </div>
-          </div>
+          </section>
 
-          {/* Export Options */}
-          <div className="export-options-section">
-            <h3>⚙️ Export Options</h3>
-            
-            <div className="export-format-options">
-              <label>Export Format:</label>
-              <div className="radio-group">
-                <label>
-                  <input
-                    type="radio"
-                    value="excel"
-                    checked={exportFormat === 'excel'}
-                    onChange={(e) => setExportFormat(e.target.value)}
-                  />
-                  📊 Excel (.xlsx)
-                </label>
-                <label>
-                  <input
-                    type="radio"
-                    value="pdf"
-                    checked={exportFormat === 'pdf'}
-                    onChange={(e) => setExportFormat(e.target.value)}
-                  />
-                  📄 PDF (.pdf)
-                </label>
-              </div>
-            </div>
+          <section className="grid gap-4 sm:grid-cols-2">
+            <fieldset className="flex flex-col gap-2">
+              <legend className="mb-1 text-sm font-semibold">Export Format</legend>
+              <label className="flex cursor-pointer items-center gap-2 text-sm"><input type="radio" className={radio} value="excel" checked={exportFormat === 'excel'} onChange={(e) => setExportFormat(e.target.value)} /> Excel (.xlsx)</label>
+              <label className="flex cursor-pointer items-center gap-2 text-sm"><input type="radio" className={radio} value="pdf" checked={exportFormat === 'pdf'} onChange={(e) => setExportFormat(e.target.value)} /> PDF (.pdf)</label>
+            </fieldset>
+            <fieldset className="flex flex-col gap-2">
+              <legend className="mb-1 text-sm font-semibold">Export Type</legend>
+              <label className="flex cursor-pointer items-center gap-2 text-sm"><input type="radio" className={radio} value="detailed" checked={exportType === 'detailed'} onChange={(e) => setExportType(e.target.value)} /> Detailed Assignments</label>
+              <label className="flex cursor-pointer items-center gap-2 text-sm"><input type="radio" className={radio} value="attendees" checked={exportType === 'attendees'} onChange={(e) => setExportType(e.target.value)} /> Attendee Focus</label>
+            </fieldset>
+          </section>
+        </DialogBody>
 
-            <div className="export-type-options">
-              <label>Export Type:</label>
-              <div className="radio-group">
-                <label>
-                  <input
-                    type="radio"
-                    value="detailed"
-                    checked={exportType === 'detailed'}
-                    onChange={(e) => setExportType(e.target.value)}
-                  />
-                  📋 Detailed Assignments
-                </label>
-                <label>
-                  <input
-                    type="radio"
-                    value="attendees"
-                    checked={exportType === 'attendees'}
-                    onChange={(e) => setExportType(e.target.value)}
-                  />
-                  👥 Attendee Focus
-                </label>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Footer */}
-        <div className="export-dialog-footer">
-          <button onClick={onClose} className="cancel-btn" disabled={exporting}>
-            Cancel
-          </button>
-          <button
-            onClick={handleExport}
-            className="export-btn"
-            disabled={exporting || filteredData.stats.totalSessions === 0}
-          >
-            {exporting ? '⏳ Exporting...' : `📊 Export ${exportFormat.toUpperCase()}`}
-          </button>
-        </div>
-      </div>
-    </div>
+        <DialogFooter>
+          <Button onClick={onClose} disabled={exporting}>Cancel</Button>
+          <Button variant="default" onClick={handleExport} disabled={exporting || filteredData.stats.totalSessions === 0}>
+            <Download /> {exporting ? 'Exporting...' : `Export ${exportFormat.toUpperCase()}`}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 };
 

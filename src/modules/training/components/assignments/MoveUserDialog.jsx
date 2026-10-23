@@ -2,7 +2,8 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { fromLocalDateTime } from '@core/utils/dateTimeUtils';
 import { loadMoveContext, saveMove } from '../../services/assignmentMoveService';
 import { MOVE_SCOPE, findMoveOptions, buildMovePlan, resolveSource } from './moveUserAssignments';
-import './MoveUserDialog.css';
+import { cn } from '@/lib/utils';
+import { Badge, Button, Dialog, DialogBody, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui';
 
 const formatWhen = (value) => {
   if (!value) return '';
@@ -104,116 +105,110 @@ const MoveUserDialog = ({ isOpen, onClose, userInfo, sessionInfo, schedule, proj
     ? `${source.courseName}, Group ${source.sessionNumber}`
     : `Group ${source.sessionNumber}`;
 
+  const radio = 'size-4 accent-primary';
+
   return (
-    <div className="move-user-overlay" onClick={onClose}>
-      <div className="move-user-dialog" onClick={(e) => e.stopPropagation()} role="dialog" aria-label={`Move ${personName}`}>
-        <div className="move-user-header">
-          <h3>Move {personName}</h3>
-          <button className="move-user-close" onClick={onClose} aria-label="Close">×</button>
-        </div>
+    <Dialog open onOpenChange={(open) => !open && !saving && onClose()}>
+      <DialogContent className="max-w-xl" aria-label={`Move ${personName}`}>
+        <DialogHeader>
+          <DialogTitle>Move {personName}</DialogTitle>
+          <DialogDescription>
+            Currently in <strong>{currentLabel}</strong> at {source.location}
+            {source.functionalArea ? ` (${source.functionalArea})` : ''}
+          </DialogDescription>
+        </DialogHeader>
 
-        <p className="move-user-current">
-          Currently in <strong>{currentLabel}</strong> at {source.location}
-          {source.functionalArea ? ` (${source.functionalArea})` : ''}
-        </p>
-
-        <div className="move-user-scope" role="radiogroup" aria-label="What to move">
-          <label className={scope === MOVE_SCOPE.COURSE ? 'active' : ''}>
-            <input
-              type="radio" name="move-scope" checked={scope === MOVE_SCOPE.COURSE}
-              disabled={!source.courseId} onChange={() => changeScope(MOVE_SCOPE.COURSE)}
-            />
-            This course only{source.courseName ? ` (${source.courseName})` : ''}
-          </label>
-          <label className={scope === MOVE_SCOPE.GROUP ? 'active' : ''}>
-            <input
-              type="radio" name="move-scope" checked={scope === MOVE_SCOPE.GROUP}
-              onChange={() => changeScope(MOVE_SCOPE.GROUP)}
-            />
-            Whole group (all their courses in Group {source.sessionNumber})
-          </label>
-        </div>
-
-        {loading && <p className="move-user-note">Loading sessions...</p>}
-
-        {!loading && context && options.length === 0 && (
-          <p className="move-user-note">
-            {scope === MOVE_SCOPE.COURSE
-              ? 'There is no other session of this course at this location to move to.'
-              : 'There is no other group at this location to move to.'}
-          </p>
-        )}
-
-        {!loading && options.length > 0 && (
-          <ul className="move-user-options">
-            {options.map((option) => {
-              const key = option.key || `group-${option.sessionNumber}`;
-              const disabled = option.scope === MOVE_SCOPE.GROUP && !option.canMove;
-              return (
-                <li key={key} className={`${selectedKey === key ? 'selected' : ''}${disabled ? ' disabled' : ''}`}>
-                  <label>
-                    <input
-                      type="radio" name="move-option" checked={selectedKey === key} disabled={disabled}
-                      onChange={() => { setSelectedKey(key); setConfirmFull(false); }}
-                    />
-                    <span className="move-user-option-main">
-                      <span className="move-user-option-title">
-                        Group {option.sessionNumber}
-                        {option.isFull && <span className="move-user-badge full">FULL</span>}
-                      </span>
-                      <span className="move-user-option-when">{formatRange(option.firstStart, option.lastEnd)}</span>
-
-                      {option.scope === MOVE_SCOPE.COURSE && (
-                        <span className="move-user-option-meta">
-                          Classroom {option.classroomNumber}
-                          {option.trainer ? ` · ${option.trainer}` : ''}
-                          {` · ${option.seatsTaken}/${option.maxAttendees} seats taken`}
-                        </span>
-                      )}
-
-                      {option.scope === MOVE_SCOPE.GROUP && (
-                        <>
-                          {option.courses.map((c) => (
-                            <span key={c.courseId} className="move-user-option-meta">
-                              {c.courseName} · {c.seatsTaken}/{c.maxAttendees} seats taken
-                              {c.isFull && <span className="move-user-badge full">FULL</span>}
-                            </span>
-                          ))}
-                          {option.missingCourses.length > 0 && (
-                            <span className="move-user-option-meta unavailable">
-                              Not available: this group has no session for {option.missingCourses.map((c) => c.courseName).join(', ')}
-                            </span>
-                          )}
-                        </>
-                      )}
-                    </span>
-                  </label>
-                </li>
-              );
-            })}
-          </ul>
-        )}
-
-        {selectedIsFull && (
-          <div className="move-user-warning">
-            <strong>This session is already full.</strong> Moving {personName} there goes over the planned number of seats.
-            <label>
-              <input type="checkbox" checked={confirmFull} onChange={(e) => setConfirmFull(e.target.checked)} />
-              Move anyway
+        <DialogBody className="flex flex-col gap-4">
+          <div className="flex flex-col gap-2" role="radiogroup" aria-label="What to move">
+            <label className="flex cursor-pointer items-center gap-2 text-sm">
+              <input type="radio" name="move-scope" className={radio} checked={scope === MOVE_SCOPE.COURSE} disabled={!source.courseId} onChange={() => changeScope(MOVE_SCOPE.COURSE)} />
+              This course only{source.courseName ? ` (${source.courseName})` : ''}
+            </label>
+            <label className="flex cursor-pointer items-center gap-2 text-sm">
+              <input type="radio" name="move-scope" className={radio} checked={scope === MOVE_SCOPE.GROUP} onChange={() => changeScope(MOVE_SCOPE.GROUP)} />
+              Whole group (all their courses in Group {source.sessionNumber})
             </label>
           </div>
-        )}
 
-        {error && <div className="move-user-error">{error}</div>}
+          {loading && <p className="text-sm text-muted-foreground" role="status">Loading sessions...</p>}
 
-        <div className="move-user-actions">
-          <button className="move-user-cancel" onClick={onClose} disabled={saving}>Cancel</button>
-          <button className="move-user-confirm" onClick={handleMove} disabled={!canMove}>
-            {saving ? 'Moving...' : 'Move'}
-          </button>
-        </div>
-      </div>
-    </div>
+          {!loading && context && options.length === 0 && (
+            <p className="rounded-md bg-muted px-3 py-2 text-sm text-muted-foreground">
+              {scope === MOVE_SCOPE.COURSE
+                ? 'There is no other session of this course at this location to move to.'
+                : 'There is no other group at this location to move to.'}
+            </p>
+          )}
+
+          {!loading && options.length > 0 && (
+            <ul className="flex max-h-72 flex-col gap-1.5 overflow-y-auto">
+              {options.map((option) => {
+                const key = option.key || `group-${option.sessionNumber}`;
+                const disabled = option.scope === MOVE_SCOPE.GROUP && !option.canMove;
+                return (
+                  <li key={key} className={cn('rounded-md border border-border', selectedKey === key && 'border-primary bg-selected', disabled && 'opacity-60')}>
+                    <label className={cn('flex items-start gap-2 px-3 py-2', disabled ? 'cursor-not-allowed' : 'cursor-pointer')}>
+                      <input
+                        type="radio" name="move-option" className={cn(radio, 'mt-0.5')} checked={selectedKey === key} disabled={disabled}
+                        onChange={() => { setSelectedKey(key); setConfirmFull(false); }}
+                      />
+                      <span className="flex min-w-0 flex-1 flex-col gap-0.5 text-sm">
+                        <span className="flex items-center gap-2 font-medium">
+                          Group {option.sessionNumber}
+                          {option.isFull && <Badge variant="danger">FULL</Badge>}
+                        </span>
+                        <span className="text-muted-foreground">{formatRange(option.firstStart, option.lastEnd)}</span>
+
+                        {option.scope === MOVE_SCOPE.COURSE && (
+                          <span className="text-xs text-muted-foreground">
+                            Classroom {option.classroomNumber}
+                            {option.trainer ? ` · ${option.trainer}` : ''}
+                            {` · ${option.seatsTaken}/${option.maxAttendees} seats taken`}
+                          </span>
+                        )}
+
+                        {option.scope === MOVE_SCOPE.GROUP && (
+                          <>
+                            {option.courses.map((c) => (
+                              <span key={c.courseId} className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                                {c.courseName} · {c.seatsTaken}/{c.maxAttendees} seats taken
+                                {c.isFull && <Badge variant="danger">FULL</Badge>}
+                              </span>
+                            ))}
+                            {option.missingCourses.length > 0 && (
+                              <span className="text-xs text-warning">
+                                Not available: this group has no session for {option.missingCourses.map((c) => c.courseName).join(', ')}
+                              </span>
+                            )}
+                          </>
+                        )}
+                      </span>
+                    </label>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+
+          {selectedIsFull && (
+            <div className="flex flex-col gap-2 rounded-md bg-warning-soft px-3 py-2 text-sm text-warning">
+              <p><strong>This session is already full.</strong> Moving {personName} there goes over the planned number of seats.</p>
+              <label className="flex cursor-pointer items-center gap-2">
+                <input type="checkbox" className={radio} checked={confirmFull} onChange={(e) => setConfirmFull(e.target.checked)} />
+                Move anyway
+              </label>
+            </div>
+          )}
+
+          {error && <div role="alert" className="rounded-md bg-destructive-soft px-3 py-2 text-sm text-destructive">{error}</div>}
+        </DialogBody>
+
+        <DialogFooter>
+          <Button onClick={onClose} disabled={saving}>Cancel</Button>
+          <Button variant="default" onClick={handleMove} disabled={!canMove}>{saving ? 'Moving...' : 'Move'}</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 };
 

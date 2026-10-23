@@ -3,7 +3,7 @@ import { saveAs } from 'file-saver';
 import { parseReviewRows, outcomesToCsv } from './reviewSheet';
 import { readReviewWorkbook, checkReviewInfo } from './reviewWorkbook';
 import { previewReviewImport, applyReviewImport } from '../../services/assignmentReviewService';
-import './ImportReviewDialog.css';
+import { Badge, Button, Dialog, DialogBody, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui';
 
 const STATUS_LABEL = {
   ok: 'Will move',
@@ -12,6 +12,10 @@ const STATUS_LABEL = {
   error: 'Cannot apply',
   skipped: 'No change'
 };
+
+const STATUS_VARIANT = { ok: 'success', warning: 'warning', blocked: 'warning', error: 'danger', skipped: 'neutral' };
+const TH = 'h-8 px-3 text-left font-semibold';
+const TD = 'px-3 py-1.5';
 
 const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
 
@@ -101,119 +105,126 @@ const ImportReviewDialog = ({ isOpen, onClose, schedule, projectId, filters, onA
   const summary = preview?.summary;
 
   return (
-    <div className="import-review-overlay" onClick={busy ? undefined : onClose}>
-      <div className="import-review-dialog" onClick={(e) => e.stopPropagation()} role="dialog" aria-label="Import review sheet">
-        <div className="import-review-header">
-          <h3>Import review sheet</h3>
-          <button className="import-review-close" onClick={onClose} disabled={busy} aria-label="Close">×</button>
-        </div>
+    <Dialog open onOpenChange={(open) => !open && !busy && onClose()}>
+      <DialogContent className="max-w-4xl" aria-label="Import review sheet">
+        <DialogHeader>
+          <DialogTitle>Import review sheet</DialogTitle>
+          <DialogDescription>
+            Choose the Excel file that came back from the reviewer (or a CSV saved from it). Nothing is changed
+            until you press Apply, and you will see exactly what would happen first.
+          </DialogDescription>
+        </DialogHeader>
 
-        {!outcome && (
-          <>
-            <p className="import-review-help">
-              Choose the Excel file that came back from the reviewer (or a CSV saved from it). Nothing is changed
-              until you press Apply, and you will see exactly what would happen first.
-            </p>
-
-            <div className="import-review-file">
-              <input type="file" accept=".xlsx,.xls,.csv" onChange={handleFile} disabled={busy} aria-label="Review file" />
-              {fileName && <span className="import-review-filename">{fileName}</span>}
+        <DialogBody className="flex flex-col gap-4">
+          {!outcome && (
+            <div className="flex flex-wrap items-center gap-3">
+              <input
+                type="file"
+                accept=".xlsx,.xls,.csv"
+                onChange={handleFile}
+                disabled={busy}
+                aria-label="Review file"
+                className="text-sm file:mr-3 file:h-8 file:cursor-pointer file:rounded-md file:border file:border-border-strong file:bg-card file:px-3 file:text-sm file:font-medium hover:file:bg-accent"
+              />
+              {fileName && <span className="text-sm text-muted-foreground">{fileName}</span>}
             </div>
-          </>
-        )}
+          )}
 
-        {error && <div className="import-review-error">{error}</div>}
-        {busy && !outcome && <p className="import-review-note">Checking...</p>}
+          {error && <div role="alert" className="rounded-md bg-destructive-soft px-3 py-2 text-sm text-destructive">{error}</div>}
+          {busy && !outcome && <p className="text-sm text-muted-foreground" role="status">Checking...</p>}
 
-        {preview && !outcome && (
-          <>
-            <div className="import-review-summary">
-              <span className="chip ok">{plural(summary.ok + summary.warning, 'move ready', 'moves ready')}</span>
-              {summary.warning > 0 && <span className="chip warning">{plural(summary.warning, 'over capacity', 'over capacity')}</span>}
-              {summary.blocked > 0 && <span className="chip blocked">{plural(summary.blocked, 'held back (full)', 'held back (full)')}</span>}
-              {summary.error > 0 && <span className="chip error">{plural(summary.error, 'cannot be applied', 'cannot be applied')}</span>}
-              {summary.skipped > 0 && <span className="chip neutral">{plural(summary.skipped, 'no change', 'no change')}</span>}
-              <span className="chip neutral">{plural(summary.unchanged, 'row left blank', 'rows left blank')}</span>
-            </div>
-
-            {(summary.blocked > 0 || allowFull) && (
-              <label className="import-review-allow">
-                <input type="checkbox" checked={allowFull} onChange={(e) => setAllowFull(e.target.checked)} disabled={busy} />
-                Allow moves into full sessions
-              </label>
-            )}
-
-            {preview.results.length === 0 ? (
-              <p className="import-review-note">No rows have a group filled in under "Move To Group", so there is nothing to apply.</p>
-            ) : (
-              <div className="import-review-table-wrap">
-                <table className="import-review-table">
-                  <thead>
-                    <tr><th>Row</th><th>Person</th><th>Course</th><th>Move</th><th>Result</th></tr>
-                  </thead>
-                  <tbody>
-                    {preview.results.map((r) => (
-                      <tr key={r.rowNumber} className={`status-${r.status}`}>
-                        <td>{r.rowNumber}</td>
-                        <td>{r.person}</td>
-                        <td>{r.course}</td>
-                        <td>Group {r.fromGroup} → {r.toGroup === null ? '?' : `Group ${r.toGroup}`}</td>
-                        <td>
-                          <span className={`badge ${r.status}`}>{STATUS_LABEL[r.status]}</span>
-                          <div className="message">{r.message}</div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+          {preview && !outcome && (
+            <>
+              <div className="flex flex-wrap gap-1.5">
+                <Badge variant="success">{plural(summary.ok + summary.warning, 'move ready', 'moves ready')}</Badge>
+                {summary.warning > 0 && <Badge variant="warning">{plural(summary.warning, 'over capacity', 'over capacity')}</Badge>}
+                {summary.blocked > 0 && <Badge variant="warning">{plural(summary.blocked, 'held back (full)', 'held back (full)')}</Badge>}
+                {summary.error > 0 && <Badge variant="danger">{plural(summary.error, 'cannot be applied', 'cannot be applied')}</Badge>}
+                {summary.skipped > 0 && <Badge>{plural(summary.skipped, 'no change', 'no change')}</Badge>}
+                <Badge>{plural(summary.unchanged, 'row left blank', 'rows left blank')}</Badge>
               </div>
-            )}
-          </>
-        )}
 
-        {outcome && (
-          <>
-            <div className="import-review-summary">
-              <span className="chip ok">{plural(outcome.summary.applied, 'move applied', 'moves applied')}</span>
-              {outcome.summary.failed > 0 && <span className="chip error">{plural(outcome.summary.failed, 'failed', 'failed')}</span>}
-              {outcome.summary.notApplied > 0 && <span className="chip neutral">{plural(outcome.summary.notApplied, 'not applied', 'not applied')}</span>}
-            </div>
-            {outcome.outcomes.some((o) => !o.applied) ? (
-              <div className="import-review-table-wrap">
-                <table className="import-review-table">
-                  <thead><tr><th>Row</th><th>Person</th><th>Course</th><th>Why it was not applied</th></tr></thead>
-                  <tbody>
-                    {outcome.outcomes.filter((o) => !o.applied).map((o) => (
-                      <tr key={o.rowNumber} className="status-error">
-                        <td>{o.rowNumber}</td><td>{o.person}</td><td>{o.course}</td><td>{o.message}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+              {(summary.blocked > 0 || allowFull) && (
+                <label className="flex cursor-pointer items-center gap-2 text-sm">
+                  <input type="checkbox" className="size-4 accent-primary" checked={allowFull} onChange={(e) => setAllowFull(e.target.checked)} disabled={busy} />
+                  Allow moves into full sessions
+                </label>
+              )}
+
+              {preview.results.length === 0 ? (
+                <p className="rounded-md bg-muted px-3 py-2 text-sm text-muted-foreground">No rows have a group filled in under "Move To Group", so there is nothing to apply.</p>
+              ) : (
+                <div className="max-h-96 overflow-auto rounded-md border border-border">
+                  <table className="w-full border-collapse text-sm">
+                    <thead className="sticky top-0 bg-secondary text-xs text-muted-foreground">
+                      <tr><th className={TH}>Row</th><th className={TH}>Person</th><th className={TH}>Course</th><th className={TH}>Move</th><th className={TH}>Result</th></tr>
+                    </thead>
+                    <tbody>
+                      {preview.results.map((r) => (
+                        <tr key={r.rowNumber} className="border-t border-border align-top">
+                          <td className={TD}>{r.rowNumber}</td>
+                          <td className={TD}>{r.person}</td>
+                          <td className={TD}>{r.course}</td>
+                          <td className={TD}>Group {r.fromGroup} → {r.toGroup === null ? '?' : `Group ${r.toGroup}`}</td>
+                          <td className={TD}>
+                            <Badge variant={STATUS_VARIANT[r.status]}>{STATUS_LABEL[r.status]}</Badge>
+                            <div className="mt-1 text-xs text-muted-foreground">{r.message}</div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </>
+          )}
+
+          {outcome && (
+            <>
+              <div className="flex flex-wrap gap-1.5">
+                <Badge variant="success">{plural(outcome.summary.applied, 'move applied', 'moves applied')}</Badge>
+                {outcome.summary.failed > 0 && <Badge variant="danger">{plural(outcome.summary.failed, 'failed', 'failed')}</Badge>}
+                {outcome.summary.notApplied > 0 && <Badge>{plural(outcome.summary.notApplied, 'not applied', 'not applied')}</Badge>}
               </div>
-            ) : (
-              <p className="import-review-note">Every move was applied.</p>
-            )}
-          </>
-        )}
+              {outcome.outcomes.some((o) => !o.applied) ? (
+                <div className="max-h-96 overflow-auto rounded-md border border-border">
+                  <table className="w-full border-collapse text-sm">
+                    <thead className="sticky top-0 bg-secondary text-xs text-muted-foreground">
+                      <tr><th className={TH}>Row</th><th className={TH}>Person</th><th className={TH}>Course</th><th className={TH}>Why it was not applied</th></tr>
+                    </thead>
+                    <tbody>
+                      {outcome.outcomes.filter((o) => !o.applied).map((o) => (
+                        <tr key={o.rowNumber} className="border-t border-border align-top">
+                          <td className={TD}>{o.rowNumber}</td><td className={TD}>{o.person}</td><td className={TD}>{o.course}</td><td className={TD}>{o.message}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <p className="rounded-md bg-success-soft px-3 py-2 text-sm text-success">Every move was applied.</p>
+              )}
+            </>
+          )}
+        </DialogBody>
 
-        <div className="import-review-actions">
+        <DialogFooter>
           {outcome ? (
             <>
-              <button onClick={downloadReport}>Download report (CSV)</button>
-              <button className="primary" onClick={onClose}>Close</button>
+              <Button onClick={downloadReport}>Download report (CSV)</Button>
+              <Button variant="default" onClick={onClose}>Close</Button>
             </>
           ) : (
             <>
-              <button onClick={onClose} disabled={busy}>Cancel</button>
-              <button className="primary" onClick={handleApply} disabled={busy || !preview || movable === 0}>
+              <Button onClick={onClose} disabled={busy}>Cancel</Button>
+              <Button variant="default" onClick={handleApply} disabled={busy || !preview || movable === 0}>
                 {busy && preview ? 'Applying...' : `Apply ${plural(movable, 'move', 'moves')}`}
-              </button>
+              </Button>
             </>
           )}
-        </div>
-      </div>
-    </div>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 };
 
