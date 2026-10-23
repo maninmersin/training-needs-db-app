@@ -12,7 +12,6 @@ import ExcelExportDialog from '@shared/components/ExcelExportDialog';
 import ScheduleList from './ScheduleList';
 import ScheduleEditor from './ScheduleEditor';
 import { deleteSummary, filterSchedules, groupSessionsForEditor } from './scheduleManagerLogic';
-import './ScheduleManager.css'; // still used by the editor and export dialog until they are restyled
 
 const ScheduleManager = () => {
   const location = useLocation();

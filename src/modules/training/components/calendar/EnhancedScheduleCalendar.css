@@ -21,10 +21,10 @@
 
 .enhanced-schedule-calendar.drag-mode {
   /* Add subtle visual indication that drag mode is active */
-  background: linear-gradient(45deg, #f8f9fa 25%, transparent 25%), 
-              linear-gradient(-45deg, #f8f9fa 25%, transparent 25%), 
-              linear-gradient(45deg, transparent 75%, #f8f9fa 75%), 
-              linear-gradient(-45deg, transparent 75%, #f8f9fa 75%);
+  background: linear-gradient(45deg, var(--secondary) 25%, transparent 25%), 
+              linear-gradient(-45deg, var(--secondary) 25%, transparent 25%), 
+              linear-gradient(45deg, transparent 75%, var(--secondary) 75%), 
+              linear-gradient(-45deg, transparent 75%, var(--secondary) 75%);
   background-size: 20px 20px;
   background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
 }
@@ -51,8 +51,8 @@
 
 .droppable-event.drag-over {
   /* Visual feedback when dragging over */
-  box-shadow: inset 0 0 0 2px #007bff;
-  background: rgba(0, 123, 255, 0.1) !important;
+  box-shadow: inset 0 0 0 2px var(--primary);
+  background: var(--primary-soft) !important;
 }
 
 .droppable-event.at-capacity {
@@ -61,8 +61,8 @@
 }
 
 .droppable-event.at-capacity.drag-over {
-  box-shadow: inset 0 0 0 2px #dc3545;
-  background: rgba(220, 53, 69, 0.1) !important;
+  box-shadow: inset 0 0 0 2px var(--destructive);
+  background: var(--destructive-soft) !important;
 }
 
 /* Custom Event Content - Enhanced */
@@ -323,8 +323,8 @@
 }
 
 .drop-enabled {
-  background: rgba(40, 167, 69, 0.9);
-  color: white;
+  background: var(--success);
+  color: var(--card);
   font-weight: 600;
   font-size: 12px;
   text-align: center;
@@ -333,8 +333,8 @@
 }
 
 .drop-disabled {
-  background: rgba(220, 53, 69, 0.9);
-  color: white;
+  background: var(--destructive);
+  color: var(--card);
   font-weight: 600;
   font-size: 12px;
   text-align: center;
@@ -381,16 +381,16 @@
 }
 
 .enhanced-schedule-calendar::-webkit-scrollbar-track {
-  background: #f1f1f1;
+  background: var(--secondary);
 }
 
 .enhanced-schedule-calendar::-webkit-scrollbar-thumb {
-  background: #c1c1c1;
+  background: var(--border-strong);
   border-radius: 4px;
 }
 
 .enhanced-schedule-calendar::-webkit-scrollbar-thumb:hover {
-  background: #a8a8a8;
+  background: var(--subtle-foreground);
 }
 
 /* Responsive Design */
@@ -474,7 +474,7 @@
 /* High contrast mode support */
 @media (prefers-contrast: high) {
   .droppable-event.drag-over {
-    box-shadow: inset 0 0 0 3px #000;
+    box-shadow: inset 0 0 0 3px var(--foreground);
   }
   
   .drop-enabled {
