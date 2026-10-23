@@ -3,16 +3,20 @@ import React from 'react';
 import '@testing-library/jest-dom';
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { MemoryRouter } from 'react-router-dom';
 import DynamicUserForm from '../DynamicUserForm';
 import { TooltipProvider } from '@/components/ui';
 import { supabase } from '@core/services/supabaseClient';
 import { useProject } from '@core/contexts/ProjectContext';
+import { saveAs } from 'file-saver';
 
+jest.mock('file-saver', () => ({ saveAs: jest.fn() }));
 jest.mock('@core/contexts/ProjectContext', () => ({ useProject: jest.fn() }));
 jest.mock('@core/services/supabaseClient', () => ({ supabase: { from: jest.fn(), rpc: jest.fn() } }));
 
 // react-table and Radix update state outside RTL's act(); hide only that warning.
 beforeAll(() => {
+  global.ResizeObserver = class { observe() {} unobserve() {} disconnect() {} };
   const original = console.error;
   jest.spyOn(console, 'error').mockImplementation((...args) => {
     if (String(args[0]).includes('not wrapped in act')) return;
@@ -65,7 +69,7 @@ const installDatabase = ({ rows = people(), existingId = null } = {}) => {
 const setup = async (options) => {
   useProject.mockReturnValue({ currentProject: { id: 'p1', name: 'acme', title: 'ACME Corp' } });
   const log = installDatabase(options);
-  render(<TooltipProvider><DynamicUserForm /></TooltipProvider>);
+  render(<MemoryRouter><TooltipProvider><DynamicUserForm /></TooltipProvider></MemoryRouter>);
   await screen.findByText('Amelia Brown');
   return log;
 };
@@ -85,7 +89,7 @@ describe('DynamicUserForm', () => {
   test('without a project it explains what to do', async () => {
     useProject.mockReturnValue({ currentProject: null });
     installDatabase();
-    render(<TooltipProvider><DynamicUserForm /></TooltipProvider>);
+    render(<MemoryRouter><TooltipProvider><DynamicUserForm /></TooltipProvider></MemoryRouter>);
     expect(await screen.findByText('No Project Selected')).toBeInTheDocument();
   });
 
@@ -212,8 +216,58 @@ describe('DynamicUserForm', () => {
     useProject.mockReturnValue({ currentProject: { id: 'p1', name: 'acme', title: 'ACME Corp' } });
     installDatabase();
     supabase.rpc.mockResolvedValue({ data: null, error: { message: 'schema cache is stale' } });
-    render(<TooltipProvider><DynamicUserForm /></TooltipProvider>);
+    render(<MemoryRouter><TooltipProvider><DynamicUserForm /></TooltipProvider></MemoryRouter>);
     expect(await screen.findByRole('alert')).toHaveTextContent('schema cache is stale');
     expect(screen.getByRole('heading', { name: 'End Users Management' })).toBeInTheDocument();
+  });
+});
+
+const readBlob = (blob) => new Promise((resolve) => {
+  const reader = new FileReader();
+  reader.onload = () => resolve(String(reader.result));
+  reader.readAsText(blob);
+});
+
+describe('DynamicUserForm import and export', () => {
+  const renderAt = async (path) => {
+    useProject.mockReturnValue({ currentProject: { id: 'p1', name: 'acme', title: 'ACME Corp' } });
+    installDatabase();
+    render(<MemoryRouter initialEntries={[path]}><TooltipProvider><DynamicUserForm /></TooltipProvider></MemoryRouter>);
+    await screen.findByText('Amelia Brown');
+  };
+
+  test('the Import menu opens the people importer or the course assignments importer', async () => {
+    const user = userEvent.setup();
+    await renderAt('/dynamic-users');
+    await user.click(screen.getByRole('button', { name: /Import/ }));
+    await user.click(await screen.findByRole('menuitem', { name: /People/ }));
+    expect(await screen.findByRole('heading', { name: 'Import people' })).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Cancel' }));
+    await waitFor(() => expect(screen.queryByRole('heading', { name: 'Import people' })).not.toBeInTheDocument());
+    await user.click(screen.getByRole('button', { name: /Import/ }));
+    await user.click(await screen.findByRole('menuitem', { name: /Course assignments/ }));
+    expect(await screen.findByRole('heading', { name: 'Import course assignments' })).toBeInTheDocument();
+  });
+
+  test.each([
+    ['/dynamic-users?import=people', 'Import people'],
+    ['/dynamic-users?import=assignments', 'Import course assignments']
+  ])('the old link %s opens the importer straight away', async (path, heading) => {
+    await renderAt(path);
+    expect(await screen.findByRole('heading', { name: heading })).toBeInTheDocument();
+  });
+
+  test('Export people downloads only the people currently shown, in a file that can be imported back', async () => {
+    const user = userEvent.setup();
+    await renderAt('/dynamic-users');
+    await user.type(screen.getByLabelText('Search users'), 'patel');
+    await user.click(screen.getByRole('button', { name: /Export/ }));
+    await user.click(await screen.findByRole('menuitem', { name: 'People - CSV' }));
+    expect(saveAs).toHaveBeenCalledTimes(1);
+    expect(saveAs.mock.calls[0][1]).toBe('end_users_export.csv');
+    const text = await readBlob(saveAs.mock.calls[0][0]);
+    expect(text.split(String.fromCharCode(13, 10))[0]).toBe('id,name,email,job_title,country,division,sub_division,location_name,training_location,project_role');
+    expect(text).toContain('Oliver Patel');
+    expect(text).not.toContain('Amelia Brown');
   });
 });

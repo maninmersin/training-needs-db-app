@@ -3,16 +3,20 @@ import React from 'react';
 import '@testing-library/jest-dom';
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { MemoryRouter } from 'react-router-dom';
 import CoursesForm from '../CoursesForm';
 import { TooltipProvider } from '@/components/ui';
 import { supabase } from '@core/services/supabaseClient';
 import { useProject } from '@core/contexts/ProjectContext';
+import { saveAs } from 'file-saver';
 
+jest.mock('file-saver', () => ({ saveAs: jest.fn() }));
 jest.mock('@core/contexts/ProjectContext', () => ({ useProject: jest.fn() }));
 jest.mock('@core/services/supabaseClient', () => ({ supabase: { from: jest.fn() } }));
 
 // react-table and Radix update state outside RTL's act(); hide only that warning.
 beforeAll(() => {
+  global.ResizeObserver = class { observe() {} unobserve() {} disconnect() {} };
   const original = console.error;
   jest.spyOn(console, 'error').mockImplementation((...args) => {
     if (String(args[0]).includes('not wrapped in act')) return;
@@ -55,7 +59,7 @@ const installDatabase = ({ insertError = null } = {}) => {
 const setup = async (options) => {
   useProject.mockReturnValue({ currentProject: { id: 'p1', name: 'acme', title: 'ACME Corp' } });
   const log = installDatabase(options);
-  render(<TooltipProvider><CoursesForm /></TooltipProvider>);
+  render(<MemoryRouter><TooltipProvider><CoursesForm /></TooltipProvider></MemoryRouter>);
   await screen.findByText('Ledger Basics');
   return log;
 };
@@ -73,7 +77,7 @@ describe('CoursesForm', () => {
   test('without a project it explains what to do', async () => {
     useProject.mockReturnValue({ currentProject: null });
     installDatabase();
-    render(<TooltipProvider><CoursesForm /></TooltipProvider>);
+    render(<MemoryRouter><TooltipProvider><CoursesForm /></TooltipProvider></MemoryRouter>);
     expect(await screen.findByText('No Project Selected')).toBeInTheDocument();
   });
 
@@ -168,5 +172,45 @@ describe('CoursesForm', () => {
     await user.click(await screen.findByRole('button', { name: 'Cancel', hidden: false }));
     expect(log).toEqual([]);
     expect(screen.getByText('Stock Counts')).toBeInTheDocument();
+  });
+});
+
+const readBlob = (blob) => new Promise((resolve) => {
+  const reader = new FileReader();
+  reader.onload = () => resolve(String(reader.result));
+  reader.readAsText(blob);
+});
+
+describe('CoursesForm import and export', () => {
+  const renderAt = async (path) => {
+    useProject.mockReturnValue({ currentProject: { id: 'p1', name: 'acme', title: 'ACME Corp' } });
+    installDatabase();
+    render(<MemoryRouter initialEntries={[path]}><TooltipProvider><CoursesForm /></TooltipProvider></MemoryRouter>);
+    await screen.findByText('Ledger Basics');
+  };
+
+  test('the Import button opens the courses importer', async () => {
+    const user = userEvent.setup();
+    await renderAt('/courses');
+    await user.click(screen.getByRole('button', { name: /Import/ }));
+    expect(await screen.findByRole('heading', { name: 'Import courses' })).toBeInTheDocument();
+  });
+
+  test('the old /import-export-courses link opens the importer straight away', async () => {
+    await renderAt('/courses?import=courses');
+    expect(await screen.findByRole('heading', { name: 'Import courses' })).toBeInTheDocument();
+  });
+
+  test('Export downloads the courses currently shown', async () => {
+    const user = userEvent.setup();
+    await renderAt('/courses');
+    await user.type(screen.getByLabelText('Search courses'), 'stock');
+    await user.click(screen.getByRole('button', { name: /Export/ }));
+    await user.click(await screen.findByRole('menuitem', { name: 'CSV' }));
+    expect(saveAs.mock.calls[0][1]).toBe('courses_export.csv');
+    const text = await readBlob(saveAs.mock.calls[0][0]);
+    expect(text.split(String.fromCharCode(13, 10))[0]).toBe('course_id,course_name,functional_area,duration_hrs,application,priority');
+    expect(text).toContain('OPS-301');
+    expect(text).not.toContain('FIN-101');
   });
 });

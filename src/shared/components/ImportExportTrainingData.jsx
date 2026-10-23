@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@core/services/supabaseClient';
 import { useProject } from '@core/contexts/ProjectContext';
-import './ImportExportUserCourseMappings.css'; // Reuse existing styles
+import './ImportExportTrainingData.css'; // Reuse existing styles
 
 const ImportExportTrainingData = () => {
   const { currentProject } = useProject();

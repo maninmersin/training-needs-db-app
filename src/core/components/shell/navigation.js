@@ -1,6 +1,6 @@
 import {
-  BookOpen, CalendarCheck, CalendarCog, CalendarPlus, Calculator, ClipboardCheck, Database, FileSpreadsheet,
-  FolderKanban, GraduationCap, LayoutDashboard, Link2, ListChecks, Table2, ShieldCheck, UserCog, UserPlus, Users, BarChart3,
+  BookOpen, CalendarCheck, CalendarCog, CalendarPlus, Calculator, ClipboardCheck, Database,
+  FolderKanban, GraduationCap, LayoutDashboard, Link2, Table2, ShieldCheck, UserCog, Users, BarChart3,
   Download
 } from 'lucide-react';
 
@@ -14,11 +14,8 @@ export function getNavSections({ usesAccessData = true } = {}) {
     : [
         { to: '/reference-data', label: 'Reference Data', icon: Database },
         { to: '/dynamic-users', label: 'End Users', icon: Users },
-        { to: '/import-export', label: 'Import/Export End Users', icon: UserPlus },
         { to: '/courses', label: 'Courses', icon: BookOpen },
-        { to: '/import-export-courses', label: 'Import/Export Courses', icon: FileSpreadsheet },
         { to: '/edit-mappings', label: 'Role-Course Mappings', icon: Link2 },
-        { to: '/import-export-user-course-mappings', label: 'Individual Course Assignments', icon: ListChecks },
         { to: '/export-all-data', label: 'Export All Data', icon: Download },
         { to: '/pivot-report', label: 'Pivot Tables', icon: Table2 }
       ];

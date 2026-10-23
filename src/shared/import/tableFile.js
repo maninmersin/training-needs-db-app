@@ -5,7 +5,7 @@ import { parseCsv } from './csv';
 /** "Job Title", "job-title" and "JobTitle" can all be matched against a known name. */
 export const normalizeHeader = (header) =>
   String(header ?? '')
-    .replace(/^﻿/, '')
+    .replace(/^\uFEFF/, '')
     .trim()
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '_')

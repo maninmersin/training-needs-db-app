@@ -1,12 +1,16 @@
 import { useEffect, useMemo, useState } from 'react';
-import { BookOpen, Loader2, Pencil, Plus, Search, Trash2 } from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
+import { BookOpen, Download, Loader2, Pencil, Plus, Search, Trash2, Upload } from 'lucide-react';
 import { supabase } from '@core/services/supabaseClient';
 import { useProject } from '@core/contexts/ProjectContext';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter,
-  AlertDialogHeader, AlertDialogTitle, Button, DataTable, EmptyState, Input, PageHeader, Toolbar, Tooltip, TooltipContent,
-  TooltipTrigger, toast
+  AlertDialogHeader, AlertDialogTitle, Button, DataTable, DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+  EmptyState, Input, PageHeader, Toolbar, Tooltip, TooltipContent, TooltipTrigger, toast
 } from '@/components/ui';
+import ImportWizard from '../import/ImportWizard';
+import { coursesAdapter } from '../import/adapters';
+import { COURSE_EXPORT_HEADERS, coursesToRows, downloadTable } from '../import/exportFiles';
 import ColumnFilter from './ColumnFilter';
 import CourseEditSheet from './courses/CourseEditSheet';
 import { activeFilterCount, filterCourses, uniqueColumnValues } from './courses/coursesLogic';
@@ -29,6 +33,9 @@ const CoursesForm = () => {
   const [columnFilters, setColumnFilters] = useState({});
   const [sheet, setSheet] = useState(null); // { mode: 'create' | 'edit', course? }
   const [courseToDelete, setCourseToDelete] = useState(null);
+  const [importing, setImporting] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
+  const [searchParams, setSearchParams] = useSearchParams();
 
   // Load this project's courses and the functional areas to choose from
   useEffect(() => {
@@ -73,7 +80,15 @@ const CoursesForm = () => {
     };
 
     fetchData();
-  }, [currentProject]);
+  }, [currentProject, reloadKey]);
+
+  // The old /import-export-courses link arrives as ?import=courses
+  useEffect(() => {
+    if (searchParams.get('import') === 'courses') {
+      setImporting(true);
+      setSearchParams({}, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
 
   const handleUpdate = async (courseId, changes) => {
     const { error: updateError } = await supabase.from('courses').update(changes).eq('course_id', courseId);
@@ -98,6 +113,11 @@ const CoursesForm = () => {
     } catch (deleteError) {
       setError(deleteError.message);
     }
+  };
+
+  const exportCourses = (format) => {
+    downloadTable('courses_export', COURSE_EXPORT_HEADERS, coursesToRows(filteredCourses), format);
+    toast.success(`${filteredCourses.length} ${filteredCourses.length === 1 ? 'course' : 'courses'} exported`);
   };
 
   const saveSheet = async (values) => {
@@ -176,9 +196,21 @@ const CoursesForm = () => {
         count={loading ? undefined : filteredCourses.length === courses.length ? courses.length : `${filteredCourses.length} of ${courses.length}`}
         description={`Manage your training courses${currentProject ? ` for ${currentProject.title}` : ''}, including course details, duration, and functional areas. Use the Priority field to sequence the courses, the lower the number the higher the priority.`}
         actions={
-          <Button variant="default" onClick={() => setSheet({ mode: 'create' })} disabled={loading}>
-            <Plus /> Add New Course
-          </Button>
+          <>
+            <Button onClick={() => setImporting(true)} disabled={loading}><Upload /> Import</Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button disabled={loading}><Download /> Export</Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onSelect={() => exportCourses('xlsx')}>Excel (.xlsx)</DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => exportCourses('csv')}>CSV</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <Button variant="default" onClick={() => setSheet({ mode: 'create' })} disabled={loading}>
+              <Plus /> Add New Course
+            </Button>
+          </>
         }
       />
 
@@ -236,7 +268,7 @@ const CoursesForm = () => {
             <EmptyState
               icon={BookOpen}
               title={courses.length === 0 ? 'No courses yet' : 'No courses match'}
-              description={courses.length === 0 ? 'Add courses one at a time here, or use Import/Export Courses.' : 'Try a different search or clear the filters.'}
+              description={courses.length === 0 ? 'Add courses one at a time here, or use Import.' : 'Try a different search or clear the filters.'}
             />
           }
         />
@@ -249,6 +281,15 @@ const CoursesForm = () => {
         onSubmit={saveSheet}
         onDelete={setCourseToDelete}
         onClose={() => setSheet(null)}
+      />
+
+      <ImportWizard
+        open={importing}
+        adapter={coursesAdapter}
+        db={supabase}
+        projectId={currentProject?.id}
+        onClose={() => setImporting(false)}
+        onApplied={() => setReloadKey((key) => key + 1)}
       />
 
       <AlertDialog open={Boolean(courseToDelete)} onOpenChange={(open) => !open && setCourseToDelete(null)}>

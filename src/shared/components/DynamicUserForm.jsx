@@ -1,13 +1,17 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Loader2, Pencil, Plus, Search, Trash2, Users } from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
+import { Download, Loader2, Pencil, Plus, Search, Trash2, Upload, Users } from 'lucide-react';
 import { supabase } from '@core/services/supabaseClient';
 import { useProject } from '@core/contexts/ProjectContext';
 import { fetchAllRows } from '@core/utils/fetchAllRows';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter,
-  AlertDialogHeader, AlertDialogTitle, Button, DataTable, EmptyState, Input, PageHeader, Toolbar, Tooltip, TooltipContent,
-  TooltipTrigger, toast
+  AlertDialogHeader, AlertDialogTitle, Button, DataTable, DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
+  DropdownMenuSeparator, DropdownMenuTrigger, EmptyState, Input, PageHeader, Toolbar, Tooltip, TooltipContent, TooltipTrigger, toast
 } from '@/components/ui';
+import ImportWizard from '../import/ImportWizard';
+import { assignmentsAdapter, peopleAdapter } from '../import/adapters';
+import { ASSIGNMENT_HEADERS, PEOPLE_EXPORT_HEADERS, downloadTable, loadAssignmentRows, peopleToRows } from '../import/exportFiles';
 import ColumnFilter from './ColumnFilter';
 import UserEditSheet from './endUsers/UserEditSheet';
 import { activeFilterCount, columnLabel, filterUsers, orderColumns, uniqueColumnValues } from './endUsers/endUsersLogic';
@@ -27,6 +31,9 @@ const DynamicUserForm = () => {
   const [columnFilters, setColumnFilters] = useState({});
   const [sheet, setSheet] = useState(null); // { mode: 'create' | 'edit', user? }
   const [userToDelete, setUserToDelete] = useState(null);
+  const [importer, setImporter] = useState(null); // the importer dialog that is open, if any
+  const [reloadKey, setReloadKey] = useState(0);
+  const [searchParams, setSearchParams] = useSearchParams();
 
   // Load the reference lists, the table's columns and this project's people
   useEffect(() => {
@@ -73,7 +80,16 @@ const DynamicUserForm = () => {
     };
 
     fetchData();
-  }, [currentProject]);
+  }, [currentProject, reloadKey]);
+
+  // Old links (/import-export and the like) arrive as ?import=people or ?import=assignments
+  useEffect(() => {
+    const wanted = searchParams.get('import');
+    if (wanted === 'people' || wanted === 'assignments') {
+      setImporter(wanted === 'people' ? peopleAdapter : assignmentsAdapter);
+      setSearchParams({}, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
 
   const handleUpdate = async (userId, changes) => {
     const { data, error: updateError } = await supabase.from('end_users').update(changes).eq('id', userId).select();
@@ -101,6 +117,21 @@ const DynamicUserForm = () => {
       toast.success('User deleted', { description: user.name || String(user.id) });
     } catch (deleteError) {
       setError(deleteError.message);
+    }
+  };
+
+  const exportPeople = (format) => {
+    downloadTable('end_users_export', PEOPLE_EXPORT_HEADERS, peopleToRows(filteredUsers), format);
+    toast.success(`${filteredUsers.length} ${filteredUsers.length === 1 ? 'person' : 'people'} exported`);
+  };
+
+  const exportAssignments = async (format) => {
+    try {
+      const rows = await loadAssignmentRows(supabase, currentProject.id);
+      downloadTable('user_course_mappings_export', ASSIGNMENT_HEADERS, rows, format);
+      toast.success(`${rows.length} course assignments exported`);
+    } catch (exportError) {
+      setError(`Export error: ${exportError.message}`);
     }
   };
 
@@ -183,9 +214,34 @@ const DynamicUserForm = () => {
         count={loading ? undefined : filteredUsers.length === users.length ? users.length : `${filteredUsers.length} of ${users.length}`}
         description={`Manage end users, their roles, and personal information${currentProject ? ` for ${currentProject.title}` : ''}. Use the search box or filters to find specific users.`}
         actions={
-          <Button variant="default" onClick={() => setSheet({ mode: 'create' })} disabled={loading}>
-            <Plus /> Add New User
-          </Button>
+          <>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button disabled={loading}><Upload /> Import</Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onSelect={() => setImporter(peopleAdapter)}>People (Excel or CSV)</DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => setImporter(assignmentsAdapter)}>Course assignments (Excel or CSV)</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button disabled={loading}><Download /> Export</Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuLabel>{filteredUsers.length === users.length ? 'All people' : `${filteredUsers.length} people shown`}</DropdownMenuLabel>
+                <DropdownMenuItem onSelect={() => exportPeople('xlsx')}>People - Excel (.xlsx)</DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => exportPeople('csv')}>People - CSV</DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuLabel>All course assignments</DropdownMenuLabel>
+                <DropdownMenuItem onSelect={() => exportAssignments('xlsx')}>Course assignments - Excel (.xlsx)</DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => exportAssignments('csv')}>Course assignments - CSV</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <Button variant="default" onClick={() => setSheet({ mode: 'create' })} disabled={loading}>
+              <Plus /> Add New User
+            </Button>
+          </>
         }
       />
 
@@ -243,7 +299,7 @@ const DynamicUserForm = () => {
             <EmptyState
               icon={Users}
               title={users.length === 0 ? 'No users yet' : 'No users match'}
-              description={users.length === 0 ? 'Add people one at a time here, or use Import/Export End Users.' : 'Try a different search or clear the filters.'}
+              description={users.length === 0 ? 'Add people one at a time here, or use Import.' : 'Try a different search or clear the filters.'}
             />
           }
         />
@@ -258,6 +314,15 @@ const DynamicUserForm = () => {
         onSubmit={saveSheet}
         onDelete={setUserToDelete}
         onClose={() => setSheet(null)}
+      />
+
+      <ImportWizard
+        open={Boolean(importer)}
+        adapter={importer}
+        db={supabase}
+        projectId={currentProject?.id}
+        onClose={() => setImporter(null)}
+        onApplied={() => setReloadKey((key) => key + 1)}
       />
 
       <AlertDialog open={Boolean(userToDelete)} onOpenChange={(open) => !open && setUserToDelete(null)}>

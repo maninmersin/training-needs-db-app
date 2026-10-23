@@ -8,7 +8,7 @@ describe('parseCsv', () => {
   });
 
   test('handles Windows line endings and a byte-order mark', () => {
-    expect(parseCsv('﻿a,b\r\n1,2\r\n')).toEqual([['a', 'b'], ['1', '2']]);
+    expect(parseCsv('\uFEFFa,b\r\n1,2\r\n')).toEqual([['a', 'b'], ['1', '2']]);
   });
 
   test('quoted cells can hold commas, doubled quotes and line breaks', () => {
@@ -63,7 +63,7 @@ describe('tableFromRows', () => {
 describe('column matching', () => {
   test('headers match ignoring case, spaces and punctuation, plus aliases', () => {
     expect(normalizeHeader(' Job Title ')).toBe('job_title');
-    expect(normalizeHeader('﻿UserID')).toBe('userid');
+    expect(normalizeHeader('\uFEFFUserID')).toBe('userid');
     const { columns, ignored } = matchColumns(['UserID', 'Job Title', 'Shoe size', 'name'], ['id', 'job_title', 'name'], { userid: 'id' });
     expect(columns).toEqual({ UserID: 'id', 'Job Title': 'job_title', name: 'name' });
     expect(ignored).toEqual(['Shoe size']);

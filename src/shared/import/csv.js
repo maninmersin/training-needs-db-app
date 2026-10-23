@@ -3,7 +3,7 @@
 
 /** Text -> array of rows, each an array of cell strings. A trailing blank line is ignored. */
 export function parseCsv(text) {
-  const source = String(text ?? '').replace(/^﻿/, '');
+  const source = String(text ?? '').replace(/^\uFEFF/, '');
   const rows = [];
   let row = [];
   let field = '';

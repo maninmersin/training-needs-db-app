@@ -1,5 +1,5 @@
 import { Suspense, lazy } from 'react';
-import { BrowserRouter as Router, Routes, Route, useNavigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { ErrorBoundary } from '@core/components';
 import AppShell from '@core/components/shell/AppShell';
 import { Loader2 } from 'lucide-react';
@@ -15,12 +15,9 @@ import { supabase } from '@core/services';
 const UiKit = lazy(() => import('@/components/UiKit'));
 const DynamicUserForm = lazy(() => import('@shared/components/DynamicUserForm'));
 const RoleCourseMappingsEditor = lazy(() => import('@shared/components/RoleCourseMappingsEditor'));
-const ImportExportEndUsers = lazy(() => import('@shared/components/ImportExportEndUsers'));
 const PivotReport = lazy(() => import('@shared/components/PivotReport'));
 const CoursesForm = lazy(() => import('@shared/components/CoursesForm'));
-const ImportExportCourses = lazy(() => import('@shared/components/ImportExportCourses'));
 const ImportExportTrainingData = lazy(() => import('@shared/components/ImportExportTrainingData'));
-const ImportExportUserCourseMappings = lazy(() => import('@shared/components/ImportExportUserCourseMappings'));
 const ExportAllData = lazy(() => import('@shared/components/ExportAllData'));
 const TrainingSessionCalculator = lazy(() => import('@modules/training/components/tsc-wizard/TrainingSessionCalculator'));
 const TrainingSessionCalendar = lazy(() => import('@modules/training/components/calendar/TrainingSessionCalendar'));
@@ -104,14 +101,15 @@ function App() {
 
               {/* Legacy routes maintained for backward compatibility */}
               <Route path="/dynamic-users" element={<DynamicUserForm />} />
-              <Route path="/import-export" element={<ImportExportEndUsers />} />
+              {/* Import/Export now lives on the End Users and Courses screens; these old links still work */}
+              <Route path="/import-export" element={<Navigate to="/dynamic-users?import=people" replace />} />
+              <Route path="/import-export-user-course-mappings" element={<Navigate to="/dynamic-users?import=assignments" replace />} />
+              <Route path="/import-export-courses" element={<Navigate to="/courses?import=courses" replace />} />
               <Route path="/edit-mappings" element={<RoleCourseMappingsEditor />} />
               <Route path="/pivot-report" element={<PivotReport />} />
               {import.meta.env.DEV && <Route path="/ui-kit" element={<UiKit />} />}
               <Route path="/courses" element={<CoursesForm />} />
-              <Route path="/import-export-courses" element={<ImportExportCourses />} />
               <Route path="/import-export-training-data" element={<ImportExportTrainingData />} />
-              <Route path="/import-export-user-course-mappings" element={<ImportExportUserCourseMappings />} />
               <Route path="/reference-data" element={<ReferenceDataManager />} />
               <Route path="/export-all-data" element={<ExportAllData />} />
               <Route path="/training-sessions" element={<TrainingSessionCalculator/>} />
