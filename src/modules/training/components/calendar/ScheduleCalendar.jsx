@@ -8,7 +8,12 @@ import SessionEditModal from '../schedule-manager/SessionEditModal';
 import { getColorByCourseTitle, buildCourseColorMapFromSessions } from '@core/utils/colorUtils';
 import { supabase } from '@core/services/supabaseClient';
 import { addWeeks, startOfWeek, format } from 'date-fns';
-import './ScheduleCalendar.css';
+import { ChevronLeft, ChevronRight, MapPin, RefreshCw, School } from 'lucide-react';
+import { toast } from 'sonner';
+import { Badge, Button, Input, Label } from '@/components/ui';
+import './calendarTheme.css';
+
+const WEEK_PRESETS = [1, 2, 3, 4, 8, 12];
 
 // Utility function to generate stable session identifiers (matches ScheduleEditor and DragDropAssignmentPanel)
 const generateStableSessionId = (session, location = null) => {
@@ -334,7 +339,7 @@ const ScheduleCalendar = ({ sessions, onSessionUpdated, criteria, selectionMode 
         updatedSession: updatedSession
       });
       // Don't close modal on error so user can try again
-      alert('Error saving session: ' + error.message);
+      toast.error('Error saving session', { description: error.message });
     }
   };
 
@@ -358,7 +363,7 @@ const ScheduleCalendar = ({ sessions, onSessionUpdated, criteria, selectionMode 
       setEditingSession(null);
     } catch (error) {
       console.error('❌ Error in ScheduleCalendar delete:', error);
-      alert('Error deleting session: ' + error.message);
+      toast.error('Error deleting session', { description: error.message });
     }
   };
 
@@ -621,261 +626,109 @@ const ScheduleCalendar = ({ sessions, onSessionUpdated, criteria, selectionMode 
     return compareLocations(locationDisplayOrders, locationA, locationB);
   });
 
+  // Show N weeks, starting at the week of the first session (or this week when there are no sessions)
+  const showWeeks = (weeks) => {
+    const firstSessionDate = findFirstSessionDate();
+    const start = firstSessionDate ? startOfWeek(firstSessionDate) : startOfWeek(new Date());
+    setDateRangeStart(start);
+    setDateRangeEnd(addWeeks(start, weeks));
+    setWeekCount(weeks);
+    setIsAutoDetected(false);
+  };
+
   return (
-    <div className="calendar-wrapper">
+    <div className="calendar-wrapper schedule-calendar-view">
       {/* Removed bulk operations toolbar - TSC Wizard is read-only */}
 
-      {/* Date Range Filter */}
-      <div className="date-range-filter">
-        <div className="filter-header">
-          <h4>📅 Date Range Filter</h4>
+      {/* Date range: step by week, type a range, or pick how many weeks to show */}
+      <div className="mb-4 flex flex-col gap-3 rounded-lg border border-border bg-card p-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <h4 className="text-sm font-semibold">Date Range Filter</h4>
           {isAutoDetected && (
-            <span className="auto-detect-badge" title="Date range automatically detected from your training sessions">
-              ✨ Auto-detected ({weekCount} {weekCount === 1 ? 'week' : 'weeks'})
-            </span>
+            <Badge variant="primary" title="Date range automatically detected from your training sessions">
+              Auto-detected ({weekCount} {weekCount === 1 ? 'week' : 'weeks'})
+            </Badge>
           )}
         </div>
 
-        <div className="filter-controls">
-          {/* Navigation Buttons */}
-          <div className="navigation-controls">
-            <button
-              onClick={navigatePreviousWeek}
-              className="nav-btn prev-btn"
-              title="Go back 1 week"
-            >
-              ◀ Previous Week
-            </button>
-
-            <div className="date-inputs">
-              <div className="date-input-group">
-                <label>From:</label>
-                <input
-                  type="date"
-                  value={format(dateRangeStart, 'yyyy-MM-dd')}
-                  onChange={(e) => {
-                    const newStart = new Date(e.target.value);
-                    setDateRangeStart(newStart);
-                    setDateRangeEnd(addWeeks(newStart, weekCount));
-                    setIsAutoDetected(false);
-                  }}
-                />
-              </div>
-
-              <div className="date-input-group">
-                <label>To:</label>
-                <input
-                  type="date"
-                  value={format(dateRangeEnd, 'yyyy-MM-dd')}
-                  onChange={(e) => {
-                    setDateRangeEnd(new Date(e.target.value));
-                    setIsAutoDetected(false);
-                  }}
-                />
-              </div>
-            </div>
-
-            <button
-              onClick={navigateNextWeek}
-              className="nav-btn next-btn"
-              title="Go forward 1 week"
-            >
-              Next Week ▶
-            </button>
+        <div className="flex flex-wrap items-end gap-2">
+          <Button onClick={navigatePreviousWeek} title="Go back 1 week"><ChevronLeft /> Previous Week</Button>
+          <div className="flex flex-col gap-1">
+            <Label htmlFor="range-from">From</Label>
+            <Input
+              id="range-from"
+              type="date"
+              className="w-40"
+              value={format(dateRangeStart, 'yyyy-MM-dd')}
+              onChange={(e) => {
+                const newStart = new Date(e.target.value);
+                setDateRangeStart(newStart);
+                setDateRangeEnd(addWeeks(newStart, weekCount));
+                setIsAutoDetected(false);
+              }}
+            />
           </div>
-
-          <div className="preset-buttons">
-            <button
-              onClick={() => {
-                // Find the first session date and navigate to that week
-                const firstSessionDate = findFirstSessionDate();
-                const start = firstSessionDate
-                  ? startOfWeek(firstSessionDate)
-                  : startOfWeek(new Date());
-
-                setDateRangeStart(start);
-                setDateRangeEnd(addWeeks(start, 1));
-                setWeekCount(1);
+          <div className="flex flex-col gap-1">
+            <Label htmlFor="range-to">To</Label>
+            <Input
+              id="range-to"
+              type="date"
+              className="w-40"
+              value={format(dateRangeEnd, 'yyyy-MM-dd')}
+              onChange={(e) => {
+                setDateRangeEnd(new Date(e.target.value));
                 setIsAutoDetected(false);
-
-                if (firstSessionDate) {
-                  console.log('📅 1 Week view: Navigating to first session:', firstSessionDate.toISOString());
-                }
               }}
-              className={weekCount === 1 && !isAutoDetected ? 'active' : ''}
-              title={findFirstSessionDate()
-                ? `Jump to week of first session (${format(findFirstSessionDate(), 'MMM d, yyyy')})`
-                : 'Show current week'}
-            >
-              1 Week
-            </button>
-
-            <button
-              onClick={() => {
-                const firstSessionDate = findFirstSessionDate();
-                const start = firstSessionDate
-                  ? startOfWeek(firstSessionDate)
-                  : startOfWeek(new Date());
-
-                setDateRangeStart(start);
-                setDateRangeEnd(addWeeks(start, 2));
-                setWeekCount(2);
-                setIsAutoDetected(false);
-
-                if (firstSessionDate) {
-                  console.log('📅 2 Week view: Navigating to first session:', firstSessionDate.toISOString());
-                }
-              }}
-              className={weekCount === 2 && !isAutoDetected ? 'active' : ''}
-              title={findFirstSessionDate()
-                ? `Jump to week of first session (${format(findFirstSessionDate(), 'MMM d, yyyy')})`
-                : 'Show current 2 weeks'}
-            >
-              2 Weeks
-            </button>
-
-            <button
-              onClick={() => {
-                const firstSessionDate = findFirstSessionDate();
-                const start = firstSessionDate
-                  ? startOfWeek(firstSessionDate)
-                  : startOfWeek(new Date());
-
-                setDateRangeStart(start);
-                setDateRangeEnd(addWeeks(start, 3));
-                setWeekCount(3);
-                setIsAutoDetected(false);
-
-                if (firstSessionDate) {
-                  console.log('📅 3 Week view: Navigating to first session:', firstSessionDate.toISOString());
-                }
-              }}
-              className={weekCount === 3 && !isAutoDetected ? 'active' : ''}
-              title={findFirstSessionDate()
-                ? `Jump to week of first session (${format(findFirstSessionDate(), 'MMM d, yyyy')})`
-                : 'Show current 3 weeks'}
-            >
-              3 Weeks
-            </button>
-
-            <button
-              onClick={() => {
-                const firstSessionDate = findFirstSessionDate();
-                const start = firstSessionDate
-                  ? startOfWeek(firstSessionDate)
-                  : startOfWeek(new Date());
-
-                setDateRangeStart(start);
-                setDateRangeEnd(addWeeks(start, 4));
-                setWeekCount(4);
-                setIsAutoDetected(false);
-
-                if (firstSessionDate) {
-                  console.log('📅 4 Week view: Navigating to first session:', firstSessionDate.toISOString());
-                }
-              }}
-              className={weekCount === 4 && !isAutoDetected ? 'active' : ''}
-              title={findFirstSessionDate()
-                ? `Jump to week of first session (${format(findFirstSessionDate(), 'MMM d, yyyy')})`
-                : 'Show current 4 weeks'}
-            >
-              4 Weeks
-            </button>
-
-            <button
-              onClick={() => {
-                const firstSessionDate = findFirstSessionDate();
-                const start = firstSessionDate
-                  ? startOfWeek(firstSessionDate)
-                  : startOfWeek(new Date());
-
-                setDateRangeStart(start);
-                setDateRangeEnd(addWeeks(start, 8));
-                setWeekCount(8);
-                setIsAutoDetected(false);
-
-                if (firstSessionDate) {
-                  console.log('📅 8 Week view: Navigating to first session:', firstSessionDate.toISOString());
-                }
-              }}
-              className={weekCount === 8 && !isAutoDetected ? 'active' : ''}
-              title={findFirstSessionDate()
-                ? `Jump to week of first session (${format(findFirstSessionDate(), 'MMM d, yyyy')})`
-                : 'Show current 8 weeks'}
-            >
-              8 Weeks
-            </button>
-
-            <button
-              onClick={() => {
-                const firstSessionDate = findFirstSessionDate();
-                const start = firstSessionDate
-                  ? startOfWeek(firstSessionDate)
-                  : startOfWeek(new Date());
-
-                setDateRangeStart(start);
-                setDateRangeEnd(addWeeks(start, 12));
-                setWeekCount(12);
-                setIsAutoDetected(false);
-
-                if (firstSessionDate) {
-                  console.log('📅 12 Week view: Navigating to first session:', firstSessionDate.toISOString());
-                }
-              }}
-              className={weekCount === 12 && !isAutoDetected ? 'active' : ''}
-              title={findFirstSessionDate()
-                ? `Jump to week of first session (${format(findFirstSessionDate(), 'MMM d, yyyy')})`
-                : 'Show current 12 weeks'}
-            >
-              12 Weeks
-            </button>
-
-            <button
-              onClick={() => {
-                const autoRange = calculateDateRangeFromSessions(sessionsToRender);
-                setDateRangeStart(autoRange.start);
-                setDateRangeEnd(autoRange.end);
-                setWeekCount(autoRange.weekCount);
-                setIsAutoDetected(autoRange.autoDetected);
-              }}
-              className="reset-btn"
-              title="Reset to auto-detected range based on your training sessions"
-            >
-              🔄 Auto-Detect
-            </button>
+            />
           </div>
+          <Button onClick={navigateNextWeek} title="Go forward 1 week">Next Week <ChevronRight /></Button>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-1.5">
+          {WEEK_PRESETS.map((weeks) => {
+            const first = findFirstSessionDate();
+            const active = weekCount === weeks && !isAutoDetected;
+            return (
+              <Button
+                key={weeks}
+                variant={active ? 'default' : 'secondary'}
+                aria-pressed={active}
+                onClick={() => showWeeks(weeks)}
+                title={first ? `Jump to week of first session (${format(first, 'MMM d, yyyy')})` : weeks === 1 ? 'Show current week' : `Show current ${weeks} weeks`}
+              >
+                {weeks} {weeks === 1 ? 'Week' : 'Weeks'}
+              </Button>
+            );
+          })}
+          <Button
+            variant="ghost"
+            className="ml-auto"
+            title="Reset to auto-detected range based on your training sessions"
+            onClick={() => {
+              const autoRange = calculateDateRangeFromSessions(sessionsToRender);
+              setDateRangeStart(autoRange.start);
+              setDateRangeEnd(autoRange.end);
+              setWeekCount(autoRange.weekCount);
+              setIsAutoDetected(autoRange.autoDetected);
+            }}
+          >
+            <RefreshCw /> Auto-Detect
+          </Button>
         </div>
       </div>
 
       {sortedLocationEntries.map(([location, classrooms]) => (
-        <div key={location} className="calendar-group">
-          <h3 style={{ color: '#495057', borderBottom: '2px solid #007bff', paddingBottom: '8px', marginBottom: '20px' }}>
-            📍 {location}
+        <div key={location} className="calendar-group mb-6">
+          <h3 className="mb-4 flex items-center gap-1.5 border-b-2 border-primary pb-2 text-base font-semibold">
+            <MapPin className="size-4 text-primary" /> {location}
           </h3>
           {Object.entries(classrooms).map(([classroomName, sessionList]) => (
-            <div key={classroomName} className="calendar-block" style={{isolation: 'isolate', marginBottom: '25px'}}>
-              <h4 style={{ 
-                color: '#0066cc', 
-                margin: '0 0 15px 0', 
-                padding: '8px 12px', 
-                backgroundColor: '#f8f9fa', 
-                border: '1px solid #dee2e6', 
-                borderRadius: '6px',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px'
-              }}>
-                🏫 {classroomName}
-                <span style={{ 
-                  fontSize: '12px', 
-                  color: '#6c757d', 
-                  fontWeight: 'normal',
-                  marginLeft: 'auto'
-                }}>
-                  {sessionList.length} sessions
-                </span>
+            <div key={classroomName} className="calendar-block isolate mb-6">
+              <h4 className="mb-3 flex items-center gap-2 rounded-md border border-border bg-secondary px-3 py-2 text-sm font-semibold">
+                <School className="size-4 text-primary" /> {classroomName}
+                <span className="ml-auto text-xs font-normal text-muted-foreground">{sessionList.length} sessions</span>
               </h4>
-              <div className="calendar-isolation-wrapper" style={{contain: 'layout style paint'}}>
+              <div className="calendar-isolation-wrapper overflow-hidden rounded-lg border border-border bg-card p-2 [contain:layout_style_paint]">
                 <FullCalendar
                   key={`${location}-${classroomName}`}
                   ref={(calendarRef) => {

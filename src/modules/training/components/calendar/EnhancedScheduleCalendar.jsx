@@ -11,6 +11,7 @@ import { generateEventIdFromSession } from '@core/utils/eventIdUtils';
 import { fromLocalDateTime } from '@core/utils/dateTimeUtils';
 // Temporarily enable debug logging for classroom troubleshooting
 import { debugLog, debugWarn, debugError } from '@core/utils/consoleUtils';
+import './calendarTheme.css';
 import './EnhancedScheduleCalendar.css';
 
 // Helper function to calculate initial calendar date from sessions
