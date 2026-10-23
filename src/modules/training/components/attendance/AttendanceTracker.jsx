@@ -1,4 +1,5 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { ClipboardCheck, Loader2, Search, UserPlus } from 'lucide-react';
 import { useProject } from '@core/contexts/ProjectContext';
 import { SimpleAuthService } from '@auth/services/simpleAuthService';
@@ -56,6 +57,7 @@ const AttendanceTracker = () => {
   const [sessionSearchTerm, setSessionSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
   const [walkInOpen, setWalkInOpen] = useState(false);
+  const [searchParams, setSearchParams] = useSearchParams();
   const [attendeeComments, setAttendeeComments] = useState({});
   const commentsRef = useRef(attendeeComments);
   commentsRef.current = attendeeComments;
@@ -144,6 +146,15 @@ const AttendanceTracker = () => {
     },
     [selectedSession, currentProject, user, loadSessionDetails]
   );
+
+  // The compliance dashboard links here with ?session=<id> to open that session
+  useEffect(() => {
+    const wanted = searchParams.get('session');
+    if (!wanted || sessions.length === 0) return;
+    const match = sessions.find((session) => session.id === wanted);
+    if (match) setSelectedSession(match);
+    setSearchParams({}, { replace: true });
+  }, [sessions, searchParams, setSearchParams]);
 
   const handleClear = useCallback(
     async (attendee) => {

@@ -4,6 +4,7 @@ import React from 'react';
 import '@testing-library/jest-dom';
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { MemoryRouter } from 'react-router-dom';
 import AttendanceTracker from '../AttendanceTracker';
 import { useProject } from '@core/contexts/ProjectContext';
 import { SimpleAuthService } from '@auth/services/simpleAuthService';
@@ -68,7 +69,7 @@ const setup = async ({ records = [], attendees = ATTENDEES, summary } = {}) => {
   loadWalkInContext.mockResolvedValue(NO_BOOKINGS);
   applyWalkInPlan.mockResolvedValue({ assigned: 1, removed: 0, clearedOldMarks: 0 });
   const user = userEvent.setup();
-  render(<AttendanceTracker />);
+  render(<MemoryRouter><AttendanceTracker /></MemoryRouter>);
   await screen.findByRole('heading', { name: 'Attendance Tracker' });
   await user.click(screen.getByRole('combobox', { name: 'Select Training Session' }));
   await user.click(await screen.findByRole('option', { name: /Ledger Basics/ }));

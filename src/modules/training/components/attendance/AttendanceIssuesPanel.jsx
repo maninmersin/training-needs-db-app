@@ -1,182 +1,125 @@
 import React, { useState } from 'react';
-import './AttendanceIssuesPanel.css';
+import { ChevronDown, ChevronRight, CircleCheck, ClipboardX, TrendingDown, TriangleAlert } from 'lucide-react';
+import { Badge, Card, EmptyState, StatCard } from '@/components/ui';
 
-const AttendanceIssuesPanel = ({ gaps, onIssueClick }) => {
-  const [expandedSection, setExpandedSection] = useState('summary');
+function Section({ id, icon: Icon, title, count, expanded, onToggle, children }) {
+  return (
+    <div className="border-t border-border first:border-t-0">
+      <button
+        type="button"
+        aria-expanded={expanded}
+        aria-controls={`issues-${id}`}
+        onClick={onToggle}
+        className="flex w-full items-center gap-2 px-4 py-3 text-left text-sm font-medium hover:bg-accent focus-visible:outline-2 focus-visible:outline-ring"
+      >
+        <Icon className="size-4 text-muted-foreground" aria-hidden="true" />
+        <span className="flex-1">{title}</span>
+        <span className="text-xs text-muted-foreground">{count}</span>
+        {expanded ? <ChevronDown className="size-4" aria-hidden="true" /> : <ChevronRight className="size-4" aria-hidden="true" />}
+      </button>
+      {expanded && <div id={`issues-${id}`} className="px-4 pb-4">{children}</div>}
+    </div>
+  );
+}
 
-  const toggleSection = (section) => {
-    setExpandedSection(expandedSection === section ? null : section);
-  };
+function IssueList({ issues, badge, detail, action, onIssueClick }) {
+  return (
+    <ul className="flex flex-col gap-2">
+      {issues.map((issue) => (
+        <li key={issue.session_id}>
+          <button
+            type="button"
+            onClick={() => onIssueClick(issue.session_id)}
+            className="flex w-full flex-col gap-1.5 rounded-md border border-border bg-card px-3 py-2 text-left hover:bg-accent focus-visible:outline-2 focus-visible:outline-ring"
+          >
+            <span className="flex flex-wrap items-center justify-between gap-2">
+              <span className="text-sm font-medium">{issue.session_name}</span>
+              {badge(issue)}
+            </span>
+            <span className="text-xs text-muted-foreground">
+              Location: {issue.training_location} - Functional Area: {issue.functional_area} - {detail(issue)}
+            </span>
+            <span className="text-xs text-primary">{action} <span aria-hidden="true">&rarr;</span></span>
+          </button>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+/** Sessions that need attention: ones with attendance not recorded, and ones with low compliance. */
+export default function AttendanceIssuesPanel({ gaps, onIssueClick }) {
+  const [expanded, setExpanded] = useState('summary');
+  const toggle = (section) => setExpanded((current) => (current === section ? null : section));
 
   if (!gaps || gaps.summary.total_issues === 0) {
     return (
-      <div className="issues-panel">
-        <div className="panel-header">
-          <h3>🎉 No Issues Found</h3>
-        </div>
-        <div className="no-issues-state">
-          <div className="success-icon">✅</div>
-          <p>All sessions have complete attendance records and good compliance rates!</p>
-        </div>
-      </div>
+      <Card>
+        <EmptyState icon={CircleCheck} title="No Issues Found" description="All sessions have complete attendance records and good compliance rates!" />
+      </Card>
     );
   }
 
   return (
-    <div className="issues-panel">
-      <div className="panel-header">
-        <h3>⚠️ Issues Requiring Attention</h3>
-        <div className="issue-summary">
-          <span className="issue-count">{gaps.summary.total_issues}</span>
-          <span className="issue-label">Total Issues</span>
+    <Card className="overflow-hidden">
+      <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-3">
+        <h3 className="flex items-center gap-2 text-base font-semibold">
+          <TriangleAlert className="size-4 text-warning" aria-hidden="true" /> Issues Requiring Attention
+        </h3>
+        <Badge variant="warning" className="tabular-nums">{gaps.summary.total_issues} Total Issues</Badge>
+      </div>
+
+      <Section
+        id="summary"
+        icon={ClipboardX}
+        title="Summary"
+        count={`${gaps.summary.missing_records_count + gaps.summary.low_compliance_count} issues`}
+        expanded={expanded === 'summary'}
+        onToggle={() => toggle('summary')}
+      >
+        <div className="flex flex-wrap gap-3">
+          <StatCard value={gaps.summary.missing_records_count} label="Missing Attendance Records" tone="warning" />
+          <StatCard value={gaps.summary.low_compliance_count} label="Low Compliance Sessions (<80%)" tone="danger" />
         </div>
-      </div>
+      </Section>
 
-      {/* Summary Section */}
-      <div className="issue-section">
-        <button
-          className={`section-header ${expandedSection === 'summary' ? 'expanded' : ''}`}
-          onClick={() => toggleSection('summary')}
-        >
-          <span className="section-icon">📊</span>
-          <span className="section-title">Summary</span>
-          <span className="section-count">
-            {gaps.summary.missing_records_count + gaps.summary.low_compliance_count} issues
-          </span>
-          <span className="expand-icon">{expandedSection === 'summary' ? '−' : '+'}</span>
-        </button>
-        
-        {expandedSection === 'summary' && (
-          <div className="section-content">
-            <div className="summary-stats">
-              <div className="summary-stat">
-                <div className="stat-icon">📝</div>
-                <div className="stat-content">
-                  <span className="stat-value">{gaps.summary.missing_records_count}</span>
-                  <span className="stat-label">Missing Attendance Records</span>
-                </div>
-              </div>
-              <div className="summary-stat">
-                <div className="stat-icon">📉</div>
-                <div className="stat-content">
-                  <span className="stat-value">{gaps.summary.low_compliance_count}</span>
-                  <span className="stat-label">Low Compliance Sessions (&lt;80%)</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Missing Attendance Records */}
       {gaps.missing_attendance_records.length > 0 && (
-        <div className="issue-section">
-          <button
-            className={`section-header ${expandedSection === 'missing' ? 'expanded' : ''}`}
-            onClick={() => toggleSection('missing')}
-          >
-            <span className="section-icon">📝</span>
-            <span className="section-title">Missing Attendance Records</span>
-            <span className="section-count">{gaps.missing_attendance_records.length} sessions</span>
-            <span className="expand-icon">{expandedSection === 'missing' ? '−' : '+'}</span>
-          </button>
-          
-          {expandedSection === 'missing' && (
-            <div className="section-content">
-              <div className="issues-list">
-                {gaps.missing_attendance_records.map((issue) => (
-                  <div 
-                    key={issue.session_id}
-                    className="issue-item clickable"
-                    onClick={() => onIssueClick(issue.session_id)}
-                  >
-                    <div className="issue-header">
-                      <span className="issue-title">{issue.session_name}</span>
-                      <span className="issue-severity missing">Missing Records</span>
-                    </div>
-                    <div className="issue-details">
-                      <div className="issue-detail">
-                        <span className="detail-label">Location:</span>
-                        <span className="detail-value">{issue.training_location}</span>
-                      </div>
-                      <div className="issue-detail">
-                        <span className="detail-label">Functional Area:</span>
-                        <span className="detail-value">{issue.functional_area}</span>
-                      </div>
-                      <div className="issue-detail">
-                        <span className="detail-label">Missing:</span>
-                        <span className="detail-value">
-                          {issue.missing_count} of {issue.assigned_count} records
-                        </span>
-                      </div>
-                    </div>
-                    <div className="issue-action">
-                      <span className="action-text">Click to review session →</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
+        <Section
+          id="missing"
+          icon={ClipboardX}
+          title="Missing Attendance Records"
+          count={`${gaps.missing_attendance_records.length} sessions`}
+          expanded={expanded === 'missing'}
+          onToggle={() => toggle('missing')}
+        >
+          <IssueList
+            issues={gaps.missing_attendance_records}
+            badge={() => <Badge variant="warning">Missing Records</Badge>}
+            detail={(issue) => `Missing: ${issue.missing_count} of ${issue.assigned_count} records`}
+            action="Click to review session"
+            onIssueClick={onIssueClick}
+          />
+        </Section>
       )}
 
-      {/* Low Compliance Sessions */}
       {gaps.low_compliance_sessions.length > 0 && (
-        <div className="issue-section">
-          <button
-            className={`section-header ${expandedSection === 'compliance' ? 'expanded' : ''}`}
-            onClick={() => toggleSection('compliance')}
-          >
-            <span className="section-icon">📉</span>
-            <span className="section-title">Low Compliance Sessions</span>
-            <span className="section-count">{gaps.low_compliance_sessions.length} sessions</span>
-            <span className="expand-icon">{expandedSection === 'compliance' ? '−' : '+'}</span>
-          </button>
-          
-          {expandedSection === 'compliance' && (
-            <div className="section-content">
-              <div className="issues-list">
-                {gaps.low_compliance_sessions.map((issue) => (
-                  <div 
-                    key={issue.session_id}
-                    className="issue-item clickable"
-                    onClick={() => onIssueClick(issue.session_id)}
-                  >
-                    <div className="issue-header">
-                      <span className="issue-title">{issue.session_name}</span>
-                      <span className={`issue-severity ${issue.compliance_rate < 60 ? 'critical' : 'warning'}`}>
-                        {issue.compliance_rate}% Compliance
-                      </span>
-                    </div>
-                    <div className="issue-details">
-                      <div className="issue-detail">
-                        <span className="detail-label">Location:</span>
-                        <span className="detail-value">{issue.training_location}</span>
-                      </div>
-                      <div className="issue-detail">
-                        <span className="detail-label">Functional Area:</span>
-                        <span className="detail-value">{issue.functional_area}</span>
-                      </div>
-                      <div className="issue-detail">
-                        <span className="detail-label">Attendance:</span>
-                        <span className="detail-value">
-                          {issue.attended} of {issue.assigned} attended
-                        </span>
-                      </div>
-                    </div>
-                    <div className="issue-action">
-                      <span className="action-text">Click to investigate →</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
+        <Section
+          id="compliance"
+          icon={TrendingDown}
+          title="Low Compliance Sessions"
+          count={`${gaps.low_compliance_sessions.length} sessions`}
+          expanded={expanded === 'compliance'}
+          onToggle={() => toggle('compliance')}
+        >
+          <IssueList
+            issues={gaps.low_compliance_sessions}
+            badge={(issue) => <Badge variant={issue.compliance_rate < 60 ? 'danger' : 'warning'}>{issue.compliance_rate}% Compliance</Badge>}
+            detail={(issue) => `Attendance: ${issue.attended} of ${issue.assigned} attended`}
+            action="Click to investigate"
+            onIssueClick={onIssueClick}
+          />
+        </Section>
       )}
-    </div>
+    </Card>
   );
-};
-
-export default AttendanceIssuesPanel;
+}

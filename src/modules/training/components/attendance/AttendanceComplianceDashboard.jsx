@@ -1,5 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { BarChart3, ClipboardList, Loader2 } from 'lucide-react';
 import { useProject } from '@core/contexts/ProjectContext';
+import { Button, EmptyState, Input, PageHeader, StatCard } from '@/components/ui';
+import { cn } from '@/lib/utils';
 import {
   getAssignmentVsAttendanceStats,
   getDrillDownStats,
@@ -8,323 +12,132 @@ import {
 import ComplianceMetricCard from './ComplianceMetricCard';
 import BreadcrumbNavigation from './BreadcrumbNavigation';
 import AttendanceIssuesPanel from './AttendanceIssuesPanel';
-import './AttendanceComplianceDashboard.css';
+import { DATE_PRESETS, LEVEL_TITLES, buildDateFilters, complianceLevel, drillInto, formatPercentage, goToBreadcrumb } from './complianceLogic';
+
+const RATE_TONE = { excellent: 'success', good: 'default', warning: 'warning', critical: 'danger' };
 
 const AttendanceComplianceDashboard = () => {
   const { currentProject } = useProject();
-  
-  // State management
+  const navigate = useNavigate();
+
   const [complianceData, setComplianceData] = useState(null);
   const [drillDownData, setDrillDownData] = useState({});
   const [attendanceGaps, setAttendanceGaps] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  
-  // Navigation state
+
   const [currentPath, setCurrentPath] = useState({});
   const [breadcrumb, setBreadcrumb] = useState([]);
   const [viewLevel, setViewLevel] = useState('project'); // project, functionalArea, trainingLocation, session
-  
-  // Date range state
-  const [dateRange, setDateRange] = useState({
-    startDate: '',
-    endDate: '',
-    preset: 'all' // all, week1, week2, month, custom
-  });
+  const [dateRange, setDateRange] = useState({ startDate: '', endDate: '', preset: 'all' });
 
-  // Load initial data
-  useEffect(() => {
-    if (currentProject) {
-      loadComplianceData();
-    }
-  }, [currentProject, dateRange, currentPath]);
-
-  const loadComplianceData = async () => {
+  const loadComplianceData = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
-      
-      const dateFilters = buildDateFilters();
-      
+      const dateFilters = buildDateFilters(dateRange);
       const [complianceStats, drillStats, gapsData] = await Promise.all([
         getAssignmentVsAttendanceStats(currentProject.id, { ...dateFilters, ...currentPath }),
         getDrillDownStats(currentProject.id, currentPath, dateFilters),
         getAttendanceGaps(currentProject.id, dateFilters)
       ]);
-      
       setComplianceData(complianceStats);
       setDrillDownData(drillStats.drillDownData || {});
       setBreadcrumb(drillStats.breadcrumb || []);
       setAttendanceGaps(gapsData);
-      
-    } catch (err) {
-      console.error('❌ Error loading compliance data:', err);
+    } catch (loadError) {
+      console.error('❌ Error loading compliance data:', loadError);
       setError('Failed to load attendance compliance data');
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentProject, dateRange, currentPath]);
 
-  const buildDateFilters = () => {
-    const filters = {};
-    
-    if (dateRange.preset === 'custom') {
-      if (dateRange.startDate) filters.startDate = dateRange.startDate;
-      if (dateRange.endDate) filters.endDate = dateRange.endDate;
-    } else if (dateRange.preset !== 'all') {
-      // Handle preset date ranges
-      const now = new Date();
-      switch (dateRange.preset) {
-        case 'week1':
-          filters.startDate = getWeekStart(now, 0);
-          filters.endDate = getWeekEnd(now, 0);
-          break;
-        case 'week2':
-          filters.startDate = getWeekStart(now, -1);
-          filters.endDate = getWeekEnd(now, -1);
-          break;
-        case 'month':
-          filters.startDate = getMonthStart(now);
-          filters.endDate = getMonthEnd(now);
-          break;
-      }
-    }
-    
-    return filters;
-  };
-
-  const getWeekStart = (date, weeksAgo) => {
-    const start = new Date(date);
-    start.setDate(start.getDate() - (start.getDay() + 7 * Math.abs(weeksAgo)));
-    return start.toISOString().split('T')[0];
-  };
-
-  const getWeekEnd = (date, weeksAgo) => {
-    const end = new Date(date);
-    end.setDate(end.getDate() - (end.getDay() + 7 * Math.abs(weeksAgo)) + 6);
-    return end.toISOString().split('T')[0];
-  };
-
-  const getMonthStart = (date) => {
-    const start = new Date(date.getFullYear(), date.getMonth(), 1);
-    return start.toISOString().split('T')[0];
-  };
-
-  const getMonthEnd = (date) => {
-    const end = new Date(date.getFullYear(), date.getMonth() + 1, 0);
-    return end.toISOString().split('T')[0];
-  };
-
-  const handleDrillDown = (level, value, label) => {
-    const newPath = { ...currentPath };
-    
-    switch (level) {
-      case 'functionalArea':
-        newPath.functionalArea = value;
-        setViewLevel('functionalArea');
-        break;
-      case 'trainingLocation':
-        newPath.trainingLocation = value;
-        setViewLevel('trainingLocation');
-        break;
-      case 'session':
-        // For sessions, we don't need to update path as this is the deepest level
-        setViewLevel('session');
-        break;
-    }
-    
-    setCurrentPath(newPath);
-  };
+  useEffect(() => {
+    if (currentProject) loadComplianceData();
+  }, [currentProject, loadComplianceData]);
 
   const handleBreadcrumbClick = (level, value = null) => {
-    const newPath = {};
-    
-    if (level === 'functionalArea' && value) {
-      newPath.functionalArea = value;
-      setViewLevel('functionalArea');
-    } else if (level === 'trainingLocation' && value && currentPath.functionalArea) {
-      newPath.functionalArea = currentPath.functionalArea;
-      newPath.trainingLocation = value;
-      setViewLevel('trainingLocation');
-    } else {
-      // Back to project level
-      setViewLevel('project');
-    }
-    
-    setCurrentPath(newPath);
+    const next = goToBreadcrumb(currentPath, level, value);
+    setViewLevel(next.viewLevel);
+    setCurrentPath(next.path);
   };
 
-  const handleDateRangeChange = (preset, customStart = '', customEnd = '') => {
-    setDateRange({
-      preset,
-      startDate: customStart,
-      endDate: customEnd
-    });
+  const handleCardClick = (key) => {
+    const next = drillInto(currentPath, viewLevel, key);
+    setViewLevel(next.viewLevel);
+    setCurrentPath(next.path);
   };
 
-  const getComplianceColor = (rate) => {
-    if (rate >= 90) return '#28a745'; // Green
-    if (rate >= 75) return '#ffc107'; // Amber
-    if (rate >= 60) return '#fd7e14'; // Orange
-    return '#dc3545'; // Red
-  };
+  const handleDateRangeChange = (preset, startDate = '', endDate = '') => setDateRange({ preset, startDate, endDate });
 
-  const formatPercentage = (value) => {
-    return `${Math.round(value)}%`;
-  };
+  const cards = useMemo(() => Object.entries(drillDownData), [drillDownData]);
 
   if (!currentProject) {
     return (
-      <div className="compliance-dashboard">
-        <div className="no-project-state">
-          <h3>No Project Selected</h3>
-          <p>Please select a project to view attendance compliance data.</p>
-        </div>
+      <div className="mx-auto max-w-6xl rounded-lg border border-border bg-card">
+        <EmptyState icon={BarChart3} title="No Project Selected" description="Please select a project to view attendance compliance data." />
       </div>
     );
   }
 
-  if (loading) {
+  if (loading && !complianceData && !error) {
     return (
-      <div className="compliance-dashboard">
-        <div className="loading-state">
-          <div className="loading-spinner"></div>
-          <h3>Loading compliance data...</h3>
-        </div>
+      <div role="status" className="flex items-center justify-center gap-2 py-16 text-sm text-muted-foreground">
+        <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+        Loading compliance data...
       </div>
     );
   }
+
+  const overall = complianceData?.overall;
 
   return (
-    <div className="compliance-dashboard">
-      <div className="dashboard-header">
-        <h2>📊 Attendance Compliance Dashboard</h2>
-        <div className="project-indicator">
-          <strong>Project:</strong> {currentProject.title}
-        </div>
-        <p className="dashboard-description">
-          Track assignment vs attendance compliance with drill-down analysis
-        </p>
-      </div>
+    <div className="mx-auto flex max-w-6xl flex-col gap-4">
+      <PageHeader
+        title="Attendance Compliance Dashboard"
+        description={`Track assignment vs attendance compliance with drill-down analysis. Project: ${currentProject.title}.`}
+      />
 
       {error && (
-        <div className="error-message">
-          <span className="error-icon">⚠️</span>
-          {error}
-          <button onClick={() => setError(null)} className="dismiss-error">×</button>
+        <div role="alert" className="flex items-center gap-3 rounded-md bg-destructive-soft px-3 py-2 text-sm text-destructive">
+          <span className="flex-1">{error}</span>
+          <Button variant="ghost" size="sm" onClick={() => setError(null)}>Dismiss</Button>
         </div>
       )}
 
-      {/* Date Range Controls */}
-      <div className="date-range-section">
-        <h3>Date Range</h3>
-        <div className="date-range-controls">
-          <div className="preset-buttons">
-            <button
-              className={`preset-btn ${dateRange.preset === 'all' ? 'active' : ''}`}
-              onClick={() => handleDateRangeChange('all')}
-            >
-              All Time
-            </button>
-            <button
-              className={`preset-btn ${dateRange.preset === 'week1' ? 'active' : ''}`}
-              onClick={() => handleDateRangeChange('week1')}
-            >
-              This Week
-            </button>
-            <button
-              className={`preset-btn ${dateRange.preset === 'week2' ? 'active' : ''}`}
-              onClick={() => handleDateRangeChange('week2')}
-            >
-              Last Week
-            </button>
-            <button
-              className={`preset-btn ${dateRange.preset === 'month' ? 'active' : ''}`}
-              onClick={() => handleDateRangeChange('month')}
-            >
-              This Month
-            </button>
-          </div>
-          <div className="custom-date-range">
-            <input
-              type="date"
-              value={dateRange.startDate}
-              onChange={(e) => handleDateRangeChange('custom', e.target.value, dateRange.endDate)}
-              placeholder="Start Date"
-            />
-            <span>to</span>
-            <input
-              type="date"
-              value={dateRange.endDate}
-              onChange={(e) => handleDateRangeChange('custom', dateRange.startDate, e.target.value)}
-              placeholder="End Date"
-            />
-          </div>
+      <section aria-label="Date range" className="flex flex-wrap items-center gap-3 rounded-lg border border-border bg-card px-4 py-3">
+        <h3 className="text-sm font-semibold">Date Range</h3>
+        <div role="group" aria-label="Date range presets" className="flex gap-1">
+          {DATE_PRESETS.map((preset) => (
+            <Button key={preset.value} size="sm" variant={dateRange.preset === preset.value ? 'default' : 'secondary'} aria-pressed={dateRange.preset === preset.value} onClick={() => handleDateRangeChange(preset.value)}>
+              {preset.label}
+            </Button>
+          ))}
         </div>
-      </div>
+        <div className="ml-auto flex items-center gap-2 text-sm text-muted-foreground">
+          <Input type="date" aria-label="Start date" value={dateRange.startDate} onChange={(event) => handleDateRangeChange('custom', event.target.value, dateRange.endDate)} className="w-40" />
+          <span>to</span>
+          <Input type="date" aria-label="End date" value={dateRange.endDate} onChange={(event) => handleDateRangeChange('custom', dateRange.startDate, event.target.value)} className="w-40" />
+        </div>
+      </section>
 
-      {/* Breadcrumb Navigation */}
-      {breadcrumb.length > 0 && (
-        <BreadcrumbNavigation
-          breadcrumb={breadcrumb}
-          onBreadcrumbClick={handleBreadcrumbClick}
-        />
-      )}
+      {breadcrumb.length > 0 && <BreadcrumbNavigation breadcrumb={breadcrumb} onBreadcrumbClick={handleBreadcrumbClick} />}
 
-      {/* Overall Summary Stats */}
-      {complianceData && (
-        <div className="summary-stats">
-          <div className="summary-cards">
-            <div className="summary-card">
-              <div className="card-icon">👥</div>
-              <div className="card-content">
-                <span className="card-value">{complianceData.overall.total_assigned}</span>
-                <span className="card-label">Total Assigned</span>
-              </div>
-            </div>
-            <div className="summary-card">
-              <div className="card-icon">✅</div>
-              <div className="card-content">
-                <span className="card-value">{complianceData.overall.total_attended}</span>
-                <span className="card-label">Actually Attended</span>
-              </div>
-            </div>
-            <div className="summary-card compliance-rate-card">
-              <div className="card-icon">📈</div>
-              <div className="card-content">
-                <span 
-                  className="card-value"
-                  style={{ color: getComplianceColor(complianceData.overall.compliance_rate) }}
-                >
-                  {formatPercentage(complianceData.overall.compliance_rate)}
-                </span>
-                <span className="card-label">Compliance Rate</span>
-              </div>
-            </div>
-            {complianceData.overall.missing_attendance_records > 0 && (
-              <div className="summary-card warning-card">
-                <div className="card-icon">⚠️</div>
-                <div className="card-content">
-                  <span className="card-value">{complianceData.overall.missing_attendance_records}</span>
-                  <span className="card-label">Missing Records</span>
-                </div>
-              </div>
-            )}
-          </div>
+      {overall && (
+        <div className={cn('flex flex-wrap gap-3', loading && 'opacity-60')}>
+          <StatCard value={overall.total_assigned} label="Total Assigned" />
+          <StatCard value={overall.total_attended} label="Actually Attended" tone="success" />
+          <StatCard value={formatPercentage(overall.compliance_rate)} label="Compliance Rate" tone={RATE_TONE[complianceLevel(overall.compliance_rate).level]} />
+          {overall.missing_attendance_records > 0 && <StatCard value={overall.missing_attendance_records} label="Missing Records" tone="warning" />}
         </div>
       )}
 
-      {/* Drill-down Metrics */}
-      <div className="drill-down-section">
-        <h3>
-          {viewLevel === 'project' && 'By Functional Area'}
-          {viewLevel === 'functionalArea' && 'By Training Location'}
-          {viewLevel === 'trainingLocation' && 'By Session'}
-        </h3>
-        
-        <div className="metrics-grid">
-          {Object.entries(drillDownData).length > 0 ? (
-            Object.entries(drillDownData).map(([key, data]) => (
+      <section aria-label={LEVEL_TITLES[viewLevel] || 'Sessions'} className="flex flex-col gap-3">
+        <h3 className="text-base font-semibold">{LEVEL_TITLES[viewLevel] || 'Session'}</h3>
+        {cards.length > 0 ? (
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {cards.map(([key, data]) => (
               <ComplianceMetricCard
                 key={key}
                 title={data.session_name || key}
@@ -332,50 +145,24 @@ const AttendanceComplianceDashboard = () => {
                 attended={data.attended}
                 complianceRate={data.compliance_rate}
                 missingRecords={data.missing_records || 0}
-                onClick={() => {
-                  if (viewLevel === 'project') {
-                    handleDrillDown('functionalArea', key, key);
-                  } else if (viewLevel === 'functionalArea') {
-                    handleDrillDown('trainingLocation', key, key);
-                  } else {
-                    handleDrillDown('session', key, data.session_name || key);
-                  }
-                }}
+                onClick={() => handleCardClick(key)}
                 isDrillable={viewLevel !== 'session'}
               />
-            ))
-          ) : (
-            <div style={{ 
-              textAlign: 'center', 
-              padding: '40px', 
-              color: '#6c757d',
-              backgroundColor: 'white',
-              borderRadius: '8px',
-              border: '2px dashed #dee2e6',
-              gridColumn: '1 / -1'
-            }}>
-              <div style={{ fontSize: '48px', marginBottom: '15px' }}>📋</div>
-              <h4>No Training Data Found</h4>
-              <p>To see compliance data, you need to:</p>
-              <ol style={{ textAlign: 'left', display: 'inline-block', margin: '10px 0' }}>
-                <li>Create training sessions using the Schedule Manager</li>
-                <li>Assign users to sessions using User Assignments</li>
-                <li>Record attendance using the Attendance Tracker</li>
-              </ol>
-            </div>
-          )}
-        </div>
-      </div>
+            ))}
+          </div>
+        ) : (
+          <div className="rounded-lg border border-dashed border-border-strong bg-card">
+            <EmptyState
+              icon={ClipboardList}
+              title="No Training Data Found"
+              description="To see compliance data: create training sessions using the Schedule Manager, assign users to sessions using User Assignments, then record attendance using the Attendance Tracker."
+            />
+          </div>
+        )}
+      </section>
 
-      {/* Issues Panel */}
       {attendanceGaps && (
-        <AttendanceIssuesPanel
-          gaps={attendanceGaps}
-          onIssueClick={(sessionId) => {
-            // Handle clicking on an issue to navigate to that session
-            console.log('Navigate to session:', sessionId);
-          }}
-        />
+        <AttendanceIssuesPanel gaps={attendanceGaps} onIssueClick={(sessionId) => navigate(`/attendance-tracker?session=${encodeURIComponent(sessionId)}`)} />
       )}
     </div>
   );

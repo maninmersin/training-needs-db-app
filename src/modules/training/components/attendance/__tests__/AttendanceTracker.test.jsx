@@ -3,6 +3,7 @@ import React from 'react';
 import '@testing-library/jest-dom';
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { MemoryRouter } from 'react-router-dom';
 import AttendanceTracker from '../AttendanceTracker';
 import { useProject } from '@core/contexts/ProjectContext';
 import { SimpleAuthService } from '@auth/services/simpleAuthService';
@@ -60,7 +61,7 @@ const setup = async () => {
   service.clearAttendanceRecord.mockResolvedValue(true);
   searchUserDirectory.mockResolvedValue([]);
   const user = userEvent.setup();
-  render(<AttendanceTracker />);
+  render(<MemoryRouter><AttendanceTracker /></MemoryRouter>);
   await screen.findByRole('heading', { name: 'Attendance Tracker' });
   return user;
 };
@@ -76,7 +77,7 @@ describe('AttendanceTracker', () => {
   test('without a project it explains what to do', () => {
     useProject.mockReturnValue({ currentProject: null });
     SimpleAuthService.getCurrentUser.mockResolvedValue({ id: 'u1' });
-    render(<AttendanceTracker />);
+    render(<MemoryRouter><AttendanceTracker /></MemoryRouter>);
     expect(screen.getByText('No Project Selected')).toBeInTheDocument();
   });
 
@@ -91,7 +92,7 @@ describe('AttendanceTracker', () => {
     service.getSessionsForAttendance.mockRejectedValue(new Error('boom'));
     service.getAttendanceStatuses.mockResolvedValue(STATUSES);
     jest.spyOn(console, 'error').mockImplementation(() => {});
-    render(<AttendanceTracker />);
+    render(<MemoryRouter><AttendanceTracker /></MemoryRouter>);
     expect(await screen.findByRole('alert')).toHaveTextContent('Failed to load sessions and attendance data');
   });
 
@@ -155,5 +156,31 @@ describe('AttendanceTracker', () => {
     service.getSessionAttendees.mockResolvedValue([]);
     await choose(user, /Ledger Basics/);
     expect(await screen.findByText('No attendees assigned to this session')).toBeInTheDocument();
+  });
+});
+
+describe('AttendanceTracker opened from a link', () => {
+  const open = async (url) => {
+    useProject.mockReturnValue({ currentProject: { id: 'p1', title: 'ACME Corp' } });
+    SimpleAuthService.getCurrentUser.mockResolvedValue({ id: 'u1' });
+    service.getSessionsForAttendance.mockResolvedValue(SESSIONS);
+    service.getAttendanceStatuses.mockResolvedValue(STATUSES);
+    service.getSessionAttendees.mockResolvedValue(ATTENDEES);
+    service.getSessionAttendanceRecords.mockResolvedValue([]);
+    service.getSessionAttendanceSummary.mockResolvedValue({ total_registered: 2, total_attended: 0, total_absent: 0, attendance_rate: 0 });
+    render(<MemoryRouter initialEntries={[url]}><AttendanceTracker /></MemoryRouter>);
+    await screen.findByRole('heading', { name: 'Attendance Tracker' });
+  };
+
+  test('?session=<id> opens that session straight away', async () => {
+    await open('/attendance-tracker?session=s2');
+    expect(await screen.findByText('Attendance for Stock Counts')).toBeInTheDocument();
+    expect(service.getSessionAttendees).toHaveBeenCalledWith('s2', 'p1');
+  });
+
+  test('an id that is not in the project just shows the normal session picker', async () => {
+    await open('/attendance-tracker?session=unknown');
+    expect(await screen.findByText('Choose a session')).toBeInTheDocument();
+    expect(service.getSessionAttendees).not.toHaveBeenCalled();
   });
 });
