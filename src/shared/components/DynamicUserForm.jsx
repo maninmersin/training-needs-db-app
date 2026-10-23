@@ -13,6 +13,7 @@ import ImportWizard from '../import/ImportWizard';
 import { assignmentsAdapter, peopleAdapter } from '../import/adapters';
 import { ASSIGNMENT_HEADERS, PEOPLE_EXPORT_HEADERS, downloadTable, loadAssignmentRows, peopleToRows } from '../import/exportFiles';
 import ColumnFilter from './ColumnFilter';
+import { saveExtraCourses } from './endUsers/userCoursesService';
 import UserEditSheet from './endUsers/UserEditSheet';
 import { activeFilterCount, columnLabel, filterUsers, orderColumns, uniqueColumnValues } from './endUsers/endUsersLogic';
 
@@ -135,12 +136,19 @@ const DynamicUserForm = () => {
     }
   };
 
-  const saveSheet = async (values) => {
+  const saveSheet = async (values, courseChanges) => {
     if (sheet.mode === 'create') {
       await handleCreate(values);
       toast.success('User added', { description: values.name || String(values.id) });
     } else {
-      await handleUpdate(sheet.user.id, values);
+      if (Object.keys(values).length > 0) await handleUpdate(sheet.user.id, values);
+      if (courseChanges) {
+        try {
+          await saveExtraCourses(supabase, currentProject.id, sheet.user.id, courseChanges);
+        } catch (courseError) {
+          throw new Error(`${Object.keys(values).length > 0 ? 'The details were saved, but the' : 'The'} course changes could not be saved: ${courseError.message}`);
+        }
+      }
       toast.success('User saved', { description: sheet.user.name || String(sheet.user.id) });
     }
     setError(null);
@@ -311,6 +319,8 @@ const DynamicUserForm = () => {
         columns={columns}
         roles={roles}
         locations={trainingLocations}
+        db={supabase}
+        projectId={currentProject?.id}
         onSubmit={saveSheet}
         onDelete={setUserToDelete}
         onClose={() => setSheet(null)}

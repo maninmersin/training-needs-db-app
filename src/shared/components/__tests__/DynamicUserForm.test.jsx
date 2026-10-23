@@ -17,6 +17,9 @@ jest.mock('@core/services/supabaseClient', () => ({ supabase: { from: jest.fn(),
 // react-table and Radix update state outside RTL's act(); hide only that warning.
 beforeAll(() => {
   global.ResizeObserver = class { observe() {} unobserve() {} disconnect() {} };
+  Element.prototype.hasPointerCapture = () => false;
+  Element.prototype.releasePointerCapture = () => {};
+  Element.prototype.scrollIntoView = () => {};
   const original = console.error;
   jest.spyOn(console, 'error').mockImplementation((...args) => {
     if (String(args[0]).includes('not wrapped in act')) return;
@@ -28,6 +31,17 @@ const SCHEMA = ['id', 'name', 'email', 'division', 'training_location', 'project
   column_name,
   data_type: column_name === 'id' ? 'integer' : 'text'
 }));
+
+const COURSES = [
+  { course_id: 'C10', course_name: 'Advanced Ledger', functional_area: 'Finance' },
+  { course_id: 'C2', course_name: 'Stock Counts', functional_area: 'Operations' },
+  { course_id: 'C1', course_name: 'Induction', functional_area: 'HR' }
+];
+const ROLE_MAPPINGS = [
+  { project_role_name: 'Buyer', course_id: 'C1' },
+  { project_role_name: 'Clerk', course_id: 'C2' }
+];
+const USER_MAPPINGS = [{ end_user_id: 1, course_id: 'C10' }]; // Amelia has one extra course
 
 const people = () => [
   { id: 1, name: 'Amelia Brown', email: 'amelia@x.com', division: 'Finance', training_location: 'London', project_role: 'Buyer' },
@@ -45,6 +59,9 @@ const installDatabase = ({ rows = people(), existingId = null } = {}) => {
       if (state.op === 'update') { log.push(['update', state.changes, state.eq]); return { data: [{ ...rows.find((r) => String(r.id) === String(state.eq[1])), ...state.changes }], error: null }; }
       if (state.op === 'insert') { log.push(['insert', state.rows]); return { data: state.rows, error: null }; }
       if (state.op === 'delete') { log.push(['delete', state.eq]); return { error: null }; }
+      if (table === 'courses') return { data: COURSES, error: null };
+      if (table === 'role_course_mappings') return { data: ROLE_MAPPINGS, error: null };
+      if (table === 'user_course_mappings') return { data: USER_MAPPINGS.filter((m) => String(m.end_user_id) === String(state.eqs?.end_user_id)).map((m) => ({ course_id: m.course_id })), error: null };
       if (table === 'project_roles') return { data: [{ project_role_name: 'Buyer' }, { project_role_name: 'Clerk' }], error: null };
       if (table === 'training_locations') return { data: [{ id: 1, name: 'London' }, { id: 2, name: 'Leeds' }], error: null };
       if (single) return { data: existingId !== null && String(state.eq?.[1]) === String(existingId) ? { id: existingId } : null, error: null };
@@ -55,7 +72,8 @@ const installDatabase = ({ rows = people(), existingId = null } = {}) => {
       insert: (r) => { state.op = 'insert'; state.rows = r; return query; },
       update: (c) => { state.op = 'update'; state.changes = c; return query; },
       delete: () => { state.op = 'delete'; return query; },
-      eq: (c, v) => { state.eq = [c, v]; return query; },
+      eq: (c, v) => { state.eq = [c, v]; state.eqs = { ...state.eqs, [c]: v }; return query; },
+      in: (c, v) => { state.eq = [c, v]; return query; },
       order: () => query,
       range: () => query,
       single: () => Promise.resolve(answer(true)),
@@ -269,5 +287,68 @@ describe('DynamicUserForm import and export', () => {
     expect(text.split(String.fromCharCode(13, 10))[0]).toBe('id,name,email,job_title,country,division,sub_division,location_name,training_location,project_role');
     expect(text).toContain('Oliver Patel');
     expect(text).not.toContain('Amelia Brown');
+  });
+});
+
+describe('DynamicUserForm - courses in the edit panel', () => {
+  const openAmelia = async (user) => {
+    await user.click(screen.getAllByRole('button', { name: 'Edit user' })[0]);
+    const panel = await screen.findByRole('dialog');
+    await within(panel).findByRole('list', { name: 'Courses from the role' });
+    return panel;
+  };
+
+  test("shows the courses from the person's role and their extra courses", async () => {
+    const user = userEvent.setup();
+    await setup();
+    const panel = await openAmelia(user);
+    expect(within(within(panel).getByRole('list', { name: 'Courses from the role' })).getByText('C1')).toBeInTheDocument();
+    expect(within(within(panel).getByRole('list', { name: 'Extra courses' })).getByText('C10')).toBeInTheDocument();
+    expect(within(panel).getByText(/From the role \(Buyer\)/)).toBeInTheDocument();
+  });
+
+  test('changing the role updates the role courses straight away', async () => {
+    const user = userEvent.setup();
+    await setup();
+    const panel = await openAmelia(user);
+    await user.click(within(panel).getByRole('combobox', { name: 'Project Role' }));
+    await user.click(await screen.findByRole('option', { name: 'Clerk' }));
+    const list = await within(panel).findByRole('list', { name: 'Courses from the role' });
+    expect(within(list).getByText('C2')).toBeInTheDocument();
+    expect(within(list).queryByText('C1')).not.toBeInTheDocument();
+  });
+
+  test('adding and removing extra courses is saved with Save changes, adding first', async () => {
+    const user = userEvent.setup();
+    const log = await setup();
+    const panel = await openAmelia(user);
+    await user.click(within(panel).getByRole('button', { name: 'Add course' }));
+    expect(screen.queryByRole('button', { name: /^C1\b/ })).not.toBeInTheDocument(); // a role course is not offered
+    await user.click(await screen.findByRole('button', { name: /C2/ }));
+    await user.click(within(panel).getByRole('button', { name: 'Remove C10' }));
+    expect(log).toEqual([]);
+    await user.click(within(panel).getByRole('button', { name: 'Save changes' }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    expect(log.map((entry) => entry[0])).toEqual(['insert', 'delete']);
+    expect(log[0][1][0]).toMatchObject({ project_id: 'p1', end_user_id: 1, course_id: 'C2', assigned_by: 'admin' });
+    expect(log[1][1]).toEqual(['course_id', ['C10']]);
+  });
+
+  test('closing without saving writes nothing', async () => {
+    const user = userEvent.setup();
+    const log = await setup();
+    const panel = await openAmelia(user);
+    await user.click(within(panel).getByRole('button', { name: 'Remove C10' }));
+    await user.click(within(panel).getByRole('button', { name: 'Cancel' }));
+    expect(log).toEqual([]);
+  });
+
+  test('a new person shows that extra courses wait until they are saved', async () => {
+    const user = userEvent.setup();
+    await setup();
+    await user.click(screen.getByRole('button', { name: /Add New User/ }));
+    const panel = await screen.findByRole('dialog');
+    expect(await within(panel).findByText(/Extra courses can be added once the person has been saved/)).toBeInTheDocument();
+    expect(within(panel).queryByRole('button', { name: 'Add course' })).not.toBeInTheDocument();
   });
 });
