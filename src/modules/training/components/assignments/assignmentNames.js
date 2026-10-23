@@ -14,3 +14,13 @@ export function applyNames(assignments, directory) {
     return person ? { ...row, user_name: person.name, user_email: row.user_email || person.email } : row;
   });
 }
+
+/** A person's details for an export, from the assignment row (which carries the name and email) or its end_users embed. */
+export function personOf(assignment) {
+  return {
+    name: assignment.user_name || assignment.end_users?.name || 'Unknown User',
+    email: assignment.user_email || assignment.end_users?.email || '',
+    role: assignment.user_project_role || assignment.end_users?.project_role || '',
+    location: assignment.end_users?.training_location || assignment.training_location || ''
+  };
+}

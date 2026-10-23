@@ -1,4 +1,4 @@
-import { applyNames, idsMissingNames } from '../assignmentNames';
+import { applyNames, idsMissingNames, personOf } from '../assignmentNames';
 
 describe('assignment names', () => {
   const rows = [
@@ -27,5 +27,14 @@ describe('assignment names', () => {
   test('keeps an email already on the row', () => {
     const result = applyNames([{ end_user_id: 8, user_email: 'own@x.com' }], new Map([[8, { name: 'Lee', email: 'dir@x.com' }]]));
     expect(result[0].user_email).toBe('own@x.com');
+  });
+});
+
+describe('personOf', () => {
+  test('prefers what the row carries, then the embed, then a placeholder', () => {
+    expect(personOf({ user_name: 'Pat', user_email: 'p@x.com', training_location: 'Dubai', end_users: { name: 'Other', project_role: 'Clerk' } }))
+      .toEqual({ name: 'Pat', email: 'p@x.com', role: 'Clerk', location: 'Dubai' });
+    expect(personOf({ end_users: { name: 'Sam', email: 's@x.com', training_location: 'Leeds' } })).toMatchObject({ name: 'Sam', email: 's@x.com', location: 'Leeds' });
+    expect(personOf({})).toEqual({ name: 'Unknown User', email: '', role: '', location: '' });
   });
 });

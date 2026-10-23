@@ -7,6 +7,7 @@ import autoTable from 'jspdf-autotable';
 import { debugLog, debugError } from '@core/utils/consoleUtils';
 import { ChevronDown, Download } from 'lucide-react';
 import { toast } from 'sonner';
+import { personOf } from './assignmentNames';
 import {
   Button, Checkbox, Dialog, DialogBody, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, FormField, Input, Label,
   Popover, PopoverContent, PopoverTrigger, StatCard
@@ -123,13 +124,12 @@ const AssignmentExportDialog = ({
       const trainingLocations = [...new Set(sessions.map(s => s.training_location).filter(Boolean))];
       const classrooms = [...new Set(sessions.map(s => s.classroom_name || s._classroom).filter(Boolean))];
       const courses = [...new Set(sessions.map(s => s.course_name || s.title?.split(' - ')[0]).filter(Boolean))];
-      const attendees = [...new Set(assignments.map(a => ({
-        id: a.end_user_id,
-        name: a.end_users?.name || 'Unknown User',
-        email: a.end_users?.email || '',
-        role: a.end_users?.project_role || '',
-        location: a.end_users?.training_location || ''
-      })))];
+      // One entry per person (a person has several assignment rows), by name
+      const attendeeById = new Map();
+      assignments.forEach((a) => {
+        if (!attendeeById.has(a.end_user_id)) attendeeById.set(a.end_user_id, { id: a.end_user_id, ...personOf(a) });
+      });
+      const attendees = [...attendeeById.values()].sort((x, y) => x.name.localeCompare(y.name));
 
       setFilterOptions({
         functionalAreas: functionalAreas.sort(),
@@ -222,10 +222,8 @@ const AssignmentExportDialog = ({
 
     // Apply attendee filter
     if (filters.attendees.length > 0) {
-      const selectedUserIds = filters.attendees.map(a => a.id);
-      filteredAssignments = filteredAssignments.filter(a => 
-        selectedUserIds.includes(a.end_user_id)
-      );
+      // The attendee picker holds names
+      filteredAssignments = filteredAssignments.filter(a => filters.attendees.includes(personOf(a).name));
     }
 
     // Calculate statistics
@@ -368,10 +366,10 @@ const AssignmentExportDialog = ({
 
           detailedData.push({
             'Assignment ID': assignment.id,
-            'User Name': assignment.end_users?.name || 'Unknown User',
-            'User Email': assignment.end_users?.email || 'N/A',
-            'User Role': assignment.end_users?.project_role || 'N/A',
-            'User Location': assignment.end_users?.training_location || 'N/A',
+            'User Name': personOf(assignment).name,
+            'User Email': personOf(assignment).email || 'N/A',
+            'User Role': personOf(assignment).role || 'N/A',
+            'User Location': personOf(assignment).location || 'N/A',
             'Assignment Level': assignment.assignment_level || 'N/A',
             'Assignment Type': assignment.assignment_type || 'N/A',
             'Functional Area': session.functional_area || 'N/A',
@@ -401,10 +399,10 @@ const AssignmentExportDialog = ({
     // Attendees Sheet
     if (exportType === 'attendees' || exportType === 'detailed') {
       const attendeesData = filteredData.assignments.map(assignment => ({
-        'User Name': assignment.end_users?.name || 'Unknown User',
-        'User Email': assignment.end_users?.email || 'N/A',
-        'Project Role': assignment.end_users?.project_role || 'N/A',
-        'User Location': assignment.end_users?.training_location || 'N/A',
+        'User Name': personOf(assignment).name,
+        'User Email': personOf(assignment).email || 'N/A',
+        'Project Role': personOf(assignment).role || 'N/A',
+        'User Location': personOf(assignment).location || 'N/A',
         'Assignment Level': assignment.assignment_level || 'N/A',
         'Assignment Type': assignment.assignment_type || 'N/A',
         'Course ID': assignment.course_id || 'N/A',
@@ -448,7 +446,7 @@ const AssignmentExportDialog = ({
       { Filter: 'Courses', Values: filters.courses.join(', ') || 'All' },
       { Filter: 'Date Range Start', Values: filters.dateRange.start || 'No restriction' },
       { Filter: 'Date Range End', Values: filters.dateRange.end || 'No restriction' },
-      { Filter: 'Selected Attendees', Values: filters.attendees.map(a => a.name).join(', ') || 'All' }
+      { Filter: 'Selected Attendees', Values: filters.attendees.join(', ') || 'All' }
     ];
 
     const filterSheet = XLSX.utils.json_to_sheet(filterData);
@@ -506,9 +504,9 @@ const AssignmentExportDialog = ({
       pdf.text('Assignment Details', 20, 30);
 
       const attendeeTableData = filteredData.assignments.map(assignment => [
-        assignment.end_users?.name || 'Unknown User',
-        assignment.end_users?.email || 'N/A',
-        assignment.end_users?.project_role || 'N/A',
+        personOf(assignment).name,
+        personOf(assignment).email || 'N/A',
+        personOf(assignment).role || 'N/A',
         assignment.assignment_level || 'N/A',
         assignment.training_location || 'N/A'
       ]);
