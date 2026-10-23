@@ -41,3 +41,24 @@ export const formatDateTime = (dateString) =>
   new Date(dateString).toLocaleString('en-GB', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
 
 export const sessionLabel = (session) => `${session.course_name} - ${formatDateTime(session.start_datetime)} - ${session.training_location}`;
+
+/**
+ * The table rows: everyone assigned to the session, then anyone who has an attendance record but is not
+ * assigned ("walk-ins": they turned up without being booked). Walk-in rows are flagged `walkIn: true`.
+ */
+export function withWalkIns(attendees, records) {
+  const assigned = new Set(attendees.map((attendee) => attendee.attendee_id));
+  const walkIns = records
+    .filter((record) => !assigned.has(record.attendee_id) && record.user)
+    .map((record) => ({ id: `walk-in-${record.attendee_id}`, attendee_id: record.attendee_id, user: record.user, walkIn: true }));
+  return [...attendees, ...walkIns];
+}
+
+/** The status a walk-in starts with: the first "present" one (normally Present). */
+export const defaultWalkInStatus = (statuses) => statuses.find((status) => status.is_present) || statuses[0] || null;
+
+/** People from a search who can still be added: not assigned to the session and not already marked. */
+export const addableWalkIns = (people, rows) => {
+  const listed = new Set(rows.map((row) => row.attendee_id));
+  return people.filter((person) => !listed.has(person.id));
+};

@@ -1,12 +1,13 @@
 /** @jest-environment jsdom */
 import React from 'react';
 import '@testing-library/jest-dom';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import AttendanceTracker from '../AttendanceTracker';
 import { useProject } from '@core/contexts/ProjectContext';
 import { SimpleAuthService } from '@auth/services/simpleAuthService';
 import * as service from '../../../services/attendanceService';
+import { searchUserDirectory } from '../../../services/userDirectoryService';
 
 jest.mock('@core/contexts/ProjectContext', () => ({ useProject: jest.fn() }));
 jest.mock('@auth/services/simpleAuthService', () => ({ SimpleAuthService: { getCurrentUser: jest.fn() } }));
@@ -16,8 +17,10 @@ jest.mock('../../../services/attendanceService', () => ({
   getSessionAttendees: jest.fn(),
   getSessionAttendanceRecords: jest.fn(),
   getSessionAttendanceSummary: jest.fn(),
-  markSingleAttendance: jest.fn()
+  markSingleAttendance: jest.fn(),
+  clearAttendanceRecord: jest.fn()
 }));
+jest.mock('../../../services/userDirectoryService', () => ({ searchUserDirectory: jest.fn() }));
 
 beforeAll(() => {
   global.ResizeObserver = class { observe() {} unobserve() {} disconnect() {} };
@@ -53,6 +56,8 @@ const setup = async () => {
   service.getSessionAttendanceRecords.mockResolvedValue([]);
   service.getSessionAttendanceSummary.mockResolvedValue({ total_registered: 2, total_attended: 1, total_absent: 0, attendance_rate: 50 });
   service.markSingleAttendance.mockResolvedValue({});
+  service.clearAttendanceRecord.mockResolvedValue(true);
+  searchUserDirectory.mockResolvedValue([]);
   const user = userEvent.setup();
   render(<AttendanceTracker />);
   await screen.findByRole('heading', { name: 'Attendance Tracker' });

@@ -1,5 +1,6 @@
 import { supabase } from '@core/services/supabaseClient';
 import { fetchUserDirectory, userOrPlaceholder } from './userDirectoryService';
+import { summariseAttendance } from './attendanceSummary';
 
 /**
  * Attendance Service Layer
@@ -307,6 +308,29 @@ export const markSingleAttendance = async (sessionId, projectId, attendanceData)
 };
 
 /**
+ * Clear someone's attendance mark for a session, so they go back to "Not Marked".
+ * Only the attendance record is removed; who is assigned to the session does not change.
+ * @returns {Promise<boolean>} true when a record was removed
+ */
+export const clearAttendanceRecord = async (sessionId, projectId, attendeeId) => {
+  if (!projectId) {
+    throw new Error('Project ID is required for all attendance operations');
+  }
+  const { data, error } = await supabase
+    .from('attendance_records')
+    .delete()
+    .eq('session_id', sessionId)
+    .eq('attendee_id', attendeeId)
+    .eq('project_id', projectId)
+    .select('id');
+  if (error) {
+    console.error('❌ Error clearing attendance record:', error);
+    throw error;
+  }
+  return (data || []).length > 0;
+};
+
+/**
  * Get session attendance summary
  * @param {string} sessionId - The session ID
  * @param {string} projectId - The project ID for validation
@@ -327,8 +351,6 @@ export const getSessionAttendanceSummary = async (sessionId, projectId) => {
 
     if (attendeesError) throw attendeesError;
 
-    const totalRegistered = attendees?.length || 0;
-
     // Get attendance records for this session
     const { data: records, error: recordsError } = await supabase
       .from('attendance_records')
@@ -345,39 +367,7 @@ export const getSessionAttendanceSummary = async (sessionId, projectId) => {
 
     if (recordsError) throw recordsError;
 
-    // Calculate statistics
-    let totalAttended = 0;
-    let totalAbsent = 0;
-    const statusBreakdown = {};
-
-    if (records && records.length > 0) {
-      records.forEach(record => {
-        const status = record.attendance_statuses;
-        if (status) {
-          if (status.is_present) {
-            totalAttended++;
-          } else {
-            totalAbsent++;
-          }
-          
-          const statusName = status.status_name;
-          statusBreakdown[statusName] = (statusBreakdown[statusName] || 0) + 1;
-        }
-      });
-    }
-
-    // Calculate attendance rate
-    const attendanceRate = totalRegistered > 0 
-      ? Math.round((totalAttended / totalRegistered) * 100) 
-      : 0;
-
-    return {
-      total_registered: totalRegistered,
-      total_attended: totalAttended,
-      total_absent: totalAbsent,
-      attendance_rate: attendanceRate,
-      status_breakdown: statusBreakdown
-    };
+    return summariseAttendance((attendees || []).map((a) => a.end_user_id), records || []);
   } catch (error) {
     console.error('❌ Error in getSessionAttendanceSummary:', error);
     throw error;

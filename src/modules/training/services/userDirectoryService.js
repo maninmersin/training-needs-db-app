@@ -60,5 +60,57 @@ export const fetchUserDirectory = async (projectId, userIds) => {
 };
 
 // A person we can't find details for is still listed, so their record isn't lost
+/**
+ * Find people in a project by name, email or ID, for pick-lists (for example adding a walk-in to attendance).
+ * Looks in end_users first, then in the imported training data for projects without end_users.
+ * Returns up to `limit` entries shaped like fetchUserDirectory's, or [] for a search that is too short.
+ */
+export const searchUserDirectory = async (projectId, term, limit = 20) => {
+  // Characters that mean something inside a PostgREST filter are dropped from the search text
+  const text = String(term || '').replace(/[,()%*]/g, ' ').replace(/ +/g, ' ').trim();
+  const isId = /^\d+$/.test(text);
+  if (text.length < 2 && !isId) return [];
+
+  const clauses = [`name.ilike.*${text}*`, `email.ilike.*${text}*`];
+  if (isId) clauses.push(`id.eq.${text}`);
+  const { data: endUsers, error } = await supabase
+    .from('end_users')
+    .select('id, name, email, job_title, division, project_role, training_location')
+    .eq('project_id', projectId)
+    .or(clauses.join(','))
+    .order('name')
+    .limit(limit);
+  if (error) throw error;
+  if (endUsers && endUsers.length > 0) return endUsers;
+
+  const trainingClauses = [`user_name.ilike.*${text}*`, `user_email.ilike.*${text}*`];
+  if (isId) trainingClauses.push(`user_id.eq.${text}`);
+  const { data: rows, error: trainingError } = await supabase
+    .from('training_data_combined')
+    .select('user_id, user_name, user_email, user_job_title, business_unit, user_project_role, training_location')
+    .eq('project_id', projectId)
+    .or(trainingClauses.join(','))
+    .limit(limit * 10);
+  if (trainingError) throw trainingError;
+
+  // One row per person per course in the training data, so keep one per person
+  const people = new Map();
+  (rows || []).forEach((row) => {
+    const id = Number(row.user_id);
+    if (!people.has(id)) {
+      people.set(id, {
+        id,
+        name: row.user_name,
+        email: row.user_email,
+        job_title: row.user_job_title,
+        division: row.business_unit,
+        project_role: row.user_project_role,
+        training_location: row.training_location
+      });
+    }
+  });
+  return [...people.values()].sort((a, b) => String(a.name).localeCompare(String(b.name))).slice(0, limit);
+};
+
 export const userOrPlaceholder = (directory, id) =>
   directory.get(id) || { id, name: `User ${id}`, email: null };

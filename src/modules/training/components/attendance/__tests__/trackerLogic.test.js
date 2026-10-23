@@ -52,3 +52,35 @@ test('a session label has the course, date and location', () => {
   const label = sessionLabel({ course_name: 'Ledger', start_datetime: '2026-10-12T09:30:00', training_location: 'London' });
   expect(label).toMatch(/^Ledger - .*2026.* - London$/);
 });
+
+describe('walk-ins', () => {
+  const { withWalkIns, defaultWalkInStatus, addableWalkIns } = require('../trackerLogic');
+  const assigned = [{ id: 'a1', attendee_id: 1, user: { name: 'Amelia' } }];
+
+  test('people with a record who were not assigned are added as flagged rows after the assigned people', () => {
+    const records = [
+      { attendee_id: 1, user: { name: 'Amelia' } },
+      { attendee_id: 9, user: { name: 'Walk In' } }
+    ];
+    const rows = withWalkIns(assigned, records);
+    expect(rows.map((r) => [r.attendee_id, Boolean(r.walkIn)])).toEqual([[1, false], [9, true]]);
+    expect(rows[1]).toMatchObject({ id: 'walk-in-9', user: { name: 'Walk In' } });
+  });
+
+  test('a record we have no person details for is not shown, and no records means no change', () => {
+    expect(withWalkIns(assigned, [{ attendee_id: 9, user: null }])).toHaveLength(1);
+    expect(withWalkIns(assigned, [])).toEqual(assigned);
+  });
+
+  test('a walk-in starts as the first "present" status, else the first status, else none', () => {
+    expect(defaultWalkInStatus([{ id: 1, is_present: false }, { id: 2, is_present: true }, { id: 3, is_present: true }]).id).toBe(2);
+    expect(defaultWalkInStatus([{ id: 1, is_present: false }]).id).toBe(1);
+    expect(defaultWalkInStatus([])).toBeNull();
+  });
+
+  test('search results exclude people already on the list', () => {
+    const people = [{ id: 1 }, { id: 2 }, { id: 9 }];
+    const rows = [{ attendee_id: 1 }, { attendee_id: 9 }];
+    expect(addableWalkIns(people, rows).map((p) => p.id)).toEqual([2]);
+  });
+});

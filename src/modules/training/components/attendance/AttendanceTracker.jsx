@@ -1,5 +1,5 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
-import { ClipboardCheck, Loader2, Search } from 'lucide-react';
+import { ClipboardCheck, Loader2, Search, UserPlus } from 'lucide-react';
 import { useProject } from '@core/contexts/ProjectContext';
 import { SimpleAuthService } from '@auth/services/simpleAuthService';
 import {
@@ -12,9 +12,11 @@ import {
   getSessionAttendees,
   getSessionAttendanceRecords,
   markSingleAttendance,
+  clearAttendanceRecord,
   getSessionAttendanceSummary
 } from '../../services/attendanceService';
-import { FILTER_OPTIONS, filterAttendees, filterSessions, formatDateTime, recordFor, sessionLabel } from './trackerLogic';
+import WalkInDialog from './WalkInDialog';
+import { FILTER_OPTIONS, filterAttendees, filterSessions, formatDateTime, recordFor, sessionLabel, withWalkIns } from './trackerLogic';
 
 // The comment boxes read their text from here rather than from the column definitions: if the columns
 // changed on every keystroke the input would be recreated and lose focus after each letter.
@@ -51,6 +53,7 @@ const AttendanceTracker = () => {
   const [attendeeSearchTerm, setAttendeeSearchTerm] = useState('');
   const [sessionSearchTerm, setSessionSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
+  const [walkInOpen, setWalkInOpen] = useState(false);
   const [attendeeComments, setAttendeeComments] = useState({});
   const commentsRef = useRef(attendeeComments);
   commentsRef.current = attendeeComments;
@@ -140,15 +143,57 @@ const AttendanceTracker = () => {
     [selectedSession, currentProject, user, loadSessionDetails]
   );
 
+  const handleClear = useCallback(
+    async (attendee) => {
+      try {
+        setSubmitting(true);
+        await clearAttendanceRecord(selectedSession.id, currentProject.id, attendee.attendee_id);
+        await loadSessionDetails({ silent: true });
+        toast.success(`Cleared the attendance mark for ${attendee.user.name}`);
+      } catch (clearError) {
+        console.error('Error clearing attendance:', clearError);
+        setError('Failed to clear attendance. Please try again.');
+      } finally {
+        setSubmitting(false);
+      }
+    },
+    [selectedSession, currentProject, loadSessionDetails]
+  );
+
+  const handleAddWalkIn = async ({ person, status, notes }) => {
+    await markSingleAttendance(selectedSession.id, currentProject.id, {
+      attendee_id: person.id,
+      attendance_status_id: status.id,
+      check_in_time: new Date().toISOString(),
+      notes,
+      marked_by: user.id
+    });
+    await loadSessionDetails({ silent: true });
+    setWalkInOpen(false);
+    toast.success(`Added ${person.name} as ${status.status_name} (not assigned to this session)`);
+  };
+
   const filteredSessions = useMemo(() => filterSessions(sessions, sessionSearchTerm), [sessions, sessionSearchTerm]);
+  const rows = useMemo(() => withWalkIns(attendees, attendanceRecords), [attendees, attendanceRecords]);
   const filteredAttendees = useMemo(
-    () => filterAttendees(attendees, attendanceRecords, attendanceStatuses, attendeeSearchTerm, filterStatus),
-    [attendees, attendanceRecords, attendanceStatuses, attendeeSearchTerm, filterStatus]
+    () => filterAttendees(rows, attendanceRecords, attendanceStatuses, attendeeSearchTerm, filterStatus),
+    [rows, attendanceRecords, attendanceStatuses, attendeeSearchTerm, filterStatus]
   );
 
   const columns = useMemo(
     () => [
-      { id: 'name', header: 'Name', accessorFn: (attendee) => attendee.user.name, meta: { className: 'font-medium' } },
+      {
+        id: 'name',
+        header: 'Name',
+        accessorFn: (attendee) => attendee.user.name,
+        meta: { className: 'font-medium' },
+        cell: ({ row }) => (
+          <span className="inline-flex items-center gap-2">
+            {row.original.user.name}
+            {row.original.walkIn && <Badge variant="warning" title="Attended without being assigned to this session">Not assigned</Badge>}
+          </span>
+        )
+      },
       { id: 'email', header: 'Email', accessorFn: (attendee) => attendee.user.email, meta: { className: 'text-muted-foreground' } },
       {
         id: 'status',
@@ -205,12 +250,24 @@ const AttendanceTracker = () => {
                   </Button>
                 );
               })}
+              {record && (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  disabled={submitting}
+                  title={row.original.walkIn ? 'Remove this walk-in' : 'Clear the attendance mark'}
+                  aria-label={`Clear - ${row.original.user.name}`}
+                  onClick={() => handleClear(row.original)}
+                >
+                  Clear
+                </Button>
+              )}
             </div>
           );
         }
       }
     ],
-    [attendanceRecords, attendanceStatuses, submitting, handleMarkAttendance]
+    [attendanceRecords, attendanceStatuses, submitting, handleMarkAttendance, handleClear]
   );
 
   if (!currentProject) {
@@ -289,6 +346,7 @@ const AttendanceTracker = () => {
               <StatCard value={attendanceSummary.total_registered} label="Registered" />
               <StatCard value={attendanceSummary.total_attended} label="Present" tone="success" />
               <StatCard value={attendanceSummary.total_absent} label="Absent" tone={attendanceSummary.total_absent > 0 ? 'danger' : 'default'} />
+              {attendanceSummary.total_walk_ins > 0 && <StatCard value={attendanceSummary.total_walk_ins} label="Walk-ins" tone="warning" />}
               <StatCard value={`${Math.round(attendanceSummary.attendance_rate)}%`} label="Rate" />
             </div>
           )}
@@ -317,6 +375,9 @@ const AttendanceTracker = () => {
                 </SelectContent>
               </Select>
             </div>
+            <Button className="ml-auto" onClick={() => setWalkInOpen(true)} disabled={loading}>
+              <UserPlus /> Add walk-in
+            </Button>
           </Toolbar>
 
           {loading ? (
@@ -344,6 +405,15 @@ const AttendanceTracker = () => {
           )}
         </section>
       )}
+
+      <WalkInDialog
+        open={walkInOpen}
+        projectId={currentProject.id}
+        statuses={attendanceStatuses}
+        rows={rows}
+        onAdd={handleAddWalkIn}
+        onClose={() => setWalkInOpen(false)}
+      />
     </div>
   );
 };
