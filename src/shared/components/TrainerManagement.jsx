@@ -1,418 +1,261 @@
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { Download, GraduationCap, Loader2, Pencil, Plus, Power, Search, Trash2 } from 'lucide-react';
 import { supabase } from '@core/services/supabaseClient';
 import { useProject } from '@core/contexts/ProjectContext';
-import './TrainerManagement.css';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter,
+  AlertDialogHeader, AlertDialogTitle, Badge, Button, DataTable, EmptyState, Input, PageHeader, Toolbar, Tooltip, TooltipContent,
+  TooltipTrigger, toast
+} from '@/components/ui';
+import TrainerEditSheet from './trainers/TrainerEditSheet';
+import { filterTrainers, trainersToCsv } from './trainers/trainersLogic';
+
+function IconAction({ label, onClick, destructive = false, children }) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button variant={destructive ? 'destructive' : 'ghost'} size="icon-sm" aria-label={label} onClick={onClick}>
+          {children}
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent>{label}</TooltipContent>
+    </Tooltip>
+  );
+}
 
 const TrainerManagement = () => {
   const { currentProject } = useProject();
   const [trainers, setTrainers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [loadFailed, setLoadFailed] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const [showAddForm, setShowAddForm] = useState(false);
-  const [editingTrainer, setEditingTrainer] = useState(null);
-  const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    phone: '',
-    specializations: '',
-    bio: '',
-    active: true
-  });
+  const [sheet, setSheet] = useState(null); // { mode: 'create' | 'edit', trainer? }
+  const [trainerToDelete, setTrainerToDelete] = useState(null);
 
-  // Filter trainers based on search term
-  const filteredTrainers = trainers.filter(trainer => {
-    const searchLower = searchTerm.toLowerCase();
-    return (
-      trainer.name.toLowerCase().includes(searchLower) ||
-      trainer.email?.toLowerCase().includes(searchLower) ||
-      trainer.specializations?.some(spec => spec.toLowerCase().includes(searchLower))
-    );
-  });
-
-  // Fetch trainers from database
-  useEffect(() => {
-    fetchTrainers();
-  }, [currentProject]);
-
-  const fetchTrainers = async () => {
-    try {
-      if (!currentProject) {
-        setTrainers([]);
+  // `silent` refreshes the list after a change without flashing the loading state
+  const fetchTrainers = useCallback(
+    async ({ silent = false } = {}) => {
+      try {
+        if (!currentProject) {
+          setTrainers([]);
+          return;
+        }
+        if (!silent) setLoading(true);
+        const { data, error: fetchError } = await supabase
+          .from('trainers')
+          .select('*')
+          .eq('project_id', currentProject.id)
+          .order('name', { ascending: true });
+        if (fetchError) throw fetchError;
+        setTrainers(data || []);
+        setLoadFailed(false);
+      } catch (loadError) {
+        setError(loadError.message);
+        setLoadFailed(true);
+      } finally {
         setLoading(false);
-        return;
       }
+    },
+    [currentProject]
+  );
 
-      setLoading(true);
-      const { data, error } = await supabase
-        .from('trainers')
-        .select('*')
-        .eq('project_id', currentProject.id)
-        .order('name', { ascending: true });
+  useEffect(() => {
+    setError(null);
+    fetchTrainers();
+  }, [fetchTrainers]);
 
-      if (error) throw error;
-      setTrainers(data || []);
-    } catch (error) {
-      setError(error.message);
-    } finally {
-      setLoading(false);
+  const saveSheet = async (trainerData) => {
+    if (!currentProject) throw new Error('Please select a project first');
+    if (sheet.mode === 'edit') {
+      const { error: updateError } = await supabase.from('trainers').update(trainerData).eq('id', sheet.trainer.id);
+      if (updateError) throw updateError;
+      toast.success('Trainer updated', { description: trainerData.name });
+    } else {
+      const { error: insertError } = await supabase.from('trainers').insert([{ ...trainerData, project_id: currentProject.id }]);
+      if (insertError) throw insertError;
+      toast.success('Trainer added', { description: trainerData.name });
     }
+    setError(null);
+    setSheet(null);
+    fetchTrainers({ silent: true });
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    
-    if (!currentProject) {
-      setError('Please select a project first');
-      return;
-    }
-
+  const handleDelete = async (trainer) => {
     try {
-      const trainerData = {
-        ...formData,
-        specializations: formData.specializations
-          .split(',')
-          .map(s => s.trim())
-          .filter(s => s.length > 0)
-      };
-
-      if (editingTrainer) {
-        // Update existing trainer
-        const { error } = await supabase
-          .from('trainers')
-          .update(trainerData)
-          .eq('id', editingTrainer.id);
-
-        if (error) throw error;
-      } else {
-        // Create new trainer - add project_id
-        const trainerWithProject = {
-          ...trainerData,
-          project_id: currentProject.id
-        };
-        
-        const { error } = await supabase
-          .from('trainers')
-          .insert([trainerWithProject]);
-
-        if (error) throw error;
-      }
-
-      // Reset form and refresh data
-      resetForm();
-      fetchTrainers();
-    } catch (error) {
-      setError(error.message);
+      const { error: deleteError } = await supabase.from('trainers').delete().eq('id', trainer.id);
+      if (deleteError) throw deleteError;
+      setSheet((current) => (current?.trainer?.id === trainer.id ? null : current)); // close the panel if it was open on this trainer
+      toast.success('Trainer deleted', { description: trainer.name });
+      fetchTrainers({ silent: true });
+    } catch (deleteError) {
+      setError(deleteError.message);
     }
   };
 
-  const handleEdit = (trainer) => {
-    setEditingTrainer(trainer);
-    setFormData({
-      name: trainer.name,
-      email: trainer.email || '',
-      phone: trainer.phone || '',
-      specializations: trainer.specializations?.join(', ') || '',
-      bio: trainer.bio || '',
-      active: trainer.active
-    });
-    setShowAddForm(true);
-  };
-
-  const handleDelete = async (trainerId) => {
-    if (!window.confirm('Are you sure you want to delete this trainer?')) {
-      return;
-    }
-
+  const toggleStatus = useCallback(
+    async (trainer) => {
     try {
-      const { error } = await supabase
-        .from('trainers')
-        .delete()
-        .eq('id', trainerId);
-
-      if (error) throw error;
-      fetchTrainers();
-    } catch (error) {
-      setError(error.message);
+      const { error: updateError } = await supabase.from('trainers').update({ active: !trainer.active }).eq('id', trainer.id);
+      if (updateError) throw updateError;
+      fetchTrainers({ silent: true });
+    } catch (updateError) {
+      setError(updateError.message);
     }
-  };
+    },
+    [fetchTrainers]
+  );
 
-  const toggleStatus = async (trainer) => {
-    try {
-      const { error } = await supabase
-        .from('trainers')
-        .update({ active: !trainer.active })
-        .eq('id', trainer.id);
-
-      if (error) throw error;
-      fetchTrainers();
-    } catch (error) {
-      setError(error.message);
-    }
-  };
-
-  const resetForm = () => {
-    setFormData({
-      name: '',
-      email: '',
-      phone: '',
-      specializations: '',
-      bio: '',
-      active: true
-    });
-    setEditingTrainer(null);
-    setShowAddForm(false);
-  };
+  const filteredTrainers = useMemo(() => filterTrainers(trainers, searchTerm), [trainers, searchTerm]);
 
   const exportToCSV = () => {
-    const headers = ['Name', 'Email', 'Phone', 'Specializations', 'Status', 'Bio'];
-    const csvData = filteredTrainers.map(trainer => [
-      trainer.name,
-      trainer.email || '',
-      trainer.phone || '',
-      trainer.specializations?.join('; ') || '',
-      trainer.active ? 'Active' : 'Inactive',
-      trainer.bio || ''
-    ]);
-
-    const csvContent = [headers, ...csvData]
-      .map(row => row.map(field => `"${field}"`).join(','))
-      .join('\n');
-
-    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const blob = new Blob([trainersToCsv(filteredTrainers)], { type: 'text/csv' });
     const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'trainers.csv';
-    a.click();
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'trainers.csv';
+    link.click();
     window.URL.revokeObjectURL(url);
   };
 
-  if (loading) {
-    return (
-      <div className="trainer-management">
-        <div className="loading-state">
-          <h3>Loading trainers...</h3>
-        </div>
-      </div>
-    );
-  }
+  const columns = useMemo(
+    () => [
+      { accessorKey: 'name', header: 'Name', meta: { className: 'font-medium' } },
+      { id: 'email', header: 'Email', accessorFn: (trainer) => trainer.email || 'N/A' },
+      { id: 'phone', header: 'Phone', accessorFn: (trainer) => trainer.phone || 'N/A' },
+      {
+        id: 'specializations',
+        header: 'Specializations',
+        enableSorting: false,
+        meta: { className: 'whitespace-normal py-1' },
+        cell: ({ row }) => {
+          const specs = row.original.specializations;
+          if (!specs || specs.length === 0) return <span className="text-subtle-foreground">None</span>;
+          return (
+            <div className="flex flex-wrap gap-1">
+              {specs.map((spec, index) => (
+                <Badge key={`${spec}-${index}`} variant="primary">{spec}</Badge>
+              ))}
+            </div>
+          );
+        }
+      },
+      {
+        id: 'status',
+        header: 'Status',
+        accessorFn: (trainer) => (trainer.active ? 'Active' : 'Inactive'),
+        cell: ({ getValue }) => <Badge variant={getValue() === 'Active' ? 'success' : 'neutral'}>{getValue()}</Badge>
+      },
+      {
+        id: 'actions',
+        header: 'Actions',
+        enableSorting: false,
+        meta: { align: 'right' },
+        cell: ({ row }) => {
+          const trainer = row.original;
+          return (
+            <div className="flex items-center justify-end gap-1" onClick={(event) => event.stopPropagation()}>
+              <IconAction label="Edit trainer" onClick={() => setSheet({ mode: 'edit', trainer })}><Pencil /></IconAction>
+              <IconAction label={trainer.active ? 'Deactivate' : 'Activate'} onClick={() => toggleStatus(trainer)}><Power /></IconAction>
+              <IconAction label="Delete trainer" destructive onClick={() => setTrainerToDelete(trainer)}><Trash2 /></IconAction>
+            </div>
+          );
+        }
+      }
+    ],
+    [toggleStatus]
+  );
 
-  if (error) {
+  if (!loading && !currentProject) {
     return (
-      <div className="trainer-management">
-        <div className="error-state">
-          <h3>Error loading trainers</h3>
-          <p>{error}</p>
-          <button onClick={fetchTrainers} className="retry-btn">
-            Retry
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  if (!currentProject) {
-    return (
-      <div className="trainer-management">
-        <div className="no-project-state">
-          <h3>No Project Selected</h3>
-          <p>Please select a project from the Projects page to manage trainers.</p>
-          <p>Each project has its own isolated set of trainers and data.</p>
-        </div>
+      <div className="mx-auto max-w-6xl rounded-lg border border-border bg-card">
+        <EmptyState
+          icon={GraduationCap}
+          title="No Project Selected"
+          description="Please select a project from the Projects page to manage trainers. Each project has its own isolated set of trainers and data."
+        />
       </div>
     );
   }
 
   return (
-    <div className="trainer-management">
-      <div className="trainer-header">
-        <h2>Trainer Management</h2>
-        {currentProject && (
-          <div className="project-indicator">
-            <strong>Project:</strong> {currentProject.title}
-          </div>
-        )}
-        <p className="trainer-description">
-          Manage training instructors, their specializations, and contact information.
-        </p>
-      </div>
+    <div className="mx-auto flex max-w-6xl flex-col gap-4">
+      <PageHeader
+        title="Trainer Management"
+        count={loading ? undefined : trainers.length}
+        description={`Manage training instructors, their specializations, and contact information${currentProject ? ` for ${currentProject.title}` : ''}.`}
+        actions={
+          <>
+            <Button onClick={exportToCSV} disabled={filteredTrainers.length === 0}>
+              <Download /> Export to CSV
+            </Button>
+            <Button variant="default" onClick={() => setSheet({ mode: 'create' })} disabled={loading}>
+              <Plus /> Add New Trainer
+            </Button>
+          </>
+        }
+      />
 
-      <div className="trainer-controls">
-        <div className="search-container">
-          <div className="search-section">
-            <input
-              type="text"
-              placeholder="Search trainers by name, email, or specialization..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="search-input"
-            />
-          </div>
-          <div className="action-section">
-            <button
-              onClick={() => setShowAddForm(true)}
-              className="add-trainer-btn"
-            >
-              Add New Trainer
-            </button>
-            <button
-              onClick={exportToCSV}
-              className="export-btn"
-              disabled={filteredTrainers.length === 0}
-            >
-              Export to CSV
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {showAddForm && (
-        <div className="trainer-form-container">
-          <div className="trainer-form-header">
-            <h3>{editingTrainer ? 'Edit Trainer' : 'Add New Trainer'}</h3>
-            <button onClick={resetForm} className="close-btn">×</button>
-          </div>
-          <form onSubmit={handleSubmit} className="trainer-form">
-            <div className="form-grid">
-              <div className="form-group">
-                <label htmlFor="name">Name *</label>
-                <input
-                  type="text"
-                  id="name"
-                  required
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                />
-              </div>
-              <div className="form-group">
-                <label htmlFor="email">Email</label>
-                <input
-                  type="email"
-                  id="email"
-                  value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                />
-              </div>
-              <div className="form-group">
-                <label htmlFor="phone">Phone</label>
-                <input
-                  type="tel"
-                  id="phone"
-                  value={formData.phone}
-                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                />
-              </div>
-              <div className="form-group">
-                <label htmlFor="active">Status</label>
-                <select
-                  id="active"
-                  value={formData.active}
-                  onChange={(e) => setFormData({ ...formData, active: e.target.value === 'true' })}
-                >
-                  <option value="true">Active</option>
-                  <option value="false">Inactive</option>
-                </select>
-              </div>
-            </div>
-            <div className="form-group">
-              <label htmlFor="specializations">Specializations (comma-separated)</label>
-              <input
-                type="text"
-                id="specializations"
-                placeholder="e.g., Safety Training, IT Training, Leadership"
-                value={formData.specializations}
-                onChange={(e) => setFormData({ ...formData, specializations: e.target.value })}
-              />
-            </div>
-            <div className="form-group">
-              <label htmlFor="bio">Bio</label>
-              <textarea
-                id="bio"
-                rows="3"
-                placeholder="Brief description of trainer's background and expertise..."
-                value={formData.bio}
-                onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
-              />
-            </div>
-            <div className="form-actions">
-              <button type="button" onClick={resetForm} className="cancel-btn">
-                Cancel
-              </button>
-              <button type="submit" className="save-btn">
-                {editingTrainer ? 'Update Trainer' : 'Add Trainer'}
-              </button>
-            </div>
-          </form>
+      {error && (
+        <div role="alert" className="flex items-center gap-3 rounded-md bg-destructive-soft px-3 py-2 text-sm text-destructive">
+          <span className="flex-1">{loadFailed ? `Error loading trainers: ${error}` : error}</span>
+          {loadFailed && <Button size="sm" onClick={() => { setError(null); fetchTrainers(); }}>Retry</Button>}
+          <Button variant="ghost" size="sm" onClick={() => setError(null)}>Dismiss</Button>
         </div>
       )}
 
-      <div className="trainers-table-container">
-        <table className="trainers-table">
-          <thead className="table-header">
-            <tr>
-              <th style={{width: '20%'}}>Name</th>
-              <th style={{width: '18%'}}>Email</th>
-              <th style={{width: '12%'}}>Phone</th>
-              <th style={{width: '25%'}}>Specializations</th>
-              <th style={{width: '10%'}}>Status</th>
-              <th style={{width: '15%'}}>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredTrainers.map((trainer) => (
-              <tr key={trainer.id}>
-                <td className="trainer-name">{trainer.name}</td>
-                <td>{trainer.email || 'N/A'}</td>
-                <td>{trainer.phone || 'N/A'}</td>
-                <td>
-                  <div className="specializations">
-                    {trainer.specializations?.map((spec, index) => (
-                      <span key={index} className="specialization-tag">
-                        {spec}
-                      </span>
-                    )) || 'None'}
-                  </div>
-                </td>
-                <td>
-                  <span className={`status-badge ${trainer.active ? 'active' : 'inactive'}`}>
-                    {trainer.active ? 'Active' : 'Inactive'}
-                  </span>
-                </td>
-                <td>
-                  <div className="action-buttons">
-                    <button
-                      onClick={() => handleEdit(trainer)}
-                      className="edit-btn"
-                      title="Edit trainer"
-                    >
-                      Edit
-                    </button>
-                    <button
-                      onClick={() => toggleStatus(trainer)}
-                      className={`toggle-btn ${trainer.active ? 'deactivate' : 'activate'}`}
-                      title={trainer.active ? 'Deactivate' : 'Activate'}
-                    >
-                      {trainer.active ? 'Deactivate' : 'Activate'}
-                    </button>
-                    <button
-                      onClick={() => handleDelete(trainer.id)}
-                      className="delete-btn"
-                      title="Delete trainer"
-                    >
-                      Delete
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-
-        <div className="table-footer">
-          Showing {filteredTrainers.length} of {trainers.length} trainers
+      <Toolbar>
+        <div className="relative w-96 max-w-full">
+          <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-subtle-foreground" aria-hidden="true" />
+          <Input
+            type="search"
+            aria-label="Search trainers"
+            placeholder="Search trainers by name, email, or specialization..."
+            value={searchTerm}
+            onChange={(event) => setSearchTerm(event.target.value)}
+            className="pl-8"
+          />
         </div>
-      </div>
+      </Toolbar>
+
+      {loading ? (
+        <div role="status" className="flex items-center justify-center gap-2 rounded-lg border border-border bg-card py-16 text-sm text-muted-foreground">
+          <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+          Loading trainers...
+        </div>
+      ) : (
+        <DataTable
+          caption="Trainers"
+          columns={columns}
+          data={filteredTrainers}
+          getRowId={(trainer) => trainer.id}
+          onRowClick={(trainer) => setSheet({ mode: 'edit', trainer })}
+          emptyState={
+            <EmptyState
+              icon={GraduationCap}
+              title={trainers.length === 0 ? 'No trainers yet' : 'No trainers match'}
+              description={trainers.length === 0 ? 'Add the people who deliver your training sessions.' : 'Try a different search.'}
+            />
+          }
+        />
+      )}
+
+      <TrainerEditSheet mode={sheet?.mode} trainer={sheet?.trainer} onSubmit={saveSheet} onDelete={setTrainerToDelete} onClose={() => setSheet(null)} />
+
+      <AlertDialog open={Boolean(trainerToDelete)} onOpenChange={(open) => !open && setTrainerToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete trainer</AlertDialogTitle>
+          </AlertDialogHeader>
+          <AlertDialogDescription>
+            Are you sure you want to delete trainer {trainerToDelete?.name}? Sessions that used them are kept, with no trainer.
+          </AlertDialogDescription>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction destructive onClick={() => handleDelete(trainerToDelete)}>Delete</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
