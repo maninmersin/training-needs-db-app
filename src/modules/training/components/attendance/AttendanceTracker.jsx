@@ -1,6 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { ClipboardCheck, Loader2, Search } from 'lucide-react';
 import { useProject } from '@core/contexts/ProjectContext';
 import { SimpleAuthService } from '@auth/services/simpleAuthService';
+import {
+  Badge, Button, DataTable, EmptyState, FormField, Input, PageHeader, Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+  StatCard, Toolbar, toast
+} from '@/components/ui';
 import {
   getSessionsForAttendance,
   getAttendanceStatuses,
@@ -9,421 +14,335 @@ import {
   markSingleAttendance,
   getSessionAttendanceSummary
 } from '../../services/attendanceService';
-import './AttendanceTracker.css';
+import { FILTER_OPTIONS, filterAttendees, filterSessions, formatDateTime, recordFor, sessionLabel } from './trackerLogic';
+
+// The comment boxes read their text from here rather than from the column definitions: if the columns
+// changed on every keystroke the input would be recreated and lose focus after each letter.
+const CommentsContext = createContext({ comments: {}, setComment: () => {} });
+
+function CommentCell({ attendee }) {
+  const { comments, setComment } = useContext(CommentsContext);
+  return (
+    <Input
+      aria-label={`Comments for ${attendee.user.name}`}
+      placeholder="Add notes about attendance..."
+      value={comments[attendee.attendee_id] || ''}
+      onChange={(event) => setComment(attendee.attendee_id, event.target.value)}
+      className="h-7 min-w-48"
+    />
+  );
+}
 
 const AttendanceTracker = () => {
   const { currentProject } = useProject();
   const [user, setUser] = useState(null);
-  
-  // State management
+
   const [sessions, setSessions] = useState([]);
   const [selectedSession, setSelectedSession] = useState(null);
   const [attendees, setAttendees] = useState([]);
   const [attendanceRecords, setAttendanceRecords] = useState([]);
   const [attendanceStatuses, setAttendanceStatuses] = useState([]);
   const [attendanceSummary, setAttendanceSummary] = useState(null);
-  
-  // Loading and error states
+
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
-  
-  // UI state
+
   const [attendeeSearchTerm, setAttendeeSearchTerm] = useState('');
   const [sessionSearchTerm, setSessionSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
-  const [showSummary, setShowSummary] = useState(false);
   const [attendeeComments, setAttendeeComments] = useState({});
+  const commentsRef = useRef(attendeeComments);
+  commentsRef.current = attendeeComments;
+  const commentsValue = useMemo(
+    () => ({ comments: attendeeComments, setComment: (id, text) => setAttendeeComments((previous) => ({ ...previous, [id]: text })) }),
+    [attendeeComments]
+  );
 
-  // Load current user
   useEffect(() => {
     const loadUser = async () => {
       try {
-        const currentUser = await SimpleAuthService.getCurrentUser();
-        setUser(currentUser);
-      } catch (error) {
-        console.error('Error loading user:', error);
+        setUser(await SimpleAuthService.getCurrentUser());
+      } catch (loadError) {
+        console.error('Error loading user:', loadError);
       }
     };
     loadUser();
   }, []);
 
-  // Load initial data
-  useEffect(() => {
-    if (currentProject && user) {
-      loadInitialData();
-    }
-  }, [currentProject, user]);
-
-  // Load session details when session is selected
-  useEffect(() => {
-    if (selectedSession && currentProject) {
-      loadSessionDetails();
-    }
-  }, [selectedSession, currentProject]);
-
-  const loadInitialData = async () => {
+  const loadInitialData = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
-      
-      const [sessionsData, statusesData] = await Promise.all([
-        getSessionsForAttendance(currentProject.id),
-        getAttendanceStatuses()
-      ]);
-      
+      const [sessionsData, statusesData] = await Promise.all([getSessionsForAttendance(currentProject.id), getAttendanceStatuses()]);
       setSessions(sessionsData);
       setAttendanceStatuses(statusesData);
-    } catch (error) {
-      console.error('Error loading initial data:', error);
+    } catch (loadError) {
+      console.error('Error loading initial data:', loadError);
       setError('Failed to load sessions and attendance data');
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentProject]);
 
-  const loadSessionDetails = async () => {
-    try {
-      setLoading(true);
-      
-      const [attendeesData, recordsData, summaryData] = await Promise.all([
-        getSessionAttendees(selectedSession.id, currentProject.id),
-        getSessionAttendanceRecords(selectedSession.id, currentProject.id),
-        getSessionAttendanceSummary(selectedSession.id, currentProject.id)
-      ]);
-      
-      setAttendees(attendeesData);
-      setAttendanceRecords(recordsData);
-      setAttendanceSummary(summaryData);
-    } catch (error) {
-      console.error('Error loading session details:', error);
-      setError('Failed to load session attendance data');
-    } finally {
-      setLoading(false);
-    }
-  };
+  useEffect(() => {
+    if (currentProject && user) loadInitialData();
+  }, [currentProject, user, loadInitialData]);
 
-  const handleMarkAttendance = async (attendeeId, statusId, notes = '') => {
-    try {
-      setSubmitting(true);
-      
-      const attendanceData = {
-        attendee_id: attendeeId,
-        attendance_status_id: statusId,
-        check_in_time: new Date().toISOString(),
-        notes: notes,
-        marked_by: user.id
-      };
-      
-      await markSingleAttendance(selectedSession.id, currentProject.id, attendanceData);
-      
-      // Reload session details to update the display
-      await loadSessionDetails();
-      
-      // Clear the comment for this attendee after successful marking
-      setAttendeeComments(prev => ({
-        ...prev,
-        [attendeeId]: ''
-      }));
-      
-    } catch (error) {
-      console.error('Error marking attendance:', error);
-      setError('Failed to mark attendance. Please try again.');
-    } finally {
-      setSubmitting(false);
-    }
-  };
+  // `silent` refreshes after marking someone without blanking the list
+  const loadSessionDetails = useCallback(
+    async ({ silent = false } = {}) => {
+      try {
+        if (!silent) setLoading(true);
+        const [attendeesData, recordsData, summaryData] = await Promise.all([
+          getSessionAttendees(selectedSession.id, currentProject.id),
+          getSessionAttendanceRecords(selectedSession.id, currentProject.id),
+          getSessionAttendanceSummary(selectedSession.id, currentProject.id)
+        ]);
+        setAttendees(attendeesData);
+        setAttendanceRecords(recordsData);
+        setAttendanceSummary(summaryData);
+      } catch (loadError) {
+        console.error('Error loading session details:', loadError);
+        setError('Failed to load session attendance data');
+      } finally {
+        setLoading(false);
+      }
+    },
+    [selectedSession, currentProject]
+  );
 
-  const getAttendanceRecordForAttendee = (attendeeId) => {
-    return attendanceRecords.find(record => record.attendee_id === attendeeId);
-  };
+  useEffect(() => {
+    if (selectedSession && currentProject) loadSessionDetails();
+  }, [selectedSession, currentProject, loadSessionDetails]);
 
-  const getStatusById = (statusId) => {
-    return attendanceStatuses.find(status => status.id === statusId);
-  };
+  const handleMarkAttendance = useCallback(
+    async (attendee, status) => {
+      try {
+        setSubmitting(true);
+        await markSingleAttendance(selectedSession.id, currentProject.id, {
+          attendee_id: attendee.attendee_id,
+          attendance_status_id: status.id,
+          check_in_time: new Date().toISOString(),
+          notes: commentsRef.current[attendee.attendee_id] || '',
+          marked_by: user.id
+        });
+        await loadSessionDetails({ silent: true });
+        setAttendeeComments((previous) => ({ ...previous, [attendee.attendee_id]: '' }));
+        toast.success(`Marked ${attendee.user.name} as ${status.status_name}`);
+      } catch (markError) {
+        console.error('Error marking attendance:', markError);
+        setError('Failed to mark attendance. Please try again.');
+      } finally {
+        setSubmitting(false);
+      }
+    },
+    [selectedSession, currentProject, user, loadSessionDetails]
+  );
 
-  // Filter sessions based on search
-  const filteredSessions = sessions.filter(session => {
-    if (!sessionSearchTerm) return true;
-    const searchLower = sessionSearchTerm.toLowerCase();
+  const filteredSessions = useMemo(() => filterSessions(sessions, sessionSearchTerm), [sessions, sessionSearchTerm]);
+  const filteredAttendees = useMemo(
+    () => filterAttendees(attendees, attendanceRecords, attendanceStatuses, attendeeSearchTerm, filterStatus),
+    [attendees, attendanceRecords, attendanceStatuses, attendeeSearchTerm, filterStatus]
+  );
+
+  const columns = useMemo(
+    () => [
+      { id: 'name', header: 'Name', accessorFn: (attendee) => attendee.user.name, meta: { className: 'font-medium' } },
+      { id: 'email', header: 'Email', accessorFn: (attendee) => attendee.user.email, meta: { className: 'text-muted-foreground' } },
+      {
+        id: 'status',
+        header: 'Status',
+        enableSorting: false,
+        meta: { className: 'whitespace-normal py-1' },
+        cell: ({ row }) => {
+          const record = recordFor(attendanceRecords, row.original.attendee_id);
+          const status = record && attendanceStatuses.find((candidate) => candidate.id === record.attendance_status_id);
+          if (!status) return <Badge>Not Marked</Badge>;
+          return (
+            <div className="flex flex-col gap-0.5 leading-tight">
+              <span className="inline-flex items-center gap-1.5 text-sm font-medium">
+                <span className="size-2 rounded-full" style={{ backgroundColor: status.color_code }} aria-hidden="true" />
+                {status.status_name}
+              </span>
+              <span className="text-xs text-subtle-foreground">
+                {record.marked_at ? new Date(record.marked_at).toLocaleTimeString('en-GB') : ''}
+                {record.notes ? ` - ${record.notes}` : ''}
+              </span>
+            </div>
+          );
+        }
+      },
+      {
+        id: 'comment',
+        header: 'Comments',
+        enableSorting: false,
+        cell: ({ row }) => <CommentCell attendee={row.original} />
+      },
+      {
+        id: 'mark',
+        header: 'Mark as',
+        enableSorting: false,
+        cell: ({ row }) => {
+          const record = recordFor(attendanceRecords, row.original.attendee_id);
+          return (
+            <div className="flex gap-1" role="group" aria-label={`Mark attendance for ${row.original.user.name}`}>
+              {attendanceStatuses.map((status) => {
+                const current = record?.attendance_status_id === status.id;
+                return (
+                  <Button
+                    key={status.id}
+                    size="sm"
+                    variant={current ? 'default' : 'secondary'}
+                    aria-pressed={current}
+                    disabled={submitting}
+                    title={`Mark as ${status.status_name}`}
+                    aria-label={`${status.status_name} - ${row.original.user.name}`}
+                    onClick={() => handleMarkAttendance(row.original, status)}
+                  >
+                    <span className="size-2 rounded-full" style={{ backgroundColor: status.color_code }} aria-hidden="true" />
+                    {status.status_name}
+                  </Button>
+                );
+              })}
+            </div>
+          );
+        }
+      }
+    ],
+    [attendanceRecords, attendanceStatuses, submitting, handleMarkAttendance]
+  );
+
+  if (!currentProject) {
     return (
-      session.course_name?.toLowerCase().includes(searchLower) ||
-      session.training_location?.toLowerCase().includes(searchLower) ||
-      session.functional_area?.toLowerCase().includes(searchLower)
-    );
-  });
-
-  // Filter attendees based on search and status
-  const filteredAttendees = attendees.filter(attendee => {
-    if (!attendee.user) {
-      return false;
-    }
-    
-    const matchesSearch = !attendeeSearchTerm || 
-      attendee.user.name?.toLowerCase().includes(attendeeSearchTerm.toLowerCase()) ||
-      attendee.user.email?.toLowerCase().includes(attendeeSearchTerm.toLowerCase());
-    
-    if (!matchesSearch) return false;
-    
-    if (filterStatus === 'all') return true;
-    
-    const record = getAttendanceRecordForAttendee(attendee.attendee_id);
-    if (filterStatus === 'unmarked') return !record;
-    if (filterStatus === 'present') return record && getStatusById(record.attendance_status_id)?.is_present;
-    if (filterStatus === 'absent') return record && !getStatusById(record.attendance_status_id)?.is_present;
-    
-    return true;
-  });
-
-  const formatDateTime = (dateString) => {
-    return new Date(dateString).toLocaleString('en-GB', {
-      weekday: 'short',
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
-
-  if (loading && !sessions.length) {
-    return (
-      <div className="attendance-tracker">
-        <div className="loading-state">
-          <h3>Loading attendance tracker...</h3>
-        </div>
+      <div className="mx-auto max-w-6xl rounded-lg border border-border bg-card">
+        <EmptyState icon={ClipboardCheck} title="No Project Selected" description="Please select a project to track attendance." />
       </div>
     );
   }
 
-  if (!currentProject) {
+  if (loading && !sessions.length && !error) {
     return (
-      <div className="attendance-tracker">
-        <div className="no-project-state">
-          <h3>No Project Selected</h3>
-          <p>Please select a project to track attendance.</p>
-        </div>
+      <div role="status" className="flex items-center justify-center gap-2 py-16 text-sm text-muted-foreground">
+        <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+        Loading attendance tracker...
       </div>
     );
   }
 
   return (
-    <div className="attendance-tracker">
-      <div className="attendance-header">
-        <h2>Attendance Tracker</h2>
-        {currentProject && (
-          <div className="project-indicator">
-            <strong>Project:</strong> {currentProject.title}
-          </div>
-        )}
-        <p className="attendance-description">
-          Track attendance for training sessions and manage attendee participation.
-        </p>
-      </div>
+    <div className="mx-auto flex max-w-6xl flex-col gap-4">
+      <PageHeader
+        title="Attendance Tracker"
+        description={`Track attendance for training sessions and manage attendee participation. Project: ${currentProject.title}.`}
+      />
 
       {error && (
-        <div className="error-message">
-          <span className="error-icon">⚠️</span>
-          {error}
-          <button onClick={() => setError(null)} className="dismiss-error">×</button>
+        <div role="alert" className="flex items-center gap-3 rounded-md bg-destructive-soft px-3 py-2 text-sm text-destructive">
+          <span className="flex-1">{error}</span>
+          <Button variant="ghost" size="sm" onClick={() => setError(null)}>Dismiss</Button>
         </div>
       )}
 
-      {/* Session Selection */}
-      <div className="session-selection">
-        <div className="session-selector-row">
-          <div className="session-dropdown-section">
-            <h3>Select Training Session</h3>
-            <select 
-              value={selectedSession?.id || ''} 
-              onChange={(e) => {
-                const session = sessions.find(s => s.id === e.target.value);
-                setSelectedSession(session || null);
-              }}
-              className="session-dropdown"
+      <section aria-label="Select training session" className="grid gap-3 rounded-lg border border-border bg-card p-4 md:grid-cols-[2fr_1fr]">
+        <FormField label="Select Training Session">
+          {(fieldProps) => (
+            <Select
+              value={selectedSession?.id || ''}
+              onValueChange={(id) => setSelectedSession(sessions.find((session) => session.id === id) || null)}
             >
-              <option value="">Choose a session...</option>
-              {filteredSessions.map(session => (
-                <option key={session.id} value={session.id}>
-                  {session.course_name} - {formatDateTime(session.start_datetime)} - {session.training_location}
-                </option>
-              ))}
-            </select>
-          </div>
-          
-          <div className="session-search-section">
-            <label htmlFor="session-search">Filter Sessions:</label>
-            <input
-              id="session-search"
-              type="text"
-              placeholder="Search by course, location, or area..."
-              value={sessionSearchTerm}
-              onChange={(e) => setSessionSearchTerm(e.target.value)}
-              className="session-search-input"
-            />
-          </div>
+              <SelectTrigger {...fieldProps}>
+                <SelectValue placeholder="Choose a session..." />
+              </SelectTrigger>
+              <SelectContent>
+                {filteredSessions.map((session) => (
+                  <SelectItem key={session.id} value={session.id}>{sessionLabel(session)}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+        </FormField>
+        <FormField label="Filter Sessions:">
+          <Input placeholder="Search by course, location, or area..." value={sessionSearchTerm} onChange={(event) => setSessionSearchTerm(event.target.value)} />
+        </FormField>
+      </section>
+
+      {!selectedSession ? (
+        <div className="rounded-lg border border-border bg-card">
+          <EmptyState
+            icon={ClipboardCheck}
+            title={sessions.length === 0 ? 'No training sessions yet' : 'Choose a session'}
+            description={sessions.length === 0 ? 'Create a schedule first, then come back to record who attended.' : 'Pick a session above to record who attended.'}
+          />
         </div>
-      </div>
-
-      {/* Session Attendance */}
-      {selectedSession && (
-        <div className="session-attendance">
-          <div className="session-header">
-            <h3>Attendance for {selectedSession.course_name}</h3>
-            <div className="session-meta">
-              <span>{formatDateTime(selectedSession.start_datetime)}</span>
-              <span>{selectedSession.training_location} - Room {selectedSession.classroom_number}</span>
-            </div>
-            
-            {attendanceSummary && (
-              <button 
-                onClick={() => setShowSummary(!showSummary)}
-                className="summary-toggle"
-              >
-                {showSummary ? 'Hide' : 'Show'} Summary
-              </button>
-            )}
+      ) : (
+        <section aria-label={`Attendance for ${selectedSession.course_name}`} className="flex flex-col gap-3">
+          <div>
+            <h2 className="text-base font-semibold">Attendance for {selectedSession.course_name}</h2>
+            <p className="text-sm text-muted-foreground">
+              {formatDateTime(selectedSession.start_datetime)} - {selectedSession.training_location} - Room {selectedSession.classroom_number}
+            </p>
           </div>
 
-          {/* Attendance Summary */}
-          {showSummary && attendanceSummary && (
-            <div className="attendance-summary">
-              <div className="summary-stats">
-                <div className="stat">
-                  <span className="stat-number">{attendanceSummary.total_registered}</span>
-                  <span className="stat-label">Registered</span>
-                </div>
-                <div className="stat">
-                  <span className="stat-number">{attendanceSummary.total_attended}</span>
-                  <span className="stat-label">Present</span>
-                </div>
-                <div className="stat">
-                  <span className="stat-number">{attendanceSummary.total_absent}</span>
-                  <span className="stat-label">Absent</span>
-                </div>
-                <div className="stat">
-                  <span className="stat-number">{Math.round(attendanceSummary.attendance_rate)}%</span>
-                  <span className="stat-label">Rate</span>
-                </div>
-              </div>
+          {attendanceSummary && (
+            <div className="flex flex-wrap gap-3">
+              <StatCard value={attendanceSummary.total_registered} label="Registered" />
+              <StatCard value={attendanceSummary.total_attended} label="Present" tone="success" />
+              <StatCard value={attendanceSummary.total_absent} label="Absent" tone={attendanceSummary.total_absent > 0 ? 'danger' : 'default'} />
+              <StatCard value={`${Math.round(attendanceSummary.attendance_rate)}%`} label="Rate" />
             </div>
           )}
 
-          {/* Filters and Search */}
-          <div className="attendance-controls">
-            <div className="search-section">
-              <input
-                type="text"
+          <Toolbar>
+            <div className="relative w-80 max-w-full">
+              <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-subtle-foreground" aria-hidden="true" />
+              <Input
+                type="search"
+                aria-label="Search attendees"
                 placeholder="Search attendees by name or email..."
                 value={attendeeSearchTerm}
-                onChange={(e) => setAttendeeSearchTerm(e.target.value)}
-                className="search-input"
+                onChange={(event) => setAttendeeSearchTerm(event.target.value)}
+                className="pl-8"
               />
             </div>
-            <div className="filter-section">
-              <select
-                value={filterStatus}
-                onChange={(e) => setFilterStatus(e.target.value)}
-                className="status-filter"
-              >
-                <option value="all">All Attendees</option>
-                <option value="unmarked">Not Marked</option>
-                <option value="present">Present</option>
-                <option value="absent">Absent</option>
-              </select>
+            <div className="w-44">
+              <Select value={filterStatus} onValueChange={setFilterStatus}>
+                <SelectTrigger aria-label="Filter by attendance status">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {FILTER_OPTIONS.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
-          </div>
+          </Toolbar>
 
-          {/* Attendees List */}
-          <div className="attendees-list">
-            {loading ? (
-              <div className="loading-attendees">Loading attendees...</div>
-            ) : filteredAttendees.length === 0 ? (
-              <div className="no-attendees">
-                {attendeeSearchTerm || filterStatus !== 'all' 
-                  ? 'No attendees match your filters' 
-                  : 'No attendees assigned to this session'
-                }
-              </div>
-            ) : (
-              <div className="attendees-grid">
-                {filteredAttendees.map(attendee => {
-                  const record = getAttendanceRecordForAttendee(attendee.attendee_id);
-                  const currentStatus = record ? getStatusById(record.attendance_status_id) : null;
-                  
-                  return (
-                    <div key={attendee.id} className="attendee-card">
-                      <div className="attendee-info">
-                        <h4>{attendee.user.name}</h4>
-                        <p className="attendee-email">{attendee.user.email}</p>
-                        {record && record.notes && (
-                          <p className="attendance-notes">📝 {record.notes}</p>
-                        )}
-                      </div>
-                      
-                      <div className="attendee-comments">
-                        <label htmlFor={`comments-${attendee.attendee_id}`} className="comments-label">
-                          Comments:
-                        </label>
-                        <textarea
-                          id={`comments-${attendee.attendee_id}`}
-                          placeholder="Add notes about attendance..."
-                          value={attendeeComments[attendee.attendee_id] || ''}
-                          onChange={(e) => setAttendeeComments(prev => ({
-                            ...prev,
-                            [attendee.attendee_id]: e.target.value
-                          }))}
-                          className="comments-textarea"
-                          rows={2}
-                        />
-                      </div>
-                      
-                      <div className="attendance-actions">
-                        {currentStatus ? (
-                          <div className="current-status">
-                            <span 
-                              className="status-badge current"
-                              style={{ backgroundColor: currentStatus.color_code }}
-                            >
-                              {currentStatus.status_name}
-                            </span>
-                            <span className="marked-time">
-                              {new Date(record.marked_at).toLocaleTimeString('en-GB')}
-                            </span>
-                          </div>
-                        ) : (
-                          <span className="status-badge unmarked">Not Marked</span>
-                        )}
-                        
-                        <div className="status-buttons">
-                          {attendanceStatuses.map(status => (
-                            <button
-                              key={status.id}
-                              onClick={() => handleMarkAttendance(
-                                attendee.attendee_id, 
-                                status.id, 
-                                attendeeComments[attendee.attendee_id] || ''
-                              )}
-                              disabled={submitting}
-                              className={`status-button ${currentStatus?.id === status.id ? 'active' : ''}`}
-                              style={{ 
-                                backgroundColor: status.color_code,
-                                opacity: currentStatus?.id === status.id ? 1 : 0.7
-                              }}
-                              title={`Mark as ${status.status_name}`}
-                            >
-                              {status.status_name}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        </div>
+          {loading ? (
+            <div role="status" className="flex items-center justify-center gap-2 rounded-lg border border-border bg-card py-12 text-sm text-muted-foreground">
+              <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+              Loading attendees...
+            </div>
+          ) : (
+            <CommentsContext.Provider value={commentsValue}>
+            <DataTable
+              caption="Attendees"
+              columns={columns}
+              data={filteredAttendees}
+              getRowId={(attendee) => String(attendee.id)}
+              pageSize={50}
+              pageSizes={[25, 50, 100, 200]}
+              emptyState={
+                <EmptyState
+                  icon={ClipboardCheck}
+                  title={attendeeSearchTerm || filterStatus !== 'all' ? 'No attendees match your filters' : 'No attendees assigned to this session'}
+                />
+              }
+            />
+            </CommentsContext.Provider>
+          )}
+        </section>
       )}
     </div>
   );
