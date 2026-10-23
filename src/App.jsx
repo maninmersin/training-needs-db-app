@@ -1,6 +1,8 @@
-import { useState, useEffect, Suspense, lazy } from 'react';
+import { Suspense, lazy } from 'react';
 import { BrowserRouter as Router, Routes, Route, useNavigate } from 'react-router-dom';
-import { ModularSidebar, ErrorBoundary, ModuleSwitcher, Breadcrumb, UserHeader } from '@core/components';
+import { ErrorBoundary } from '@core/components';
+import AppShell from '@core/components/shell/AppShell';
+import { Loader2 } from 'lucide-react';
 import { LoginComponent, ProtectedRoute } from '@auth/components';
 import { ModuleProvider } from '@core/contexts';
 import { ProjectProvider } from '@core/contexts/ProjectContext';
@@ -48,28 +50,6 @@ const ProjectSelectionDashboard = lazy(() => import('@modules/projects/component
 import './index.css';
 
 function App() {
-  const [sidebarOpen, setSidebarOpen] = useState(() => {
-    const saved = localStorage.getItem('sidebarOpen');
-    return saved !== null ? JSON.parse(saved) : true;
-  });
-
-  const toggleSidebar = () => {
-    const newState = !sidebarOpen;
-    setSidebarOpen(newState);
-    localStorage.setItem('sidebarOpen', JSON.stringify(newState));
-  };
-
-  // Add body class based on sidebar state for fixed positioned components
-  useEffect(() => {
-    if (sidebarOpen) {
-      document.body.classList.add('sidebar-open');
-      document.body.classList.remove('sidebar-collapsed');
-    } else {
-      document.body.classList.add('sidebar-collapsed');
-      document.body.classList.remove('sidebar-open');
-    }
-  }, [sidebarOpen]);
-
   const handleLogout = async () => {
     await supabase.auth.signOut();
     localStorage.removeItem('authToken');
@@ -87,19 +67,11 @@ function App() {
             console.error('App Error:', error, errorInfo);
           }}
         >
-          <div className="app-container">
-            <ModuleSwitcher />
-            <div className="app-body">
-              <ModularSidebar
-                isOpen={sidebarOpen}
-                onToggle={toggleSidebar}
-              />
-              <main className="main-content" style={{ marginLeft: sidebarOpen ? 'var(--sidebar-width)' : 'var(--sidebar-collapsed-width)' }}>
-                <UserHeader handleLogout={handleLogout} />
+          <AppShell onLogout={handleLogout}>
           <Suspense fallback={
-            <div className="loading-container">
-              <div className="loading-spinner"></div>
-              <p>Loading component...</p>
+            <div role="status" className="flex items-center justify-center gap-2 py-16 text-sm text-muted-foreground">
+              <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+              Loading component...
             </div>
           }>
             <Routes>
@@ -160,9 +132,7 @@ function App() {
             </Route>
             </Routes>
           </Suspense>
-          </main>
-            </div>
-          </div>
+          </AppShell>
         </ErrorBoundary>
         </ProjectProvider>
       </ModuleProvider>

@@ -6,7 +6,7 @@
   display: flex;
   flex-direction: column;
   position: fixed !important;
-  top: 100px !important; /* Reduced gap from top */
+  top: var(--shell-top, 100px) !important; /* Reduced gap from top */
   left: var(--sidebar-width) !important; /* Start after sidebar */
   right: 0 !important;
   bottom: 0 !important;

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { supabase } from '@core/services/supabaseClient';
 import { useNavigate } from 'react-router-dom';
-import './LoginComponent.css';
+import { Button, Card, FormField, Input } from '@/components/ui';
 
 const LoginComponent = () => {
   const [email, setEmail] = useState('');
@@ -109,71 +109,61 @@ const LoginComponent = () => {
   };
 
   return (
-    <div className="login-container">
-      <h2>Admin Login</h2>
-      <form onSubmit={handleLogin}>
-        <div className="form-group">
-          <label>Email:</label>
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-          />
-        </div>
-
-        <div className="form-group">
-          <label>Password:</label>
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-          />
-        </div>
-
-        {error && <div className="error-message">{error}</div>}
-
-        <button type="submit" disabled={loading}>
-          {loading ? 'Logging in...' : 'Login'}
-        </button>
-      </form>
-
-      <div className="reset-password">
-        <button
-          className="reset-link"
-          onClick={() => setShowResetForm(true)}
-          disabled={loading}
-        >
-          Forgot Password?
-        </button>
-
-        {showResetForm && (
-          <div className="reset-form">
-            {resetSent ? (
-              <div className="reset-success">
-                Password reset email sent! Check your inbox.
-              </div>
-            ) : (
-              <>
-                <input
-                  type="email"
-                  placeholder="Enter your email"
-                  value={resetEmail}
-                  onChange={(e) => setResetEmail(e.target.value)}
-                  disabled={loading}
-                />
-                <button
-                  onClick={handleResetPassword}
-                  disabled={!resetEmail || loading}
-                >
-                  {loading ? 'Sending...' : 'Reset Password'}
-                </button>
-              </>
-            )}
-          </div>
-        )}
+    <div className="grid min-h-screen place-content-center bg-background px-4 py-10">
+      <div className="mb-6 flex items-center justify-center gap-2.5">
+        <div className="grid size-8 place-content-center rounded-md bg-primary text-base font-bold text-primary-foreground" aria-hidden="true">T</div>
+        <span className="text-lg font-semibold">Training Needs</span>
       </div>
+
+      <Card className="w-full max-w-sm p-6">
+        <h2 className="mb-4 text-xl font-semibold tracking-tight">Admin Login</h2>
+        <form onSubmit={handleLogin} className="flex flex-col gap-3.5">
+          <FormField label="Email">
+            <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required autoComplete="username" />
+          </FormField>
+          <FormField label="Password">
+            <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required autoComplete="current-password" />
+          </FormField>
+
+          {error && (
+            <div role="alert" className="rounded-md bg-destructive-soft px-3 py-2 text-sm text-destructive">{error}</div>
+          )}
+
+          <Button type="submit" variant="default" size="lg" disabled={loading}>
+            {loading ? 'Logging in...' : 'Login'}
+          </Button>
+        </form>
+
+        <div className="mt-4 border-t border-border pt-3">
+          <Button variant="link" className="h-auto p-0" onClick={() => setShowResetForm(true)} disabled={loading}>
+            Forgot Password?
+          </Button>
+
+          {showResetForm && (
+            <div className="mt-3 flex flex-col gap-2">
+              {resetSent ? (
+                <div role="status" className="rounded-md bg-success-soft px-3 py-2 text-sm text-success">
+                  Password reset email sent! Check your inbox.
+                </div>
+              ) : (
+                <>
+                  <Input
+                    type="email"
+                    placeholder="Enter your email"
+                    aria-label="Email for password reset"
+                    value={resetEmail}
+                    onChange={(e) => setResetEmail(e.target.value)}
+                    disabled={loading}
+                  />
+                  <Button onClick={handleResetPassword} disabled={!resetEmail || loading}>
+                    {loading ? 'Sending...' : 'Reset Password'}
+                  </Button>
+                </>
+              )}
+            </div>
+          )}
+        </div>
+      </Card>
     </div>
   );
 };

@@ -8,8 +8,8 @@ import { X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { buttonVariants } from './button';
 
-const overlayClass = 'fixed inset-0 z-50 bg-black/45 data-[state=open]:animate-in data-[state=open]:fade-in-0';
-const panelBase = 'fixed z-50 flex flex-col border border-border-strong bg-popover text-popover-foreground shadow-xl';
+const overlayClass = 'fixed inset-0 z-[1100] bg-black/45 data-[state=open]:animate-in data-[state=open]:fade-in-0';
+const panelBase = 'fixed z-[1110] flex flex-col border border-border-strong bg-popover text-popover-foreground shadow-xl';
 
 /* ---------- Dialog (centred) ---------- */
 export const Dialog = DialogPrimitive.Root;
@@ -135,7 +135,7 @@ export function DropdownMenuContent({ className, sideOffset = 4, ...props }) {
     <DropdownMenuPrimitive.Portal>
       <DropdownMenuPrimitive.Content
         sideOffset={sideOffset}
-        className={cn('z-50 min-w-40 rounded-md border border-border-strong bg-popover p-1 text-popover-foreground shadow-lg', className)}
+        className={cn('z-[1200] min-w-40 rounded-md border border-border-strong bg-popover p-1 text-popover-foreground shadow-lg', className)}
         {...props}
       />
     </DropdownMenuPrimitive.Portal>
@@ -165,7 +165,7 @@ export function TooltipContent({ className, sideOffset = 6, ...props }) {
     <TooltipPrimitive.Portal>
       <TooltipPrimitive.Content
         sideOffset={sideOffset}
-        className={cn('z-50 rounded-md bg-foreground px-2 py-1 text-xs text-background shadow', className)}
+        className={cn('z-[1200] rounded-md bg-foreground px-2 py-1 text-xs text-background shadow', className)}
         {...props}
       />
     </TooltipPrimitive.Portal>
@@ -180,7 +180,7 @@ export function PopoverContent({ className, sideOffset = 4, align = 'start', ...
       <PopoverPrimitive.Content
         sideOffset={sideOffset}
         align={align}
-        className={cn('z-50 w-64 rounded-md border border-border-strong bg-popover p-3 text-popover-foreground shadow-lg', className)}
+        className={cn('z-[1200] w-64 rounded-md border border-border-strong bg-popover p-3 text-popover-foreground shadow-lg', className)}
         {...props}
       />
     </PopoverPrimitive.Portal>
