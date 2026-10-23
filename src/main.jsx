@@ -1,7 +1,12 @@
 import React from 'react'
     import ReactDOM from 'react-dom/client'
-    import App from './App.jsx'
+    import '@fontsource-variable/inter'
+    import './styles/app.css'
+    import './styles/legacy-base.css'
     import './index.css'
+    import App from './App.jsx'
+    import { ThemeProvider } from '@/components/theme/ThemeProvider'
+    import { Toaster } from '@/components/ui/toaster'
     import { enableDebugMode, disableDebugMode, toggleDebugMode } from '@core/utils/consoleUtils'
 
     // Make console utils globally available in development
@@ -13,6 +18,9 @@ import React from 'react'
 
     ReactDOM.createRoot(document.getElementById('root')).render(
       <React.StrictMode>
-        <App />
+        <ThemeProvider defaultTheme="light">
+          <App />
+          <Toaster />
+        </ThemeProvider>
       </React.StrictMode>
     )

@@ -10,6 +10,7 @@ import '@modules/training/components/schedule-manager/ScheduleSelector.css';
 import { supabase } from '@core/services';
 
 // Lazy load heavy components
+const UiKit = lazy(() => import('@/components/UiKit'));
 const DynamicUserForm = lazy(() => import('@shared/components/DynamicUserForm'));
 const RoleCourseMappingsEditor = lazy(() => import('@shared/components/RoleCourseMappingsEditor'));
 const ImportExportEndUsers = lazy(() => import('@shared/components/ImportExportEndUsers'));
@@ -134,6 +135,7 @@ function App() {
               <Route path="/import-export" element={<ImportExportEndUsers />} />
               <Route path="/edit-mappings" element={<RoleCourseMappingsEditor />} />
               <Route path="/pivot-report" element={<PivotReport />} />
+              {import.meta.env.DEV && <Route path="/ui-kit" element={<UiKit />} />}
               <Route path="/courses" element={<CoursesForm />} />
               <Route path="/import-export-courses" element={<ImportExportCourses />} />
               <Route path="/import-export-training-data" element={<ImportExportTrainingData />} />

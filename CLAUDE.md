@@ -42,6 +42,17 @@ This repo is the MS Access version (own Supabase project `syrdm…`; the main ap
 - Still missing RPCs (pre-existing, both modes): `get_project_roles_data`, `get_user_assigned_functional_areas`, `get_user_assigned_training_locations`, `load_schedule`, `save_schedule`, `bulk_mark_attendance`, `bulk_register_attendees` (the attendance UI doesn't call the two bulk ones).
 - Not brought across (deliberately, for now): Stakeholders, Impact Assessment, Other Tools/POAP.
 
+## UI Face-Lift (branch `ui-facelift`, started 2026-10-23)
+
+Corporate & dense look, light + dark, neutral palette, no branding. Mockups signed off in Phase 0 (private Design canvas "Training Needs App - New Look"). Plan file: `~/.claude/plans/one-thing-i-fluffy-anchor.md`. Behaviour, routes, wording and accessible names do not change; screens are converted one at a time.
+
+- **Phase 1 (foundation) done**: `src/styles/app.css` is the single entry (layer order `legacy, theme, base, components, utilities`; Tailwind v4 theme + utilities, NO preflight until Phase 7; tokens in shadcn naming plus `primary-soft`, `selected`, `success/warning/destructive` + `-soft`, `border-strong`). The `.dark` class on `<html>` switches the tokens. `text-sm` is 13px; `h-8` (32px) is the control/row height.
+- **Old CSS is wrapped in `@layer legacy`** by a PostCSS step in `postcss.config.js`, so new utilities always win. Sheets containing `.fc-` / `.pvt` selectors (FullCalendar, pivottable overrides) stay unlayered until those screens are redone. The old global reset lives in `src/styles/legacy-base.css` (delete in Phase 7). The old `src/styles.css` is gone.
+- **Components**: `src/components/ui/` (Radix + cva + tailwind-merge; import from `@/components/ui`): Button, Input/Textarea/FormField/Checkbox/Switch/Label, Badge/Card/Skeleton/StatCard/EmptyState/PageHeader/Toolbar, Dialog/Sheet/AlertDialog/DropdownMenu/Tooltip/Popover, Select/Tabs, DataTable (`@tanstack/react-table` **v8**; v9 has a different API, do not upgrade), ImportStepper/FileDrop, Toaster (`toast` from sonner replaces `alert()`). Dev-only gallery at `/ui-kit` (`src/components/UiKit.jsx`).
+- **Theme**: `ThemeProvider`/`useTheme` (`src/components/theme/`), choice saved in localStorage `tna-theme`; mounted in `main.jsx` with `defaultTheme="light"` until the new shell (Phase 2) has the toggle (`ThemeToggle`). `index.html` applies a saved dark theme before first paint.
+- Rule for converted screens: Tailwind classes + `ui/` components only, delete the screen's CSS file, no inline styles or hard-coded colours, Lucide icons, `alert/confirm` replaced.
+- Pitfall: do not pass backslashes through shell heredocs or Python strings (a doubled backslash was collapsed and broke `postcss.config.js`); use the Write/Edit tools.
+
 ## Database Cleanup Initiative (2025-01-28)
 
 ### Overview
