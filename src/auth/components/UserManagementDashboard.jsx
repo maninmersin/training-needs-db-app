@@ -1,780 +1,310 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { Eye, EyeOff, Loader2, Pencil, Plus, Search, Trash2, UserCog } from 'lucide-react';
 import { supabase } from '@core/services/supabaseClient';
 import * as adminUsers from '@core/services/adminUsersApi';
-import './UserManagementDashboard.css';
+import { useCurrentUser } from '@core/components/shell/useCurrentUser';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader,
+  AlertDialogTitle, Badge, Button, Checkbox, DataTable, Dialog, DialogBody, DialogContent, DialogDescription, DialogFooter, DialogHeader,
+  DialogTitle, EmptyState, FormField, Input, PageHeader, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Toolbar, Tooltip,
+  TooltipContent, TooltipTrigger, toast
+} from '@/components/ui';
+import { createUserAccount, deleteUserAccount, loadRoles, loadUsers, updateUserAccount } from './userAdminService';
+import { deleteBlockedReason, filterUsers, roleChangeBlockedReason, roleIdsOf, roleNamesOf, toggleId, validateUserForm } from './usersLogic';
+
+const ALL = '__all__'; // Radix Select cannot hold an empty value
+const EMPTY_FORM = { email: '', password: '', roles: [] };
+
+function RoleChoices({ roles, selected, onChange, disabled, error }) {
+  return (
+    <fieldset className="flex flex-col gap-1.5" aria-describedby={error ? 'roles-error' : undefined}>
+      <legend className="mb-1 text-xs font-medium text-muted-foreground">Roles</legend>
+      <div className="flex max-h-48 flex-col gap-1 overflow-y-auto rounded-md border border-border p-2">
+        {roles.length === 0 && <p className="text-sm italic text-muted-foreground">No roles exist yet. Create them in Roles & Permissions.</p>}
+        {roles.map((role) => (
+          <label key={role.id} className="flex cursor-pointer items-start gap-2 rounded px-1 py-1 text-sm hover:bg-accent">
+            <Checkbox aria-label={role.name} checked={selected.includes(role.id)} onCheckedChange={() => onChange(toggleId(selected, role.id))} disabled={disabled} className="mt-0.5" />
+            <span className="flex flex-col leading-tight">
+              <span className="font-medium">{role.name}</span>
+              {role.description && <span className="text-xs text-muted-foreground">{role.description}</span>}
+            </span>
+          </label>
+        ))}
+      </div>
+      {error && <p id="roles-error" className="text-xs text-destructive">{error}</p>}
+    </fieldset>
+  );
+}
 
 const UserManagementDashboard = () => {
+  const { user: currentUser } = useCurrentUser();
   const [users, setUsers] = useState([]);
   const [roles, setRoles] = useState([]);
-  const [functionalAreas, setFunctionalAreas] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [selectedUser, setSelectedUser] = useState(null);
-  const [showCreateModal, setShowCreateModal] = useState(false);
-  const [showEditModal, setShowEditModal] = useState(false);
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [userToDelete, setUserToDelete] = useState(null);
-  const [editingUser, setEditingUser] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterRole, setFilterRole] = useState('');
 
-  // Form states for creating users
-  const [formData, setFormData] = useState({
-    email: '',
-    password: '',
-    roles: [],
-    functionalAreas: [],
-    isActive: true
-  });
-
-  // Form states for editing users
-  const [editFormData, setEditFormData] = useState({
-    email: '',
-    password: '',
-    roles: []
-  });
-
+  const [dialog, setDialog] = useState(null); // { mode: 'create' } | { mode: 'edit', user }
+  const [form, setForm] = useState(EMPTY_FORM);
+  const [formErrors, setFormErrors] = useState({});
   const [showPassword, setShowPassword] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [userToDelete, setUserToDelete] = useState(null);
 
-  const [validationErrors, setValidationErrors] = useState({});
-
-  // Validation functions
-  const validateEmail = (email) => {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return emailRegex.test(email);
-  };
-
-  const validatePassword = (password) => {
-    return password.length >= 6;
-  };
-
-  const validateEditForm = () => {
-    const errors = {};
-
-    // Email validation
-    if (!editFormData.email) {
-      errors.email = 'Email is required';
-    } else if (!validateEmail(editFormData.email)) {
-      errors.email = 'Please enter a valid email address';
-    }
-
-    // Password validation (only if password is provided)
-    if (editFormData.password && editFormData.password.trim() !== '') {
-      if (!validatePassword(editFormData.password)) {
-        errors.password = 'Password must be at least 6 characters long';
-      }
-    }
-
-    // Roles validation (at least one role required)
-    if (editFormData.roles.length === 0) {
-      errors.roles = 'At least one role must be assigned';
-    }
-
-    setValidationErrors(errors);
-    return Object.keys(errors).length === 0;
-  };
-
-  const fetchData = useCallback(async () => {
-    try {
-      setLoading(true);
-      await Promise.all([
-        fetchUsers(),
-        fetchRoles(),
-        fetchFunctionalAreas()
-      ]);
-    } catch (err) {
-      setError('Failed to load data');
-    } finally {
-      setLoading(false);
-    }
+  const refresh = useCallback(async () => {
+    const [usersData, rolesData] = await Promise.all([loadUsers(supabase), loadRoles(supabase)]);
+    setUsers(usersData);
+    setRoles(rolesData);
   }, []);
 
   useEffect(() => {
-    fetchData();
-  }, [fetchData]);
-
-  const fetchUsers = useCallback(async () => {
-    try {
-      // Try to fetch users with proper joins first
-      const { data: usersData, error: usersError } = await supabase
-        .from('auth_users')
-        .select(`
-          *,
-          auth_user_roles (
-            role_id,
-            auth_roles (
-              id,
-              name,
-              description
-            )
-          )
-        `)
-        .order('created_at', { ascending: false });
-
-      if (usersError) {
-        if (usersError.code === '42P01') {
-          setUsers([]);
-          return;
-        }
-        // If joins fail, fall back to manual joining
-        return await fetchUsersManually();
+    const load = async () => {
+      try {
+        setLoading(true);
+        await refresh();
+      } catch (loadError) {
+        setError('Failed to load data');
+        console.error('Error loading users:', loadError);
+      } finally {
+        setLoading(false);
       }
+    };
+    load();
+  }, [refresh]);
 
-      setUsers(usersData || []);
-    } catch (err) {
-      // Fallback to manual joining if relationships fail
-      await fetchUsersManually();
+  const openCreate = () => {
+    setForm(EMPTY_FORM);
+    setFormErrors({});
+    setShowPassword(false);
+    setDialog({ mode: 'create' });
+  };
+
+  const openEdit = (user) => {
+    setForm({ email: user.email, password: '', roles: roleIdsOf(user) });
+    setFormErrors({});
+    setShowPassword(false);
+    setDialog({ mode: 'edit', user });
+  };
+
+  const closeDialog = () => {
+    if (!saving) setDialog(null);
+  };
+
+  const submit = async (event) => {
+    event.preventDefault();
+    const isNew = dialog.mode === 'create';
+    const found = validateUserForm(form, { isNew });
+    if (!isNew) {
+      const blocked = roleChangeBlockedReason(dialog.user, users, form.roles, roles);
+      if (blocked && !found.roles) found.roles = blocked;
     }
-  }, []);
+    setFormErrors(found);
+    if (Object.keys(found).length > 0) return;
 
-  const fetchUsersManually = async () => {
+    setSaving(true);
     try {
-      // Fallback method with manual joins
-      const [usersResponse, userRolesResponse, rolesResponse] = await Promise.all([
-        supabase.from('auth_users').select('*').order('created_at', { ascending: false }),
-        supabase.from('auth_user_roles').select('user_id, role_id'),
-        supabase.from('auth_roles').select('id, name, description')
-      ]);
-
-      const usersData = usersResponse.data || [];
-      const userRolesData = userRolesResponse.data || [];
-      const rolesData = rolesResponse.data || [];
-
-      // Manually join the data
-      const usersWithRoles = usersData.map(user => {
-        const userRoles = userRolesData
-          .filter(ur => ur.user_id === user.id)
-          .map(ur => {
-            const role = rolesData.find(r => r.id === ur.role_id);
-            return {
-              role_id: ur.role_id,
-              auth_roles: role || { id: ur.role_id, name: 'Unknown Role', description: '' }
-            };
-          });
-
-        return {
-          ...user,
-          auth_user_roles: userRoles
-        };
-      });
-
-      setUsers(usersWithRoles);
-    } catch (err) {
-      setUsers([]);
-    }
-  };
-
-  const fetchRoles = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('auth_roles')
-        .select('*')
-        .order('name');
-
-      if (error) {
-        if (error.code === '42P01') {
-          setRoles([]);
-          return;
-        }
-        throw error;
-      }
-      setRoles(data || []);
-    } catch (err) {
-      setRoles([]);
-    }
-  };
-
-  const fetchFunctionalAreas = async () => {
-    const { data, error } = await supabase
-      .from('functional_areas')
-      .select('*')
-      .eq('active', true)
-      .order('display_order');
-
-    if (error) throw error;
-    setFunctionalAreas(data || []);
-  };
-
-  const handleCreateUser = async (e) => {
-    e.preventDefault();
-    
-    try {
-      setLoading(true);
-
-      // Create the login account via the auth server
-      const { data: authData, error: authError } = await adminUsers.createUser({
-        email: formData.email,
-        password: formData.password
-      });
-
-      if (authError) throw authError;
-
-      const userId = authData.user.id;
-
-      // Insert user into auth_users table (include password_hash for compatibility)
-      const { error: userError } = await supabase
-        .from('auth_users')
-        .insert({
-          id: userId,
-          email: formData.email,
-          password_hash: 'auth_managed', // Placeholder since Supabase Auth manages this
-          is_verified: true
-        });
-
-      if (userError) throw userError;
-
-      // Assign roles
-      if (formData.roles.length > 0) {
-        const roleInserts = formData.roles.map(roleId => ({
-          user_id: userId,
-          role_id: roleId
-        }));
-
-        const { error: rolesError } = await supabase
-          .from('auth_user_roles')
-          .insert(roleInserts);
-
-        if (rolesError) throw rolesError;
-      }
-
-      // Reset form and refresh data
-      setFormData({
-        email: '',
-        password: '',
-        roles: [],
-        functionalAreas: [],
-        isActive: true
-      });
-      setShowCreateModal(false);
-      await fetchUsers();
-
-    } catch (err) {
-      setError(`Failed to create user: ${err.message}`);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const confirmDeleteUser = (user) => {
-    setUserToDelete(user);
-    setShowDeleteModal(true);
-  };
-
-  const handleDeleteUser = async () => {
-    if (!userToDelete) return;
-
-    try {
-      setLoading(true);
-
-      // Delete from auth_user_roles first (due to foreign key constraint)
-      await supabase
-        .from('auth_user_roles')
-        .delete()
-        .eq('user_id', userToDelete.id);
-
-      // Delete from auth_users
-      await supabase
-        .from('auth_users')
-        .delete()
-        .eq('id', userToDelete.id);
-
-      // Delete the login account (non-fatal if it fails)
-      const { error: authError } = await adminUsers.deleteUser(userToDelete.id);
-      if (authError) console.warn('Login account not deleted:', authError.message);
-
-      await fetchUsers();
-      setShowDeleteModal(false);
-      setUserToDelete(null);
-    } catch (err) {
-      setError(`Failed to delete user: ${err.message}`);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleToggleRole = async (userId, roleId, hasRole) => {
-    try {
-      if (hasRole) {
-        // Remove role
-        await supabase
-          .from('auth_user_roles')
-          .delete()
-          .eq('user_id', userId)
-          .eq('role_id', roleId);
+      const values = { email: form.email.trim(), password: form.password, roleIds: form.roles };
+      if (isNew) {
+        await createUserAccount(supabase, adminUsers, values);
+        toast.success('User created', { description: values.email });
       } else {
-        // Add role
-        await supabase
-          .from('auth_user_roles')
-          .insert({ user_id: userId, role_id: roleId });
+        await updateUserAccount(supabase, adminUsers, dialog.user, values);
+        toast.success('User updated successfully', { description: values.email });
       }
-
-      await fetchUsers();
-    } catch (err) {
-      setError(`Failed to update role: ${err.message}`);
-    }
-  };
-
-
-  const openEditModal = (user) => {
-    setEditingUser(user);
-    setEditFormData({
-      email: user.email,
-      password: '',
-      roles: user.auth_user_roles?.map(ur => ur.role_id) || []
-    });
-    setShowPassword(false);
-    setShowEditModal(true);
-  };
-
-  const closeEditModal = () => {
-    setEditingUser(null);
-    setEditFormData({
-      email: '',
-      password: '',
-      roles: []
-    });
-    setValidationErrors({});
-    setShowPassword(false);
-    setShowEditModal(false);
-    setError(null);
-  };
-
-  const updateUser = async () => {
-    // Validate form before submitting
-    if (!validateEditForm()) {
-      return;
-    }
-
-    try {
-      setLoading(true);
-
-      // Update login email/password via the auth server
-      const changes = {};
-      if (editFormData.email !== editingUser.email) changes.email = editFormData.email;
-      if (editFormData.password && editFormData.password.trim() !== '') changes.password = editFormData.password;
-      if (Object.keys(changes).length > 0) {
-        const { error: authError } = await adminUsers.updateUser(editingUser.id, changes);
-        if (authError) throw authError;
-      }
-
-
-      // Update auth_users table
-      const { error: userError } = await supabase
-        .from('auth_users')
-        .update({
-          email: editFormData.email
-        })
-        .eq('id', editingUser.id);
-
-      if (userError) throw userError;
-
-      // Update roles
-      await updateUserRoles(editingUser.id, editFormData.roles);
-
-      await fetchData();
-      closeEditModal();
-      setError('User updated successfully');
-      setTimeout(() => setError(null), 3000);
-
-    } catch (err) {
-      setError(`Failed to update user: ${err.message}`);
+      setDialog(null);
+      await refresh();
+    } catch (saveError) {
+      setFormErrors({ submit: `Failed to ${isNew ? 'create' : 'update'} user: ${saveError.message}` });
     } finally {
-      setLoading(false);
+      setSaving(false);
     }
   };
 
-  const updateUserRoles = async (userId, newRoles) => {
-    // Get current roles
-    const { data: currentRoles, error: fetchError } = await supabase
-      .from('auth_user_roles')
-      .select('role_id')
-      .eq('user_id', userId);
-
-    if (fetchError) throw fetchError;
-
-    const currentRoleIds = currentRoles?.map(r => r.role_id) || [];
-
-    // Roles to remove
-    const rolesToRemove = currentRoleIds.filter(roleId => !newRoles.includes(roleId));
-    if (rolesToRemove.length > 0) {
-      const { error: removeError } = await supabase
-        .from('auth_user_roles')
-        .delete()
-        .eq('user_id', userId)
-        .in('role_id', rolesToRemove);
-      
-      if (removeError) throw removeError;
-    }
-
-    // Roles to add
-    const rolesToAdd = newRoles.filter(roleId => !currentRoleIds.includes(roleId));
-    if (rolesToAdd.length > 0) {
-      const roleInserts = rolesToAdd.map(roleId => ({
-        user_id: userId,
-        role_id: roleId
-      }));
-
-      const { error: addError } = await supabase
-        .from('auth_user_roles')
-        .insert(roleInserts);
-
-      if (addError) throw addError;
+  const confirmDelete = async () => {
+    const user = userToDelete;
+    try {
+      setSaving(true);
+      const result = await deleteUserAccount(supabase, adminUsers, user.id);
+      setUserToDelete(null);
+      await refresh();
+      if (result.loginDeleted) toast.success('User deleted', { description: user.email });
+      else toast.warning('User deleted, but their login account was not removed', { description: result.loginError });
+    } catch (deleteError) {
+      setUserToDelete(null);
+      setError(`Failed to delete user: ${deleteError.message}`);
+    } finally {
+      setSaving(false);
     }
   };
 
+  const shown = useMemo(() => filterUsers(users, searchTerm, filterRole), [users, searchTerm, filterRole]);
+  const blockedDelete = userToDelete ? deleteBlockedReason(userToDelete, users, currentUser?.id) : null;
 
-  const filteredUsers = useMemo(() => {
-    return users.filter(user => {
-      const matchesSearch = user.email.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesRole = !filterRole || user.auth_user_roles?.some(ur => ur.role_id.toString() === filterRole);
-      return matchesSearch && matchesRole;
-    });
-  }, [users, searchTerm, filterRole]);
-
-  const getUserRoles = useCallback((user) => {
-    return user.auth_user_roles?.map(ur => ur.auth_roles?.name).filter(Boolean) || [];
-  }, []);
-
-  const hasRole = useCallback((user, roleId) => {
-    return user.auth_user_roles?.some(ur => ur.role_id === roleId) || false;
-  }, []);
+  const columns = useMemo(
+    () => [
+      { accessorKey: 'email', header: 'Email', meta: { className: 'font-medium' } },
+      {
+        id: 'status',
+        header: 'Status',
+        accessorFn: (user) => (user.is_verified ? 'Verified' : 'Unverified'),
+        cell: ({ getValue }) => <Badge variant={getValue() === 'Verified' ? 'success' : 'warning'}>{getValue()}</Badge>
+      },
+      {
+        id: 'roles',
+        header: 'Roles',
+        accessorFn: (user) => roleNamesOf(user).join(', '),
+        meta: { className: 'whitespace-normal py-1' },
+        cell: ({ row }) => (
+          <div className="flex flex-wrap gap-1">
+            {roleNamesOf(row.original).map((name) => (<Badge key={name} variant="primary">{name}</Badge>))}
+          </div>
+        )
+      },
+      { id: 'created', header: 'Created', accessorFn: (user) => user.created_at || '', cell: ({ row }) => (row.original.created_at ? new Date(row.original.created_at).toLocaleDateString() : '') },
+      { id: 'lastLogin', header: 'Last Login', accessorFn: (user) => user.last_login || '', cell: ({ row }) => (row.original.last_login ? new Date(row.original.last_login).toLocaleDateString() : 'Never') },
+      {
+        id: 'actions',
+        header: 'Actions',
+        enableSorting: false,
+        meta: { align: 'right' },
+        cell: ({ row }) => (
+          <div className="flex items-center justify-end gap-1" onClick={(event) => event.stopPropagation()}>
+            <Tooltip>
+              <TooltipTrigger asChild><Button variant="ghost" size="icon-sm" aria-label={`Edit ${row.original.email}`} onClick={() => openEdit(row.original)}><Pencil /></Button></TooltipTrigger>
+              <TooltipContent>Edit user</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild><Button variant="destructive" size="icon-sm" aria-label={`Delete ${row.original.email}`} onClick={() => setUserToDelete(row.original)}><Trash2 /></Button></TooltipTrigger>
+              <TooltipContent>Delete user</TooltipContent>
+            </Tooltip>
+          </div>
+        )
+      }
+    ],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    []
+  );
 
   if (loading) {
-    return <div className="loading">Loading user management dashboard...</div>;
+    return (
+      <div role="status" className="flex items-center justify-center gap-2 py-16 text-sm text-muted-foreground">
+        <Loader2 className="size-4 animate-spin" aria-hidden="true" /> Loading user management dashboard...
+      </div>
+    );
   }
 
-  // Check if tables exist
-  const tablesExist = users.length > 0 || roles.length > 0 || error === null;
+  const isNew = dialog?.mode === 'create';
 
   return (
-    <div className="user-management-dashboard">
-      <div className="dashboard-header">
-        <h1>User Management</h1>
-        <button 
-          className="btn btn-primary"
-          onClick={() => setShowCreateModal(true)}
-        >
-          Create New User
-        </button>
-      </div>
+    <div className="mx-auto flex max-w-6xl flex-col gap-4">
+      <PageHeader
+        title="User Management"
+        count={users.length}
+        description="User accounts, their roles and their access. A role decides what a user can do (see Roles & Permissions)."
+        actions={<Button variant="default" onClick={openCreate}><Plus /> Create New User</Button>}
+      />
 
       {error && (
-        <div className="error-message">
-          {error}
-          <button onClick={() => setError(null)}>×</button>
+        <div role="alert" className="flex items-center gap-3 rounded-md bg-destructive-soft px-3 py-2 text-sm text-destructive">
+          <span className="flex-1">{error}</span>
+          <Button variant="ghost" size="sm" onClick={() => setError(null)}>Dismiss</Button>
         </div>
       )}
 
-      {(users.length === 0 && roles.length === 0 && !loading) && (
-        <div className="setup-notice">
-          <h3>🚀 Setup Required</h3>
-          <p>The user management system needs to be initialized. Please run the database schema setup first.</p>
-          <div className="setup-instructions">
-            <h4>Setup Instructions:</h4>
-            <ol>
-              <li>Go to your Supabase project dashboard</li>
-              <li>Navigate to the SQL Editor</li>
-              <li>Copy and paste the contents of <code>database_schema/create_user_management_tables.sql</code></li>
-              <li>Execute the SQL to create the required tables and data</li>
-              <li>Refresh this page</li>
-            </ol>
-          </div>
-        </div>
-      )}
-
-      {/* Filters */}
-      <div className="filters-section">
-        <div className="search-controls">
-          <input
-            type="text"
-            placeholder="Search by email..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="search-input"
+      {users.length === 0 && roles.length === 0 && !error ? (
+        <div className="rounded-lg border border-border bg-card">
+          <EmptyState
+            icon={UserCog}
+            title="Setup Required"
+            description="No users or roles were found, so the user tables may not be set up. If this is a new database, run npm run db:migrate and refresh this page."
           />
-          <select
-            value={filterRole}
-            onChange={(e) => setFilterRole(e.target.value)}
-            className="role-filter"
-          >
-            <option value="">All Roles</option>
-            {roles.map(role => (
-              <option key={role.id} value={role.id}>{role.name}</option>
-            ))}
-          </select>
         </div>
-      </div>
-
-      {/* Users Table */}
-      <div className="users-table-container">
-        <table className="users-table">
-          <thead>
-            <tr>
-              <th>Email</th>
-              <th>Status</th>
-              <th>Roles</th>
-              <th>Created</th>
-              <th>Last Login</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredUsers.map(user => (
-              <tr key={user.id}>
-                <td>{user.email}</td>
-                <td>
-                  <span className={`status ${user.is_verified ? 'verified' : 'unverified'}`}>
-                    {user.is_verified ? 'Verified' : 'Unverified'}
-                  </span>
-                </td>
-                <td>
-                  <div className="user-roles">
-                    {getUserRoles(user).map(roleName => (
-                      <span key={roleName} className="role-badge">{roleName}</span>
-                    ))}
-                  </div>
-                </td>
-                <td>{new Date(user.created_at).toLocaleDateString()}</td>
-                <td>{user.last_login ? new Date(user.last_login).toLocaleDateString() : 'Never'}</td>
-                <td>
-                  <div className="action-buttons">
-                    <button
-                      className="btn btn-sm btn-primary"
-                      onClick={() => openEditModal(user)}
-                    >
-                      Edit User
-                    </button>
-                    <button
-                      className="btn btn-sm btn-danger"
-                      onClick={() => confirmDeleteUser(user)}
-                    >
-                      Delete
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-
-      {/* Create User Modal */}
-      {showCreateModal && (
-        <div className="modal-overlay">
-          <div className="modal">
-            <div className="modal-header">
-              <h2>Create New User</h2>
-              <button onClick={() => setShowCreateModal(false)}>×</button>
+      ) : (
+        <>
+          <Toolbar>
+            <div className="relative w-72 max-w-full">
+              <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-subtle-foreground" aria-hidden="true" />
+              <Input type="search" aria-label="Search by email" placeholder="Search by email..." value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} className="pl-8" />
             </div>
-            <form onSubmit={handleCreateUser} className="modal-body">
-              <div className="form-group">
-                <label>Email</label>
-                <input
-                  type="email"
-                  value={formData.email}
-                  onChange={(e) => setFormData({...formData, email: e.target.value})}
-                  required
-                />
-              </div>
-              <div className="form-group">
-                <label>Password</label>
-                <input
-                  type="password"
-                  value={formData.password}
-                  onChange={(e) => setFormData({...formData, password: e.target.value})}
-                  required
-                  minLength={6}
-                />
-              </div>
-              <div className="form-group">
-                <label>Roles</label>
-                <div className="checkbox-group">
-                  {roles.map(role => (
-                    <label key={role.id} className="checkbox-label">
-                      <input
-                        type="checkbox"
-                        checked={formData.roles.includes(role.id)}
-                        onChange={(e) => {
-                          if (e.target.checked) {
-                            setFormData({...formData, roles: [...formData.roles, role.id]});
-                          } else {
-                            setFormData({...formData, roles: formData.roles.filter(r => r !== role.id)});
-                          }
-                        }}
-                      />
-                      {role.name}
-                      {role.description && <span className="role-description">- {role.description}</span>}
-                    </label>
-                  ))}
-                </div>
-              </div>
-              <div className="modal-footer">
-                <button type="button" onClick={() => setShowCreateModal(false)} className="btn btn-secondary">
-                  Cancel
-                </button>
-                <button type="submit" className="btn btn-primary">
-                  Create User
-                </button>
-              </div>
+            <div className="w-48">
+              <Select value={filterRole || ALL} onValueChange={(value) => setFilterRole(value === ALL ? '' : value)}>
+                <SelectTrigger aria-label="Filter by role"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={ALL}>All Roles</SelectItem>
+                  {roles.map((role) => (<SelectItem key={role.id} value={String(role.id)}>{role.name}</SelectItem>))}
+                </SelectContent>
+              </Select>
+            </div>
+          </Toolbar>
+
+          <DataTable
+            caption="Users"
+            columns={columns}
+            data={shown}
+            getRowId={(user) => String(user.id)}
+            pageSize={25}
+            onRowClick={openEdit}
+            emptyState={<EmptyState icon={UserCog} title={users.length === 0 ? 'No users yet' : 'No users match'} description={users.length === 0 ? 'Create the first user with the button above.' : 'Try a different search or role.'} />}
+          />
+        </>
+      )}
+
+      <Dialog open={Boolean(dialog)} onOpenChange={(open) => !open && closeDialog()}>
+        <DialogContent>
+          {dialog && (
+            <form onSubmit={submit} className="flex min-h-0 flex-1 flex-col" noValidate>
+              <DialogHeader>
+                <DialogTitle>{isNew ? 'Create New User' : `Edit User: ${dialog.user.email}`}</DialogTitle>
+                <DialogDescription>{isNew ? 'Create a login and choose the roles the user has.' : 'Change the email, set a new password, or change the roles.'}</DialogDescription>
+              </DialogHeader>
+              <DialogBody className="flex flex-col gap-4">
+                <FormField label="Email" error={formErrors.email}>
+                  <Input type="email" value={form.email} onChange={(event) => setForm({ ...form, email: event.target.value })} disabled={saving} autoFocus autoComplete="off" />
+                </FormField>
+                <FormField label={isNew ? 'Password' : 'New Password'} error={formErrors.password} hint={isNew ? 'At least 6 characters' : 'Leave blank to keep the current password'}>
+                  {(fieldProps) => (
+                    <div className="flex gap-2">
+                      <Input {...fieldProps} type={showPassword ? 'text' : 'password'} value={form.password} onChange={(event) => setForm({ ...form, password: event.target.value })} disabled={saving} autoComplete="new-password" />
+                      <Button size="icon" aria-label={showPassword ? 'Hide password' : 'Show password'} onClick={() => setShowPassword((value) => !value)}>
+                        {showPassword ? <EyeOff /> : <Eye />}
+                      </Button>
+                    </div>
+                  )}
+                </FormField>
+                <RoleChoices roles={roles} selected={form.roles} onChange={(next) => setForm({ ...form, roles: next })} disabled={saving} error={formErrors.roles} />
+                {formErrors.submit && <div role="alert" className="rounded-md bg-destructive-soft px-3 py-2 text-sm text-destructive">{formErrors.submit}</div>}
+              </DialogBody>
+              <DialogFooter>
+                <Button onClick={closeDialog} disabled={saving}>Cancel</Button>
+                <Button type="submit" variant="default" disabled={saving}>
+                  {saving && <Loader2 className="animate-spin" aria-hidden="true" />}
+                  {isNew ? (saving ? 'Creating...' : 'Create User') : saving ? 'Updating...' : 'Update User'}
+                </Button>
+              </DialogFooter>
             </form>
-          </div>
-        </div>
-      )}
+          )}
+        </DialogContent>
+      </Dialog>
 
-      {/* Edit Roles Modal */}
-      {selectedUser && (
-        <div className="modal-overlay">
-          <div className="modal">
-            <div className="modal-header">
-              <h2>Edit Roles for {selectedUser.email}</h2>
-              <button onClick={() => setSelectedUser(null)}>×</button>
+      <AlertDialog open={Boolean(userToDelete)} onOpenChange={(open) => !open && !saving && setUserToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader><AlertDialogTitle>Confirm Delete User</AlertDialogTitle></AlertDialogHeader>
+          <AlertDialogDescription asChild>
+            <div className="flex flex-col gap-2">
+              <p>Are you sure you want to delete the user <strong className="text-foreground">{userToDelete?.email}</strong>?</p>
+              <p className="text-destructive">This action cannot be undone and will remove all associated data.</p>
+              {blockedDelete && <p role="alert" className="rounded-md bg-warning-soft px-3 py-2 text-warning">{blockedDelete}</p>}
             </div>
-            <div className="modal-body">
-              <div className="checkbox-group">
-                {roles.map(role => (
-                  <label key={role.id} className="checkbox-label">
-                    <input
-                      type="checkbox"
-                      checked={hasRole(selectedUser, role.id)}
-                      onChange={(e) => handleToggleRole(selectedUser.id, role.id, hasRole(selectedUser, role.id))}
-                    />
-                    {role.name}
-                    {role.description && <span className="role-description">- {role.description}</span>}
-                  </label>
-                ))}
-              </div>
-            </div>
-            <div className="modal-footer">
-              <button onClick={() => setSelectedUser(null)} className="btn btn-secondary">
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Edit User Modal */}
-      {showEditModal && editingUser && (
-        <div className="modal-overlay">
-          <div className="modal">
-            <div className="modal-header">
-              <h2>Edit User: {editingUser.email}</h2>
-              <button onClick={closeEditModal}>×</button>
-            </div>
-            <div className="modal-body">
-              <div className="form-group">
-                <label>Email</label>
-                <input
-                  type="email"
-                  value={editFormData.email}
-                  onChange={(e) => setEditFormData({...editFormData, email: e.target.value})}
-                  required
-                  className={validationErrors.email ? 'error' : ''}
-                />
-                {validationErrors.email && <div className="error-text">{validationErrors.email}</div>}
-              </div>
-
-              <div className="form-group">
-                <label>New Password *</label>
-                <div className="password-input-wrapper">
-                  <input
-                    type={showPassword ? 'text' : 'password'}
-                    value={editFormData.password}
-                    onChange={(e) => setEditFormData({...editFormData, password: e.target.value})}
-                    minLength={6}
-                    placeholder="Leave blank to keep current password"
-                    className={validationErrors.password ? 'error' : ''}
-                  />
-                  <button
-                    type="button"
-                    className="password-toggle"
-                    onClick={() => setShowPassword(!showPassword)}
-                  >
-                    {showPassword ? '👁️‍🗨️' : '👁️'}
-                  </button>
-                </div>
-                {validationErrors.password && <div className="error-text">{validationErrors.password}</div>}
-              </div>
-
-              <div className="form-group">
-                <label>Roles</label>
-                <div className="checkbox-group">
-                  {roles.map(role => (
-                    <label key={role.id} className="checkbox-label">
-                      <input
-                        type="checkbox"
-                        checked={editFormData.roles.includes(role.id)}
-                        onChange={(e) => {
-                          if (e.target.checked) {
-                            setEditFormData({...editFormData, roles: [...editFormData.roles, role.id]});
-                          } else {
-                            setEditFormData({...editFormData, roles: editFormData.roles.filter(r => r !== role.id)});
-                          }
-                        }}
-                      />
-                      {role.name}
-                      {role.description && <span className="role-description">- {role.description}</span>}
-                    </label>
-                  ))}
-                </div>
-                {validationErrors.roles && <div className="error-text">{validationErrors.roles}</div>}
-              </div>
-
-
-
-            </div>
-            <div className="modal-footer">
-              <button 
-                onClick={closeEditModal} 
-                className="btn btn-secondary"
-                disabled={loading}
-              >
-                Cancel
-              </button>
-              <button 
-                onClick={updateUser} 
-                className="btn btn-primary"
-                disabled={loading}
-              >
-                {loading ? 'Updating...' : 'Update User'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Delete Confirmation Modal */}
-      {showDeleteModal && userToDelete && (
-        <div className="modal-overlay">
-          <div className="modal">
-            <div className="modal-header">
-              <h2>Confirm Delete User</h2>
-              <button onClick={() => setShowDeleteModal(false)}>×</button>
-            </div>
-            <div className="modal-body">
-              <p>Are you sure you want to delete the user <strong>{userToDelete.email}</strong>?</p>
-              <p className="warning-text">This action cannot be undone and will remove all associated data.</p>
-            </div>
-            <div className="modal-footer">
-              <button 
-                onClick={() => setShowDeleteModal(false)} 
-                className="btn btn-secondary"
-              >
-                Cancel
-              </button>
-              <button 
-                onClick={handleDeleteUser} 
-                className="btn btn-danger"
-                disabled={loading}
-              >
-                {loading ? 'Deleting...' : 'Delete User'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+          </AlertDialogDescription>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={saving}>Cancel</AlertDialogCancel>
+            <AlertDialogAction destructive disabled={saving || Boolean(blockedDelete)} onClick={confirmDelete}>{saving ? 'Deleting...' : 'Delete User'}</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
 
-export default React.memo(UserManagementDashboard);
+export default UserManagementDashboard;
