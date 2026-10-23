@@ -184,7 +184,7 @@ const RoleCourseMappingsEditor = () => {
     <div className="mx-auto flex max-w-6xl flex-col gap-4">
       <PageHeader
         title="Edit Role Course Mappings"
-        description={`Choose a project role, then tick the courses everyone in that role needs. Project: ${currentProject.title}.`}
+        description={`Choose a project role, then tick the courses everyone in that role needs. Tip: search for a functional area (e.g. Finance), then use Select all shown to tick every course in it. Project: ${currentProject.title}.`}
       />
 
       {error && (
