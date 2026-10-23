@@ -1,10 +1,10 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { saveAs } from 'file-saver';
-import { Download, Loader2, RefreshCw } from 'lucide-react';
+import { Download, Loader2, Mail, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import { useCurrentUser } from '@core/components/shell/useCurrentUser';
 import { planInviteChanges, KIND } from '@core/calendar/planChanges';
-import { buildInviteFiles } from '@core/calendar/inviteFiles';
+import { buildInviteEmails, buildInviteFiles } from '@core/calendar/inviteFiles';
 import { recordSent } from '@core/calendar/ledger';
 import { loadSettings, saveSettings, validateSettings } from '@core/calendar/inviteSettings';
 import { loadLedger, saveSent } from '@core/services/calendarInviteService';
@@ -99,13 +99,14 @@ const InviteChangesDialog = ({ isOpen, onClose, schedule, projectId }) => {
   const blockedByMissingTables = !settings.testMode && ledgerMissing;
   const canCreate = Boolean(plan) && plan.items.length > 0 && !blockedByMissingTables && !loading;
 
-  const handleCreate = () => {
+  // Make the files with `build` and download them. kind: 'ics' (a calendar file) or 'email' (an unsent Outlook draft)
+  const create = (build, kind) => {
     const problems = validateSettings(settings);
     setFieldErrors(problems);
     if (Object.keys(problems).length > 0) return;
     saveSettings(projectId, settings);
 
-    const result = buildInviteFiles(plan.items, {
+    const result = build(plan.items, {
       organizer: { name: settings.organizerName.trim(), email: settings.organizerEmail.trim() },
       testMode: settings.testMode,
       testEmail: settings.testEmail,
@@ -116,13 +117,17 @@ const InviteChangesDialog = ({ isOpen, onClose, schedule, projectId }) => {
       return;
     }
     setError(null);
-    result.files.forEach((file) => saveAs(new Blob([file.content], { type: 'text/calendar;charset=utf-8' }), file.filename));
+    const type = kind === 'email' ? 'message/rfc822' : 'text/calendar;charset=utf-8';
+    result.files.forEach((file) => saveAs(new Blob([file.content], { type }), file.filename));
     result.warnings.forEach((warning) => toast.warning(warning));
-    setDownloaded({ items: plan.items, testMode: settings.testMode, files: result.files });
-    toast.success(`Created ${result.files.length} calendar file${result.files.length === 1 ? '' : 's'}`, {
+    setDownloaded({ items: plan.items, testMode: settings.testMode, files: result.files, kind });
+    toast.success(`Created ${result.files.length} ${kind === 'email' ? 'email draft' : 'calendar file'}${result.files.length === 1 ? '' : 's'}`, {
       description: result.files.map((file) => file.filename).join(', ')
     });
   };
+
+  const handleCreate = () => create(buildInviteFiles, 'ics');
+  const handleCreateEmails = () => create(buildInviteEmails, 'email');
 
   // After the files were really sent: remember them, so the next plan only shows new changes
   const handleMarkSent = async () => {
@@ -147,7 +152,7 @@ const InviteChangesDialog = ({ isOpen, onClose, schedule, projectId }) => {
         <DialogHeader>
           <DialogTitle>Calendar invites</DialogTitle>
           <DialogDescription>
-            Create the Outlook invitation files (.ics) for the people assigned to {schedule?.name}. Open a file in Outlook to see the meeting.
+            Create the Outlook invitations for the people assigned to {schedule?.name}: calendar files (.ics) to open, or email drafts you can send.
           </DialogDescription>
         </DialogHeader>
 
@@ -249,10 +254,17 @@ const InviteChangesDialog = ({ isOpen, onClose, schedule, projectId }) => {
           {downloaded && (
             <section className="flex flex-col gap-2 rounded-md bg-primary-soft px-3 py-3 text-sm text-primary-soft-foreground">
               {downloaded.testMode ? (
-                <>
-                  <p><strong>Test files created.</strong> Find them in your Downloads folder and double-click one to open it in Outlook. Nothing was remembered, so you can create them again.</p>
-                  <p>Look at: the meeting title (it starts with [TEST]), the time, the room and the attendee. Tell me what Outlook offers (for example a Send button, or only Save).</p>
-                </>
+                downloaded.kind === 'email' ? (
+                  <>
+                    <p><strong>Test email drafts created.</strong> Find them in your Downloads folder and double-click one: Outlook opens a new, unsent message addressed to the test address, with the meeting inside it.</p>
+                    <p>Press Send, then open the message you receive. Tell me whether it shows Accept / Decline and whether the meeting lands in your calendar. Nothing was remembered, so you can make them again.</p>
+                  </>
+                ) : (
+                  <>
+                    <p><strong>Test files created.</strong> Find them in your Downloads folder and double-click one to open it in Outlook. Nothing was remembered, so you can create them again.</p>
+                    <p>Outlook shows a calendar file as an invitation you have <em>received</em> (Accept / Decline), with no Send button. To really send it to someone, use the email drafts instead.</p>
+                  </>
+                )
               ) : (
                 <>
                   <p><strong>Files created.</strong> Open each one in Outlook and send it. Once you have sent them, mark them as sent so the next time only new changes are listed.</p>
@@ -266,6 +278,9 @@ const InviteChangesDialog = ({ isOpen, onClose, schedule, projectId }) => {
         <DialogFooter>
           <Button onClick={load} disabled={loading}><RefreshCw /> Refresh</Button>
           <Button onClick={onClose} disabled={saving}>Close</Button>
+          {settings.testMode && (
+            <Button onClick={handleCreateEmails} disabled={!canCreate}><Mail /> Create test email drafts</Button>
+          )}
           <Button variant="default" onClick={handleCreate} disabled={!canCreate}>
             <Download /> {settings.testMode ? 'Create test file' : 'Create invite files'}
           </Button>

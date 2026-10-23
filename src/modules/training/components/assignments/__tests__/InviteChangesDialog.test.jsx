@@ -97,6 +97,32 @@ describe('InviteChangesDialog', () => {
     expect(await within(dialog).findByText(/Test files created/)).toBeInTheDocument();
   });
 
+  test('Create test email drafts downloads one unsent .eml per meeting, addressed to the test address only', async () => {
+    const { user } = setup();
+    const dialog = await screen.findByRole('dialog');
+    await within(dialog).findByText('Budgeting - Group 1');
+    await user.click(within(dialog).getByRole('button', { name: /Create test email drafts/ }));
+    await waitFor(() => expect(saveAs).toHaveBeenCalledTimes(3)); // the 3 meetings of the test
+    const [blob, filename] = saveAs.mock.calls[0];
+    expect(filename).toMatch(/^TEST_Wave_One_Invite_.*\.eml$/);
+    expect(blob.type).toBe('message/rfc822');
+    const text = await blobText(blob);
+    expect(text).toContain('X-Unsent: 1');
+    expect(text).toContain('To: "Test recipient" <me@x.com>');
+    expect(text).toContain('Subject: [TEST] Budgeting - Group 1');
+    expect(text).not.toContain('pat@x.com');
+    expect(saveSent).not.toHaveBeenCalled();
+    expect(await within(dialog).findByText(/Test email drafts created/)).toBeInTheDocument();
+  });
+
+  test('email drafts are only offered in test mode', async () => {
+    const { user } = setup();
+    const dialog = await screen.findByRole('dialog');
+    await within(dialog).findByText('Budgeting - Group 1');
+    await user.click(within(dialog).getByLabelText('Test mode'));
+    expect(within(dialog).queryByRole('button', { name: /Create test email drafts/ })).not.toBeInTheDocument();
+  });
+
   test('an organiser email is required', async () => {
     const { user } = setup();
     const dialog = await screen.findByRole('dialog');

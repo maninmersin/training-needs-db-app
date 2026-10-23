@@ -83,22 +83,11 @@ const sanitize = (text) => String(text || 'Training').replace(/[^a-zA-Z0-9\-_]/g
 
 const toAttendee = (person) => ({ name: person.name, email: person.email, rsvp: true, partstat: 'NEEDS-ACTION', role: 'REQ-PARTICIPANT' });
 
-/**
- * @param {Array} items - from planInviteChanges
- * @param {Object} options
- * @param {{ name: string, email: string }} options.organizer
- * @param {Object} [options.timeZones] - { [location name]: IANA time zone }; locations not listed use floating times
- * @param {boolean} [options.testMode] - titles say TEST, UIDs are different, and ONLY `testEmail` is invited
- * @param {string} [options.testEmail]
- * @param {string} [options.label] - used in the file names, for example the schedule name
- * @param {Date} [options.now]
- * @returns {{ error?: string, files: Array<{ kind, filename, content, count }>, warnings: string[] }}
- */
-export function buildInviteFiles(items, { organizer, timeZones = {}, testMode = false, testEmail = '', label = 'Training', now = new Date() } = {}) {
+function collectEvents(items, { organizer, timeZones = {}, testMode = false, testEmail = '' } = {}) {
   const organizerProblem = validateOrganizer(organizer);
-  if (organizerProblem) return { error: organizerProblem, files: [], warnings: [] };
+  if (organizerProblem) return { error: organizerProblem, requests: [], cancellations: [], warnings: [] };
   if (testMode && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(testEmail).trim())) {
-    return { error: 'Test mode needs a test email address, so nothing is sent to the real attendees.', files: [], warnings: [] };
+    return { error: 'Test mode needs a test email address, so nothing is sent to the real attendees.', requests: [], cancellations: [], warnings: [] };
   }
 
   const warnings = [];
@@ -144,6 +133,25 @@ export function buildInviteFiles(items, { organizer, timeZones = {}, testMode = 
     }
   });
 
+  return { requests, cancellations, warnings, prefix };
+}
+
+/**
+ * @param {Array} items - from planInviteChanges
+ * @param {Object} options
+ * @param {{ name: string, email: string }} options.organizer
+ * @param {Object} [options.timeZones] - { [location name]: IANA time zone }; locations not listed use floating times
+ * @param {boolean} [options.testMode] - titles say TEST, UIDs are different, and ONLY `testEmail` is invited
+ * @param {string} [options.testEmail]
+ * @param {string} [options.label] - used in the file names, for example the schedule name
+ * @param {Date} [options.now]
+ * @returns {{ error?: string, files: Array<{ kind, filename, content, count }>, warnings: string[] }}
+ */
+export function buildInviteFiles(items, options = {}) {
+  const { label = 'Training', now = new Date(), testMode = false } = options;
+  const { error, requests, cancellations, warnings } = collectEvents(items, options);
+  if (error) return { error, files: [], warnings };
+
   const stamp = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
   const name = (kind) => `${testMode ? 'TEST_' : ''}${sanitize(label)}_${kind}_${stamp}.ics`;
   const files = [];
@@ -152,6 +160,76 @@ export function buildInviteFiles(items, { organizer, timeZones = {}, testMode = 
     const { error, value } = createEvents(events);
     if (error) return { error: `Calendar file could not be created: ${error.message || error}`, files: [], warnings };
     files.push({ kind: kind === 'Invites' ? 'invites' : 'cancellations', filename: name(kind), content: value, count: events.length });
+  }
+  return { files, warnings };
+}
+
+// ---------------------------------------------------------------------------
+// Email drafts (.eml). Opening one in Outlook gives a new, unsent message already addressed to the attendees,
+// with the meeting inside it as a calendar part (the same way Outlook's own invitations travel). The sender
+// only has to press Send, and each attendee gets Accept / Decline in the email.
+// ---------------------------------------------------------------------------
+const ascii = (text) => /^[ -~]*$/.test(text);
+const base64 = (text) => btoa(unescape(encodeURIComponent(text)));
+const wrap64 = (text) => (base64(text).match(/.{1,76}/g) || []).join('\r\n');
+const header = (text) => (ascii(text) ? text : `=?UTF-8?B?${base64(text)}?=`);
+const address = ({ name, email }) => (name ? `"${String(name).replace(/["\\\r\n]/g, '')}" <${email}>` : email);
+const shown = (parts, utc) => `${pad(parts[2])}/${pad(parts[1])}/${parts[0]} ${pad(parts[3])}:${pad(parts[4])}${utc ? ' (UTC)' : ''}`;
+
+const emailFor = (event, { organizer, now }) => {
+  const when = `${shown(event.start, event.startInputType === 'utc')} to ${shown(event.end, event.endInputType === 'utc')}`;
+  const cancelled = event.method === 'CANCEL';
+  const body = [
+    cancelled ? `This meeting has been cancelled: ${event.title}` : `You are invited to: ${event.title}`,
+    `When: ${when}`,
+    event.location ? `Where: ${event.location}` : null,
+    '',
+    event.description
+  ].filter((line) => line !== null).join('\r\n');
+  const { error, value } = createEvents([event]);
+  if (error) return { error: `Calendar file could not be created: ${error.message || error}` };
+
+  const boundary = `----=_training_${now.getTime().toString(36)}`;
+  const lines = [
+    `From: ${address(organizer)}`,
+    `To: ${event.attendees.map(address).join(', ')}`,
+    `Subject: ${header(cancelled ? `Cancelled: ${event.title}` : event.title)}`,
+    `Date: ${now.toUTCString().replace('GMT', '+0000')}`,
+    'X-Unsent: 1',
+    'MIME-Version: 1.0',
+    `Content-Type: multipart/alternative; boundary="${boundary}"`,
+    '',
+    `--${boundary}`,
+    'Content-Type: text/plain; charset=utf-8',
+    'Content-Transfer-Encoding: base64',
+    '',
+    wrap64(body),
+    `--${boundary}`,
+    `Content-Type: text/calendar; charset=utf-8; method=${event.method}`,
+    'Content-Transfer-Encoding: base64',
+    '',
+    wrap64(value),
+    `--${boundary}--`,
+    ''
+  ];
+  return { content: lines.join('\r\n') };
+};
+
+/**
+ * One .eml draft per meeting (and per cancellation). Same inputs as buildInviteFiles.
+ * @returns {{ error?: string, files: Array<{ kind: 'email', filename, content, count }>, warnings: string[] }}
+ */
+export function buildInviteEmails(items, options = {}) {
+  const { label = 'Training', now = new Date(), testMode = false, organizer } = options;
+  const { error, requests, cancellations, warnings } = collectEvents(items, options);
+  if (error) return { error, files: [], warnings };
+
+  const files = [];
+  for (const event of [...requests, ...cancellations]) {
+    const email = emailFor(event, { organizer: { name: organizer.name || 'Training Coordinator', email: organizer.email.trim() }, now });
+    if (email.error) return { error: email.error, files: [], warnings };
+    const kind = event.method === 'CANCEL' ? 'Cancel' : 'Invite';
+    files.push({ kind: 'email', filename: `${testMode ? 'TEST_' : ''}${sanitize(label)}_${kind}_${sanitize(event.title)}_${files.length + 1}.eml`, content: email.content, count: 1 });
   }
   return { files, warnings };
 }
