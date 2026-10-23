@@ -1,5 +1,7 @@
 import React from 'react';
+import { TriangleAlert } from 'lucide-react';
 import { debugError } from '@core/utils/consoleUtils';
+import { Button } from '@/components/ui';
 
 class ErrorBoundary extends React.Component {
   constructor(props) {
@@ -58,55 +60,33 @@ class ErrorBoundary extends React.Component {
       }
 
       // Default fallback UI
+      const { retryCount, error, errorInfo } = this.state;
       return (
-        <div className="error-boundary">
-          <div className="error-boundary-content">
-            <h2>🚨 Something went wrong</h2>
-            <p>We're sorry, but something unexpected happened.</p>
-            
-            {import.meta.env.DEV && (
-              <details className="error-details">
-                <summary>Error Details (Development Only)</summary>
-                <pre className="error-stack">
-                  {this.state.error && this.state.error.toString()}
-                  <br />
-                  {this.state.errorInfo?.componentStack}
-                </pre>
-              </details>
-            )}
+        <div role="alert" className="mx-auto flex min-h-[60vh] max-w-xl flex-col items-center justify-center gap-4 p-6 text-center">
+          <TriangleAlert className="size-10 text-destructive" aria-hidden="true" />
+          <h2 className="text-lg font-semibold">Something went wrong</h2>
+          <p className="text-sm text-muted-foreground">We're sorry, but something unexpected happened.</p>
 
-            <div className="error-actions">
-              <button 
-                className="retry-button"
-                onClick={this.handleRetry}
-                disabled={this.state.retryCount >= 3}
-              >
-                {this.state.retryCount >= 3 ? 'Max Retries Reached' : 'Try Again'}
-              </button>
-              
-              <button 
-                className="reload-button"
-                onClick={this.handleReload}
-              >
-                Reload Page
-              </button>
-              
-              {this.props.onGoHome && (
-                <button 
-                  className="home-button"
-                  onClick={this.props.onGoHome}
-                >
-                  Go to Home
-                </button>
-              )}
-            </div>
+          {import.meta.env.DEV && (
+            <details className="w-full rounded-md border border-border bg-card p-3 text-left text-xs">
+              <summary className="cursor-pointer font-medium">Error Details (Development Only)</summary>
+              <pre className="mt-2 max-h-64 overflow-auto whitespace-pre-wrap">
+                {error && error.toString()}
+                <br />
+                {errorInfo?.componentStack}
+              </pre>
+            </details>
+          )}
 
-            {this.state.retryCount > 0 && (
-              <p className="retry-info">
-                Retry attempts: {this.state.retryCount}/3
-              </p>
-            )}
+          <div className="flex flex-wrap justify-center gap-2">
+            <Button variant="default" onClick={this.handleRetry} disabled={retryCount >= 3}>
+              {retryCount >= 3 ? 'Max Retries Reached' : 'Try Again'}
+            </Button>
+            <Button onClick={this.handleReload}>Reload Page</Button>
+            {this.props.onGoHome && <Button onClick={this.props.onGoHome}>Go to Home</Button>}
           </div>
+
+          {retryCount > 0 && <p className="text-xs text-muted-foreground">Retry attempts: {retryCount}/3</p>}
         </div>
       );
     }

@@ -3,8 +3,6 @@ import { supabase } from '@core/services/supabaseClient';
 import { useProject } from '@core/contexts/ProjectContext';
 
 import TSCDefineCriteriaStage from './TSCDefineCriteriaStage';
-import TSCFetchDataStage from './TSCFetchDataStage';
-import TSCProcessDataStage from './TSCProcessDataStage';
 import TSCReviewAdjustStage from './TSCReviewAdjustStage';
 import { Check, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';

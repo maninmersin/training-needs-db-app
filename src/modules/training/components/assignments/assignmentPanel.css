@@ -1,6 +1,7 @@
 /* Layout of the User Assignments screen: a panel that fills the space beside the sidebar, with the
    people on the left and the calendar on the right. Everything inside uses the design tokens. */
 
+@layer components {
 .assignment-panel-root {
   position: fixed;
   top: var(--shell-top, 44px);
@@ -62,4 +63,5 @@ body.sidebar-collapsed .assignment-panel-root {
     border-right: none;
     border-bottom: 1px solid var(--border);
   }
+}
 }

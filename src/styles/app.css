@@ -1,9 +1,10 @@
 /* Entry stylesheet for the new look. Imported first in main.jsx so the layer order below is fixed
-   before any component CSS loads. Old CSS lives in `legacy` (lowest priority, see postcss.config.js). */
-@layer legacy, theme, base, components, utilities;
+   before any component CSS loads. Layout CSS for a screen goes in `@layer components`; CSS that overrides a
+   library (FullCalendar, react-pivottable) is deliberately UNLAYERED, because the libraries' own CSS is. */
+@layer theme, base, components, utilities;
 
-/* Tailwind without preflight: the old screens rely on browser defaults until Phase 7 */
 @import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/preflight.css" layer(base);
 @import "tailwindcss/utilities.css" layer(utilities);
 @import "tw-animate-css";
 
@@ -132,4 +133,43 @@
   --chart-4: #b98cf0;
   --chart-5: #f08a5d;
   color-scheme: dark;
+}
+
+@layer base {
+  /* The browser's default border colour is currentColor; every border here uses the theme's */
+  *,
+  ::after,
+  ::before,
+  ::backdrop {
+    border-color: var(--border);
+  }
+
+  html {
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  body {
+    background: var(--background);
+    color: var(--foreground);
+    font-size: 0.8125rem;
+    line-height: 1.25rem;
+  }
+
+  /* Form controls are styled by the ui components; this only stops them using the browser's font */
+  button,
+  input,
+  select,
+  textarea {
+    font: inherit;
+  }
+
+  button:not(:disabled),
+  [role='button']:not(:disabled) {
+    cursor: pointer;
+  }
+
+  :focus-visible {
+    outline-color: var(--ring);
+  }
 }

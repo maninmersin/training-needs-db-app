@@ -1,13 +1,12 @@
 import { Suspense, lazy } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate } from 'react-router-dom';
-import { ErrorBoundary } from '@core/components';
+import ErrorBoundary from '@core/components/ErrorBoundary';
 import AppShell from '@core/components/shell/AppShell';
 import { Loader2 } from 'lucide-react';
+import { Button } from '@/components/ui';
 import { LoginComponent, ProtectedRoute } from '@auth/components';
 import { ModuleProvider } from '@core/contexts';
 import { ProjectProvider } from '@core/contexts/ProjectContext';
-import './App.css';
-import '@core/components/ErrorBoundary.css';
 import { supabase } from '@core/services';
 
 // Lazy load heavy components
@@ -19,7 +18,6 @@ const CoursesForm = lazy(() => import('@shared/components/CoursesForm'));
 const ImportExportTrainingData = lazy(() => import('@shared/components/ImportExportTrainingData'));
 const ExportAllData = lazy(() => import('@shared/components/ExportAllData'));
 const TrainingSessionCalculator = lazy(() => import('@modules/training/components/tsc-wizard/TrainingSessionCalculator'));
-const TrainingSessionCalendar = lazy(() => import('@modules/training/components/calendar/TrainingSessionCalendar'));
 const ScheduleCalendar = lazy(() => import('@modules/training/components/calendar/ScheduleCalendar'));
 const TSCWizard = lazy(() => import('@modules/training/components/tsc-wizard/TSCWizard'));
 const ScheduleManager = lazy(() => import('@modules/training/components/schedule-manager/ScheduleManager'));
@@ -42,7 +40,6 @@ const AdminDashboard = lazy(() => import('@auth/components/AdminDashboard'));
 // Project Management Components
 const ProjectSelectionDashboard = lazy(() => import('@modules/projects/components/ProjectSelectionDashboard'));
 
-import './index.css';
 
 function App() {
   const handleLogout = async () => {
@@ -72,20 +69,10 @@ function App() {
             <Routes>
             <Route path="/login" element={<LoginComponent />} />
             <Route path="/unauthorized" element={
-              <div style={{ padding: '2rem', textAlign: 'center' }}>
-                <h2>Unauthorized Access</h2>
-                <p>You don't have permission to access this resource.</p>
-                <a href="/login" className="btn btn-primary" style={{
-                  display: 'inline-block',
-                  padding: '12px 24px',
-                  background: '#3b82f6',
-                  color: 'white',
-                  textDecoration: 'none',
-                  borderRadius: '8px',
-                  marginTop: '1rem'
-                }}>
-                  Back to Login
-                </a>
+              <div className="mx-auto flex min-h-[60vh] max-w-md flex-col items-center justify-center gap-3 p-8 text-center">
+                <h2 className="text-lg font-semibold">Unauthorized Access</h2>
+                <p className="text-sm text-muted-foreground">You don't have permission to access this resource.</p>
+                <Button asChild variant="default"><a href="/login">Back to Login</a></Button>
               </div>
             } />
             
@@ -111,7 +98,6 @@ function App() {
               <Route path="/reference-data" element={<ReferenceDataManager />} />
               <Route path="/export-all-data" element={<ExportAllData />} />
               <Route path="/training-sessions" element={<TrainingSessionCalculator/>} />
-              <Route path="/schedule-calendar" element={<TrainingSessionCalendar/>} /> 
               <Route path="/training-scheduler" element={<TSCWizard />} />
               <Route path="/schedule-manager" element={<ScheduleManager />} />
               <Route path="/trainers" element={<TrainerManagement />} />

@@ -29,7 +29,7 @@ export default [
     }
   },
   {
-    files: ['server/**/*.js', 'scripts/**/*.js', 'db/**/*.js', 'tests/**/*.mjs', '*.config.js'],
+    files: ['server/**/*.js', 'scripts/**/*.{js,mjs}', 'db/**/*.js', 'tests/**/*.mjs', '*.config.js'],
     languageOptions: { ecmaVersion: 'latest', sourceType: 'module', globals: globals.node }
   },
   {
