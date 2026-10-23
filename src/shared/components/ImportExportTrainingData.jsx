@@ -1,432 +1,289 @@
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { CircleCheck, Database, Download, FileSpreadsheet, Loader2 } from 'lucide-react';
 import { supabase } from '@core/services/supabaseClient';
 import { useProject } from '@core/contexts/ProjectContext';
-import './ImportExportTrainingData.css'; // Reuse existing styles
+import {
+  Button, Checkbox, DataTable, DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, EmptyState, FileDrop,
+  PageHeader, StatCard, toast
+} from '@/components/ui';
+import { readTableFile } from '../import/tableFile';
+import { TRAINING_DATA_EXPORT_HEADERS, planAccessImport, toTrainingDataRow, trainingDataToRows } from '../import/accessImport';
+import { loadAllTrainingData, loadCurrentStats, replaceTrainingData } from '../import/accessImportService';
+import { downloadTable } from '../import/exportFiles';
+
+const plural = (count, word, many = `${word}s`) => `${count} ${count === 1 ? word : many}`;
 
 const ImportExportTrainingData = () => {
   const { currentProject } = useProject();
-  const [file, setFile] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState('');
   const [stats, setStats] = useState(null);
-  const [progress, setProgress] = useState({ current: 0, total: 0, phase: '' });
+  const [fileName, setFileName] = useState('');
+  const [plan, setPlan] = useState(null);
+  const [skipInvalid, setSkipInvalid] = useState(false);
+  const [confirmed, setConfirmed] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [progress, setProgress] = useState(null);
+  const [result, setResult] = useState(null);
+  const [error, setError] = useState(null);
 
-  // Load statistics on mount
-  useEffect(() => {
-    if (currentProject) {
-      loadStats();
+  const refreshStats = useCallback(async () => {
+    try {
+      setStats(await loadCurrentStats(supabase, currentProject.id));
+    } catch (statsError) {
+      console.error('Error loading stats:', statsError);
     }
   }, [currentProject]);
 
-  const loadStats = async () => {
-    try {
-      const { data, error } = await supabase
-        .rpc('get_training_data_stats', { p_project_id: currentProject.id });
+  useEffect(() => {
+    if (currentProject) refreshStats();
+  }, [currentProject, refreshStats]);
 
-      if (error) {
-        console.warn('Stats function not available:', error);
-        // Fallback: manual count
-        const { count } = await supabase
-          .from('training_data')
-          .select('*', { count: 'exact', head: true })
-          .eq('project_id', currentProject.id);
-        setStats({ total_assignments: count });
-      } else {
-        setStats(data[0]);
-      }
-    } catch (error) {
-      console.error('Error loading stats:', error);
+  const reset = () => {
+    setPlan(null);
+    setFileName('');
+    setSkipInvalid(false);
+    setConfirmed(false);
+    setResult(null);
+    setError(null);
+  };
+
+  const handleFile = async (file) => {
+    setBusy(true);
+    setError(null);
+    setResult(null);
+    try {
+      const table = await readTableFile(file);
+      if (table.headers.length === 0) throw new Error('The file is empty - there is no header row');
+      setPlan(planAccessImport(table));
+      setFileName(file.name);
+      setSkipInvalid(false);
+      setConfirmed(false);
+    } catch (readError) {
+      setError(readError.message);
+    } finally {
+      setBusy(false);
     }
   };
 
-  const handleFileChange = (e) => {
-    setFile(e.target.files[0]);
-    setMessage('');
-    setProgress({ current: 0, total: 0, phase: '' });
-  };
-
-  const handleImport = async () => {
-    if (!file) {
-      setMessage('Please select a file first');
-      return;
-    }
-
-    if (!currentProject) {
-      setMessage('Please select a project first');
-      return;
-    }
-
-    setLoading(true);
-    setMessage('');
-    setProgress({ current: 0, total: 0, phase: 'Reading file...' });
-
+  const exportCurrent = async (format, name = 'training_data_export') => {
     try {
-      const reader = new FileReader();
-      reader.onload = async (e) => {
-        try {
-          const text = e.target.result;
-          // Normalize line endings to \n (handle Windows \r\n and Mac \r)
-          const normalizedText = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
-          const [headerRow, ...dataRows] = normalizedText.split('\n');
-          // Remove quotes and trim whitespace from headers
-          const headers = headerRow.split(',').map(h => h.trim().replace(/^"|"$/g, ''));
-
-          console.log('CSV headers:', headers);
-
-          // Required columns from Access export (with actual Access field names)
-          const requiredColumns = [
-            'ID', 'functional_area', 'sub_functional_area', 'est_duration_hrs',
-            'emp_id', 'name'
-          ];
-
-          const missingColumns = requiredColumns.filter(col => !headers.includes(col));
-          if (missingColumns.length > 0) {
-            throw new Error(`Missing required columns: ${missingColumns.join(', ')}\n\nExpected Access export columns: ID, functional_area, sub_functional_area, est_duration_hrs, emp_id, name, etc.`);
-          }
-
-          // Check for at least one location column (training_location OR location)
-          if (!headers.includes('training_location') && !headers.includes('location')) {
-            throw new Error('CSV must include either "training_location" or "location" column');
-          }
-
-          // Step 1: Parse all rows
-          setProgress({ current: 0, total: dataRows.length, phase: 'Parsing CSV data...' });
-          const parsedRows = [];
-          const parseErrors = [];
-
-          for (let i = 0; i < dataRows.length; i++) {
-            const row = dataRows[i];
-            if (!row.trim()) continue;
-
-            try {
-              // Handle quoted values and proper CSV parsing
-              const values = row.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/)
-                .map(v => v.trim().replace(/^"(.*)"$/, '$1'));
-
-              const rowData = { rowNumber: i + 2 };
-              headers.forEach((header, idx) => {
-                rowData[header] = values[idx];
-              });
-
-              // Validate required fields (using Access column names)
-              // Note: training_location can be empty if location field has a value (fallback)
-              if (!rowData.emp_id || !rowData.name) {
-                throw new Error('emp_id and name are required');
-              }
-              if (!rowData.training_location && !rowData.location) {
-                throw new Error('Either training_location or location must be provided');
-              }
-              if (!rowData.ID || !rowData.sub_functional_area || !rowData.est_duration_hrs) {
-                throw new Error('ID, sub_functional_area, and est_duration_hrs are required');
-              }
-              if (!rowData.functional_area) {
-                throw new Error('functional_area is required');
-              }
-
-              // Validate duration is numeric
-              const duration = parseFloat(rowData.est_duration_hrs);
-              if (isNaN(duration) || duration <= 0) {
-                throw new Error(`Invalid est_duration_hrs: ${rowData.est_duration_hrs}`);
-              }
-
-              parsedRows.push(rowData);
-            } catch (error) {
-              parseErrors.push(`Row ${i + 2}: ${error.message}`);
-            }
-          }
-
-          if (parseErrors.length > 0) {
-            setMessage(
-              `❌ Import validation failed:\n\n${parseErrors.slice(0, 10).join('\n')}` +
-              (parseErrors.length > 10 ? `\n\n... and ${parseErrors.length - 10} more errors` : '')
-            );
-            setLoading(false);
-            return;
-          }
-
-          // Step 2: Delete existing data for this project (replace mode)
-          setProgress({ current: 0, total: 0, phase: 'Clearing existing data...' });
-
-          const { error: deleteError } = await supabase
-            .from('training_data')
-            .delete()
-            .eq('project_id', currentProject.id);
-
-          if (deleteError) throw deleteError;
-
-          // Step 3: Batch insert new data (500 rows at a time for performance)
-          const batchSize = 500;
-          let successCount = 0;
-          const errors = [];
-
-          for (let i = 0; i < parsedRows.length; i += batchSize) {
-            const batch = parsedRows.slice(i, i + batchSize);
-
-            setProgress({
-              current: i + batch.length,
-              total: parsedRows.length,
-              phase: `Importing records ${i + 1} to ${i + batch.length} of ${parsedRows.length}...`
-            });
-
-            // Prepare batch data - Map Access column names to Supabase column names
-            const batchData = batch.map(row => ({
-              project_id: currentProject.id,
-              // User fields - map from Access export
-              user_id: row.emp_id,  // emp_id → user_id
-              user_name: row.name,  // name → user_name
-              user_email: row.email || null,
-              business_unit: row['business-unit'] || null,  // Handle hyphenated field name
-              organization: row.org || null,
-              user_country: row.country || null,
-              user_department: row.department || null,
-              user_job_title: row.job_title || null,
-              user_location: row.location || null,
-              training_location: row.training_location || row.location || 'Unknown Location',
-              user_project_role: row.project_role || null,
-              // Course fields - map from Access export
-              course_id: String(row.ID),  // ID → course_id (convert to string)
-              course_name: row.sub_functional_area,  // sub_functional_area → course_name
-              duration_hrs: parseFloat(row.est_duration_hrs),  // est_duration_hrs → duration_hrs
-              course_topic: null,  // Not in Access export
-              course_sub_topic: null,  // Not in Access export
-              course_application: null,  // Not in Access export
-              course_priority: 1,  // Default priority
-              // Functional area fields
-              functional_area: row.functional_area,
-              sub_functional_area: row.sub_functional_area,
-              functional_area_short: null,  // Not in Access export
-              // Metadata fields
-              assigned_by: row.assigned_by || 'import',
-              assigned_date: row.assigned_date || new Date().toISOString(),
-              assignment_notes: row.notes || null
-            }));
-
-            try {
-              const { error: insertError } = await supabase
-                .from('training_data')
-                .insert(batchData);
-
-              if (insertError) throw insertError;
-              successCount += batch.length;
-            } catch (error) {
-              errors.push(`Batch ${Math.floor(i / batchSize) + 1}: ${error.message}`);
-            }
-          }
-
-          setProgress({
-            current: parsedRows.length,
-            total: parsedRows.length,
-            phase: 'Import completed!'
-          });
-
-          // Reload stats
-          await loadStats();
-
-          const successMessage =
-            `✅ Import completed successfully!\n\n` +
-            `Total records imported: ${successCount} of ${parsedRows.length}\n` +
-            `Existing data was replaced for this project.`;
-
-          const errorMessage = errors.length > 0
-            ? `\n\n⚠️ Some errors occurred:\n${errors.join('\n')}`
-            : '';
-
-          setMessage(successMessage + errorMessage);
-
-        } catch (error) {
-          setMessage(`Error processing file: ${error.message}`);
-          console.error('Import error:', error);
-        } finally {
-          setLoading(false);
-        }
-      };
-
-      reader.onerror = () => {
-        setMessage('Error reading file');
-        setLoading(false);
-      };
-
-      reader.readAsText(file);
-    } catch (error) {
-      setMessage(`Error: ${error.message}`);
-      setLoading(false);
-    }
-  };
-
-  const handleExport = async () => {
-    if (!currentProject) {
-      setMessage('Please select a project first');
-      return;
-    }
-
-    setLoading(true);
-    setMessage('');
-
-    try {
-      const { data, error } = await supabase
-        .from('training_data')
-        .select('*')
-        .eq('project_id', currentProject.id)
-        .order('training_location', { ascending: true })
-        .order('user_name', { ascending: true })
-        .order('course_id', { ascending: true });
-
-      if (error) throw error;
-
+      setBusy(true);
+      const data = await loadAllTrainingData(supabase, currentProject.id);
       if (data.length === 0) {
-        setMessage('No training data to export for this project');
-        setLoading(false);
+        toast.info('No training data to export for this project');
         return;
       }
-
-      // CSV headers matching Access export
-      const headers = [
-        'user_id', 'user_name', 'user_email', 'business_unit', 'organization',
-        'user_country', 'user_department', 'user_job_title', 'user_location',
-        'training_location', 'user_project_role', 'course_id', 'course_name',
-        'duration_hrs', 'course_topic', 'course_sub_topic', 'course_application',
-        'course_priority', 'functional_area', 'sub_functional_area',
-        'functional_area_short', 'assigned_by', 'assigned_date', 'assignment_notes'
-      ];
-
-      const csvContent = [
-        headers.join(','),
-        ...data.map(row =>
-          headers.map(header => {
-            const value = row[header];
-            // Quote strings that might contain commas
-            if (value === null || value === undefined) return '';
-            if (typeof value === 'string' && (value.includes(',') || value.includes('"'))) {
-              return `"${value.replace(/"/g, '""')}"`;
-            }
-            return value;
-          }).join(',')
-        )
-      ].join('\n');
-
-      const blob = new Blob([csvContent], { type: 'text/csv' });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = 'training_data_export.csv';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
-
-      setMessage(`✅ Export completed: ${data.length} records exported`);
-    } catch (error) {
-      setMessage(`Export error: ${error.message}`);
-      console.error('Export error:', error);
+      downloadTable(name, TRAINING_DATA_EXPORT_HEADERS, trainingDataToRows(data), format);
+      toast.success(`${plural(data.length, 'record')} exported`);
+    } catch (exportError) {
+      console.error('Export error:', exportError);
+      setError(`Export error: ${exportError.message}`);
     } finally {
-      setLoading(false);
+      setBusy(false);
     }
   };
+
+  const canApply = Boolean(plan) && plan.fileProblems.length === 0 && plan.rows.length > 0 && (plan.errors.length === 0 || skipInvalid) && confirmed && !busy;
+
+  const apply = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      const now = new Date();
+      const rows = plan.rows.map((record) => toTrainingDataRow(record, currentProject.id, now));
+      const before = stats?.total_assignments ?? 0;
+      const outcome = await replaceTrainingData(supabase, currentProject.id, rows, (done, total, phase) => setProgress({ done, total, phase }));
+      setResult({ imported: outcome.inserted, replaced: before, skipped: plan.errors.length });
+      setPlan(null);
+      await refreshStats();
+    } catch (applyError) {
+      console.error('Import error:', applyError);
+      setError(applyError.message);
+      await refreshStats();
+    } finally {
+      setBusy(false);
+      setProgress(null);
+    }
+  };
+
+  const problemColumns = useMemo(
+    () => [
+      { accessorKey: 'rowNumber', header: 'Row', meta: { className: 'tabular-nums text-subtle-foreground' } },
+      { accessorKey: 'name', header: 'Name', meta: { className: 'font-medium' } },
+      { accessorKey: 'message', header: 'Problem', meta: { className: 'min-w-72 whitespace-normal py-1 text-destructive' } }
+    ],
+    []
+  );
+
+  const downloadProblems = () =>
+    downloadTable('training_data_import_problems', ['Row', 'Name', 'Problem'], plan.errors.map((e) => [e.rowNumber, e.name, e.message]), 'csv');
 
   if (!currentProject) {
     return (
-      <div className="import-export-container">
-        <div className="no-project-state">
-          <h3>No Project Selected</h3>
-          <p>Please select a project from the Projects page to import/export training data.</p>
-          <p>Each project has its own isolated training data.</p>
-        </div>
+      <div className="mx-auto max-w-5xl rounded-lg border border-border bg-card">
+        <EmptyState
+          icon={Database}
+          title="No Project Selected"
+          description="Please select a project from the Projects page to import or export training data. Each project has its own isolated training data."
+        />
       </div>
     );
   }
 
+  const summary = plan?.summary;
+  const previous = stats?.total_assignments ?? 0;
+
   return (
-    <div className="import-export-container">
-      <h3>Import/Export Training Data (MS Access)</h3>
-      <div className="project-indicator">
-        <strong>Project:</strong> {currentProject.title}
-      </div>
+    <div className="mx-auto flex max-w-5xl flex-col gap-4">
+      <PageHeader
+        title="Import/Export Training Data (MS Access)"
+        description={`Imports the complete training data export from MS Access: one flat table with every person and the courses they need. Project: ${currentProject.title}.`}
+        actions={
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button disabled={busy}><Download /> Export All Training Data</Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onSelect={() => exportCurrent('xlsx')}>Excel (.xlsx)</DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => exportCurrent('csv')}>CSV</DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        }
+      />
 
       {stats && (
-        <div className="info-section">
-          <h4>📊 Current Data Statistics</h4>
-          <p><strong>Total Assignments:</strong> {stats.total_assignments || 0}</p>
-          {stats.unique_users && <p><strong>Unique Users:</strong> {stats.unique_users}</p>}
-          {stats.unique_courses && <p><strong>Unique Courses:</strong> {stats.unique_courses}</p>}
-          {stats.unique_locations && <p><strong>Training Locations:</strong> {stats.unique_locations}</p>}
-          {stats.unique_functional_areas && <p><strong>Functional Areas:</strong> {stats.unique_functional_areas}</p>}
+        <section aria-label="Current data" className="flex flex-wrap gap-3">
+          <StatCard value={stats.total_assignments || 0} label="Total Assignments" />
+          {stats.unique_users !== undefined && <StatCard value={stats.unique_users} label="Unique Users" />}
+          {stats.unique_courses !== undefined && <StatCard value={stats.unique_courses} label="Unique Courses" />}
+          {stats.unique_locations !== undefined && <StatCard value={stats.unique_locations} label="Training Locations" />}
+          {stats.unique_functional_areas !== undefined && <StatCard value={stats.unique_functional_areas} label="Functional Areas" />}
+        </section>
+      )}
+
+      {error && <div role="alert" className="rounded-md bg-destructive-soft px-3 py-2 text-sm text-destructive">{error}</div>}
+
+      {result && (
+        <div role="status" className="flex items-start gap-3 rounded-lg border border-border bg-success-soft px-4 py-3 text-sm text-success">
+          <CircleCheck className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+          <div className="flex-1">
+            <p className="font-medium">Import complete: {plural(result.imported, 'record')} imported.</p>
+            <p>The previous {plural(result.replaced, 'record')} for this project {result.replaced === 1 ? 'was' : 'were'} replaced.{result.skipped > 0 && ` ${plural(result.skipped, 'row')} with problems ${result.skipped === 1 ? 'was' : 'were'} left out.`}</p>
+          </div>
+          <Button onClick={reset}>Done</Button>
         </div>
       )}
 
-      <div className="info-section">
-        <h4>📋 About This Tool</h4>
-        <p>
-          This tool imports the complete training data export from MS Access.
-          The CSV should contain all user information and course assignments in one flat table.
-        </p>
-        <p>
-          <strong>Expected CSV Columns:</strong> ID, functional_area, sub_functional_area, est_duration_hrs,
-          emp_id, name, business-unit, org, country, department, job_title, email, location,
-          training_location, project_role, assigned_by, assigned_date, notes
-        </p>
-        <p>
-          <strong>Import Mode:</strong> REPLACE - All existing training data for this project will be deleted
-          and replaced with the new import.
-        </p>
-        <p className="info-note">
-          <strong>⚠️ Warning:</strong> Importing will delete all existing training schedules and calendar events
-          for this project. Make sure to export your data first if you need a backup!
-        </p>
-      </div>
+      <section aria-label="Import" className="flex flex-col gap-4 rounded-lg border border-border bg-card p-4">
+        <div>
+          <h2 className="text-base font-semibold">Import Training Data from MS Access</h2>
+          <p className="text-sm text-muted-foreground">
+            Importing <b className="text-foreground">replaces</b> all of this project's training data with the file. Schedules, sessions and assignments that
+            already exist are not deleted, but they refer to people and courses by ID, so check they still match afterwards. Nothing is changed until you press the button below.
+          </p>
+          <p className="mt-2 text-xs text-subtle-foreground">
+            Expected columns: ID, functional_area, sub_functional_area, est_duration_hrs, emp_id, name, business-unit, org, country, department, job_title,
+            email, location, training_location, project_role, assigned_by, assigned_date, notes.
+          </p>
+        </div>
 
-      <h4>Import Training Data from MS Access</h4>
+        {!plan && !progress && <FileDrop onFile={handleFile} label="Choose a file" hint=".csv or .xlsx from the MS Access export" disabled={busy} />}
 
-      <div className="import-section">
-        <input
-          type="file"
-          accept=".csv"
-          onChange={handleFileChange}
-          disabled={loading}
-        />
-        <button
-          onClick={handleImport}
-          disabled={loading || !file}
-        >
-          {loading ? 'Importing...' : 'Import CSV (Replace All)'}
-        </button>
-      </div>
+        {busy && !plan && !progress && (
+          <div role="status" className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
+            <Loader2 className="size-4 animate-spin" aria-hidden="true" /> Reading and checking the file...
+          </div>
+        )}
 
-      {loading && progress.total > 0 && (
-        <div className="progress-section">
-          <div className="progress-info">
-            <div className="progress-text">
-              {progress.phase}
+        {plan && (
+          <>
+            <div className="flex items-center gap-3 rounded-lg border border-border px-3.5 py-2.5">
+              <FileSpreadsheet className="size-5 text-success" aria-hidden="true" />
+              <div className="min-w-0 flex-1">
+                <div className="truncate font-medium">{fileName}</div>
+                <div className="text-xs text-subtle-foreground">{plural(plan.rows.length + plan.errors.length, 'row')} read</div>
+              </div>
+              <Button onClick={reset} disabled={busy}>Choose a different file</Button>
             </div>
-            <div className="progress-stats">
-              {progress.current} of {progress.total} ({Math.round((progress.current / progress.total) * 100)}%)
+
+            {plan.fileProblems.length > 0 && (
+              <div role="alert" className="rounded-md bg-destructive-soft px-3 py-2 text-sm text-destructive">
+                {plan.fileProblems.map((problem) => (<p key={problem}>{problem}</p>))}
+              </div>
+            )}
+            {plan.ignoredColumns.length > 0 && <p className="text-sm text-muted-foreground">These columns are not used and were ignored: {plan.ignoredColumns.join(', ')}.</p>}
+
+            {plan.fileProblems.length === 0 && (
+              <>
+                <div className="flex flex-wrap gap-3">
+                  <StatCard value={summary.rows} label="Rows to import" />
+                  <StatCard value={summary.people} label="People" />
+                  <StatCard value={summary.courses} label="Courses" />
+                  <StatCard value={summary.locations} label="Training locations" />
+                  <StatCard value={summary.areas} label="Functional areas" />
+                  {summary.duplicates > 0 && <StatCard value={summary.duplicates} label="Repeated person + course rows" tone="warning" />}
+                  {plan.errors.length > 0 && <StatCard value={plan.errors.length} label="Rows with problems" tone="danger" />}
+                </div>
+
+                <p className="text-sm" aria-live="polite">
+                  This will replace the <b>{plural(previous, 'record')}</b> now in this project with <b>{plural(summary.rows, 'record')}</b> from the file.
+                </p>
+
+                {plan.errors.length > 0 && (
+                  <div className="flex flex-col gap-2">
+                    <div className="flex items-center justify-between gap-3">
+                      <h3 className="text-sm font-semibold">Rows with problems</h3>
+                      <Button size="sm" onClick={downloadProblems}><Download /> Download problems</Button>
+                    </div>
+                    <DataTable caption="Rows with problems" columns={problemColumns} data={plan.errors} getRowId={(e) => String(e.rowNumber)} pageSize={10} pageSizes={[10, 25, 50]} />
+                    <label className="flex items-start gap-2 text-sm">
+                      <Checkbox checked={skipInvalid} onCheckedChange={(value) => setSkipInvalid(value === true)} className="mt-0.5" />
+                      <span><span className="font-medium">Leave out the rows with problems</span> <span className="text-muted-foreground">and import the rest. Without this, the import is blocked until the file is fixed, because everything now in the project is being replaced.</span></span>
+                    </label>
+                  </div>
+                )}
+
+                {summary.rows === 0 ? (
+                  <p className="text-sm text-destructive">There are no usable rows in this file, so there is nothing to import.</p>
+                ) : (
+                  <label className="flex items-start gap-2 rounded-md border border-border-strong bg-warning-soft px-3 py-2 text-sm">
+                    <Checkbox checked={confirmed} onCheckedChange={(value) => setConfirmed(value === true)} className="mt-0.5" />
+                    <span>I understand this replaces all {plural(previous, 'existing record')} for this project.</span>
+                  </label>
+                )}
+
+                <div className="flex flex-wrap items-center justify-end gap-2">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button disabled={busy} className="mr-auto"><Download /> Download a backup of the current data</Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="start">
+                      <DropdownMenuItem onSelect={() => exportCurrent('xlsx', 'training_data_backup_before_import')}>Excel (.xlsx)</DropdownMenuItem>
+                      <DropdownMenuItem onSelect={() => exportCurrent('csv', 'training_data_backup_before_import')}>CSV</DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                  <Button onClick={reset} disabled={busy}>Cancel</Button>
+                  <Button variant="default" onClick={apply} disabled={!canApply}>
+                    {busy && <Loader2 className="animate-spin" aria-hidden="true" />}
+                    Import CSV (Replace All)
+                  </Button>
+                </div>
+              </>
+            )}
+          </>
+        )}
+
+        {progress && (
+          <div role="status" className="flex flex-col gap-2" aria-live="polite">
+            <div className="flex items-center justify-between text-sm">
+              <span>{progress.phase}</span>
+              <span className="tabular-nums text-muted-foreground">{progress.done} of {progress.total}{progress.total > 0 && ` (${Math.round((progress.done / progress.total) * 100)}%)`}</span>
+            </div>
+            <div className="h-1.5 overflow-hidden rounded-full bg-secondary">
+              <div className="h-full rounded-full bg-primary" style={{ width: `${progress.total > 0 ? (progress.done / progress.total) * 100 : 0}%` }} />
             </div>
           </div>
-          <div className="progress-bar">
-            <div
-              className="progress-fill"
-              style={{ width: `${(progress.current / progress.total) * 100}%` }}
-            ></div>
-          </div>
-        </div>
-      )}
-
-      <div className="export-section">
-        <h4>Export Training Data to CSV</h4>
-        <div className="button-group">
-          <button
-            onClick={handleExport}
-            disabled={loading}
-          >
-            {loading ? 'Exporting...' : 'Export All Training Data'}
-          </button>
-        </div>
-      </div>
-
-      {message && (
-        <div className={`message ${message.startsWith('Error') || message.startsWith('❌') ? 'error' : 'success'}`}>
-          <pre style={{ whiteSpace: 'pre-wrap', margin: 0, fontFamily: 'inherit' }}>{message}</pre>
-        </div>
-      )}
+        )}
+      </section>
     </div>
   );
 };
