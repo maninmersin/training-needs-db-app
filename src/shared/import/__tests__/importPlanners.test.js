@@ -329,3 +329,42 @@ describe('applyAssignmentsImport', () => {
     expect(log.some((e) => e.op === 'delete')).toBe(false);
   });
 });
+
+describe('locations and areas that are switched off (inactive)', () => {
+  // Everyone already has London or Manchester, but both have since been switched off in Reference Data
+  const inactiveCtx = () => peopleCtx({
+    locations: [],
+    inactiveLocations: ['London', 'Leeds'],
+    existing: new Map([[1, PERSON()], [2, PERSON({ id: 2, name: 'Oliver Patel', email: 'o@x.com', training_location: 'Leeds', project_role: 'Mystery' })]])
+  });
+
+  test('an exported file imports straight back: unchanged locations and roles are not checked again', () => {
+    const plan = planPeopleImport(table(H, ['', '1', 'Amelia Brown', 'a@x.com', 'Manager', 'Finance', 'London', 'Buyer'], ['', '2', 'Oliver Patel', 'o@x.com', 'Manager', 'Finance', 'leeds', 'Mystery']), inactiveCtx());
+    expect(plan.items.map((i) => i.status)).toEqual(['unchanged', 'unchanged']);
+  });
+
+  test('a rename of someone with a switched-off location works and keeps their location', () => {
+    const plan = planPeopleImport(table(H, ['', '1', 'Amelia Green', 'a@x.com', 'Manager', 'Finance', 'London', 'Buyer']), inactiveCtx());
+    expect(plan.items[0]).toMatchObject({ status: 'ok', op: { type: 'update', id: 1, values: { name: 'Amelia Green' } } });
+  });
+
+  test('moving a person TO a switched-off location, or adding a new person there, says it is switched off', () => {
+    const move = planPeopleImport(table(H, ['Update', '1', '', '', '', '', 'Leeds', '']), inactiveCtx());
+    expect(move.items[0]).toMatchObject({ status: 'error', message: 'Training location "Leeds" is switched off (inactive) in Reference Data' });
+    const add = planPeopleImport(table(H, ['Add', '50', 'New', 'n@x.com', '', '', 'London', '']), inactiveCtx());
+    expect(add.items[0].message).toBe('Training location "London" is switched off (inactive) in Reference Data');
+  });
+
+  test('a location that does not exist at all still says to add it', () => {
+    const plan = planPeopleImport(table(H, ['Add', '50', 'New', 'n@x.com', '', '', 'Atlantis', '']), inactiveCtx());
+    expect(plan.items[0].message).toMatch(/is not in Reference Data \(add it there first\)/);
+  });
+
+  test('courses behave the same: an unchanged functional area is fine, a switched-off one is named', () => {
+    const ctx = { projectId: 'p1', existing: new Map([['FIN-101', COURSE()]]), areas: ['HR'], inactiveAreas: ['Finance'] };
+    const same = planCoursesImport(table(CH, ['', 'FIN-101', 'Ledger 2', 'finance', '', '', '']), ctx);
+    expect(same.items[0]).toMatchObject({ status: 'ok', op: { values: { course_name: 'Ledger 2' } } });
+    const move = planCoursesImport(table(CH, ['Add', 'NEW-1', 'N', 'Finance', '1', '', '1']), ctx);
+    expect(move.items[0].message).toBe('Functional area "Finance" is switched off (inactive) in Reference Data');
+  });
+});

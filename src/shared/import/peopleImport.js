@@ -9,6 +9,7 @@ export const PEOPLE_COLUMNS = ['change_type', 'id', ...PEOPLE_FIELDS];
 const ALIASES = { jobtitle: 'job_title', subdivision: 'sub_division', locationname: 'location_name', userid: 'id', user_id: 'id', employee_id: 'id', role: 'project_role' };
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const label = (field) => field.replace(/_/g, ' ');
+const sameText = (a, b) => Boolean(b) && String(a).trim().toLowerCase() === String(b).trim().toLowerCase();
 
 const chunk = (list, size) => {
   const parts = [];
@@ -82,15 +83,26 @@ export function planPeopleImport(table, ctx, { allowDeletes = false } = {}) {
     });
 
     if (wanted.email && !EMAIL.test(wanted.email)) problems.push('Enter a full email address');
+    // A value the person already has is not checked again: exporting, editing and importing back must always work,
+    // even if a location was switched off since. Only a changed value has to be on the Reference Data lists.
     if (wanted.training_location) {
-      const match = canonicalMatch(wanted.training_location, ctx.locations);
-      if (match) wanted.training_location = match;
-      else problems.push(`Training location "${wanted.training_location}" is not in Reference Data (add it there first)`);
+      if (sameText(wanted.training_location, existing?.training_location)) {
+        wanted.training_location = existing.training_location;
+      } else {
+        const match = canonicalMatch(wanted.training_location, ctx.locations);
+        if (match) wanted.training_location = match;
+        else if (canonicalMatch(wanted.training_location, ctx.inactiveLocations || [])) problems.push(`Training location "${wanted.training_location}" is switched off (inactive) in Reference Data`);
+        else problems.push(`Training location "${wanted.training_location}" is not in Reference Data (add it there first)`);
+      }
     }
     if (wanted.project_role) {
-      const match = canonicalMatch(wanted.project_role, ctx.roles);
-      if (match) wanted.project_role = match;
-      else warnings.push(`Role "${wanted.project_role}" is not in Reference Data`);
+      if (sameText(wanted.project_role, existing?.project_role)) {
+        wanted.project_role = existing.project_role;
+      } else {
+        const match = canonicalMatch(wanted.project_role, ctx.roles);
+        if (match) wanted.project_role = match;
+        else warnings.push(`Role "${wanted.project_role}" is not in Reference Data`);
+      }
     }
     if (!existing && (!wanted.name || !wanted.email)) problems.push('Name and email are required for a new person');
     if (problems.length > 0) return error(problems.join('; '));
@@ -136,7 +148,7 @@ export function planPeopleImport(table, ctx, { allowDeletes = false } = {}) {
 /** Read what the check needs from the database. */
 export async function loadPeopleContext(db, projectId, table) {
   const [locations, roles] = await Promise.all([
-    db.from('training_locations').select('name').eq('project_id', projectId).eq('active', true),
+    db.from('training_locations').select('name, active').eq('project_id', projectId),
     db.from('project_roles').select('project_role_name').eq('project_id', projectId)
   ]);
   if (locations.error) throw locations.error;
@@ -151,7 +163,8 @@ export async function loadPeopleContext(db, projectId, table) {
   return {
     projectId,
     existing,
-    locations: (locations.data || []).map((row) => row.name),
+    locations: (locations.data || []).filter((row) => row.active !== false).map((row) => row.name),
+    inactiveLocations: (locations.data || []).filter((row) => row.active === false).map((row) => row.name),
     roles: (roles.data || []).map((row) => row.project_role_name)
   };
 }

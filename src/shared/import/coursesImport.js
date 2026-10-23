@@ -84,9 +84,15 @@ export function planCoursesImport(table, ctx, { allowDeletes = false } = {}) {
       else wanted.priority = priority;
     }
     if (wanted.functional_area) {
-      const match = canonicalMatch(wanted.functional_area, ctx.areas);
-      if (match) wanted.functional_area = match;
-      else problems.push(`Functional area "${wanted.functional_area}" is not in Reference Data (add it there first)`);
+      // A value the course already has is not checked again, so an exported file always imports back
+      if (existing?.functional_area && String(existing.functional_area).trim().toLowerCase() === wanted.functional_area.trim().toLowerCase()) {
+        wanted.functional_area = existing.functional_area;
+      } else {
+        const match = canonicalMatch(wanted.functional_area, ctx.areas);
+        if (match) wanted.functional_area = match;
+        else if (canonicalMatch(wanted.functional_area, ctx.inactiveAreas || [])) problems.push(`Functional area "${wanted.functional_area}" is switched off (inactive) in Reference Data`);
+        else problems.push(`Functional area "${wanted.functional_area}" is not in Reference Data (add it there first)`);
+      }
     }
     if (!existing) {
       const missing = ['course_name', 'functional_area', 'duration_hrs', 'priority'].filter((field) => wanted[field] === undefined || wanted[field] === null);
@@ -122,7 +128,7 @@ export function planCoursesImport(table, ctx, { allowDeletes = false } = {}) {
 }
 
 export async function loadCoursesContext(db, projectId, table) {
-  const areas = await db.from('functional_areas').select('name').eq('project_id', projectId).eq('active', true);
+  const areas = await db.from('functional_areas').select('name, active').eq('project_id', projectId);
   if (areas.error) throw areas.error;
 
   const existing = new Map();
@@ -131,7 +137,12 @@ export async function loadCoursesContext(db, projectId, table) {
     if (error) throw error;
     (data || []).forEach((course) => existing.set(course.course_id, course));
   }
-  return { projectId, existing, areas: (areas.data || []).map((row) => row.name) };
+  return {
+    projectId,
+    existing,
+    areas: (areas.data || []).filter((row) => row.active !== false).map((row) => row.name),
+    inactiveAreas: (areas.data || []).filter((row) => row.active === false).map((row) => row.name)
+  };
 }
 
 export function applyCoursesImport(items, { db, projectId }, onProgress) {

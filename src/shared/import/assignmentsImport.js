@@ -93,6 +93,7 @@ export function planAssignmentsImport(table, ctx, { mode = 'replace' } = {}) {
       if (!EMAIL.test(details.email)) return error('Enter a full email address');
       if (details.training_location) {
         const match = canonicalMatch(details.training_location, ctx.locations);
+        if (!match && canonicalMatch(details.training_location, ctx.inactiveLocations || [])) return error(`Training location "${details.training_location}" is switched off (inactive) in Reference Data`);
         if (!match) return error(`Training location "${details.training_location}" is not in Reference Data (add it there first)`);
         details.training_location = match;
       }
@@ -147,7 +148,7 @@ export async function loadAssignmentsContext(db, projectId, table) {
   const ids = assignmentPeopleIds(table);
   const [courses, locations, roles] = await Promise.all([
     db.from('courses').select('course_id').eq('project_id', projectId),
-    db.from('training_locations').select('name').eq('project_id', projectId).eq('active', true),
+    db.from('training_locations').select('name, active').eq('project_id', projectId),
     db.from('project_roles').select('project_role_name').eq('project_id', projectId)
   ]);
   [courses, locations, roles].forEach((result) => {
@@ -176,7 +177,8 @@ export async function loadAssignmentsContext(db, projectId, table) {
     people,
     current,
     courses: (courses.data || []).map((row) => row.course_id),
-    locations: (locations.data || []).map((row) => row.name),
+    locations: (locations.data || []).filter((row) => row.active !== false).map((row) => row.name),
+    inactiveLocations: (locations.data || []).filter((row) => row.active === false).map((row) => row.name),
     roles: (roles.data || []).map((row) => row.project_role_name)
   };
 }
