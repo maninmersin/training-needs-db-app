@@ -193,3 +193,47 @@ describe('AttendanceReports', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('Failed to export attendance data');
   });
 });
+
+describe('AttendanceReports breakdowns', () => {
+  const group = (total, present) => ({ total, present, attendance_rate: (present / total) * 100 });
+  const ONE_AREA = {
+    overall: { total_records: 20, total_present: 15, total_absent: 5, attendance_rate: 75 },
+    by_functional_area: { 'Supply Chain': group(20, 15) },
+    by_training_location: { London: group(12, 10), Manchester: group(8, 5) },
+    by_course: { 'Inventory Mgt': group(10, 8), Outbound: group(10, 7) }
+  };
+
+  test('with only one functional area it opens on a breakdown that actually splits the numbers', async () => {
+    await setup({ stats: ONE_AREA });
+    expect(screen.getByRole('heading', { name: 'Attendance by Training Location' })).toBeInTheDocument();
+    expect(screen.getByRole('progressbar', { name: 'London attendance' })).toHaveAttribute('aria-valuenow', '83');
+    expect(screen.getByRole('progressbar', { name: 'Manchester attendance' })).toHaveAttribute('aria-valuenow', '63');
+    expect(screen.getByRole('button', { name: 'Training Location' })).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  test('the buttons switch between functional area, location and course', async () => {
+    const user = await setup({ stats: ONE_AREA });
+    await user.click(screen.getByRole('button', { name: 'Course' }));
+    expect(screen.getByRole('heading', { name: 'Attendance by Course' })).toBeInTheDocument();
+    expect(screen.getByRole('progressbar', { name: 'Inventory Mgt attendance' })).toHaveAttribute('aria-valuenow', '80');
+    expect(screen.getByRole('progressbar', { name: 'Outbound attendance' })).toHaveAttribute('aria-valuenow', '70');
+    await user.click(screen.getByRole('button', { name: 'Functional Area' }));
+    expect(screen.getByRole('heading', { name: 'Attendance by Functional Area' })).toBeInTheDocument();
+    expect(screen.getByRole('progressbar', { name: 'Supply Chain attendance' })).toBeInTheDocument();
+    expect(screen.queryByRole('progressbar', { name: 'London attendance' })).not.toBeInTheDocument();
+  });
+
+  test('a choice you made is kept when the filters reload the numbers', async () => {
+    const user = await setup({ stats: ONE_AREA });
+    await user.click(screen.getByRole('button', { name: 'Course' }));
+    await user.type(screen.getByLabelText('Start Date'), '2026-10-01');
+    await waitFor(() => expect(service.getAttendanceStatistics).toHaveBeenLastCalledWith('p1', expect.objectContaining({ startDate: '2026-10-01' })));
+    expect(screen.getByRole('heading', { name: 'Attendance by Course' })).toBeInTheDocument();
+  });
+
+  test('the empty statistics from the service show the no-data message', async () => {
+    const { EMPTY_STATISTICS } = require('../../../services/attendanceGroups');
+    await setup({ stats: EMPTY_STATISTICS });
+    expect(screen.getByText('No Attendance Data Available')).toBeInTheDocument();
+  });
+});

@@ -2,6 +2,7 @@ import { supabase } from '@core/services/supabaseClient';
 import { fetchUserDirectory, userOrPlaceholder } from './userDirectoryService';
 import { summariseAttendance } from './attendanceSummary';
 import { endOfDay } from './dateFilters';
+import { EMPTY_STATISTICS, groupAttendance } from './attendanceGroups';
 
 /**
  * Attendance Service Layer
@@ -511,15 +512,7 @@ export const getAttendanceStatistics = async (projectId, filters = {}) => {
     }
 
     if (!attendanceData || attendanceData.length === 0) {
-      return {
-        totalRecords: 0,
-        totalPresent: 0,
-        totalAbsent: 0,
-        overallAttendanceRate: 0,
-        functionalAreaStats: [],
-        locationStats: [],
-        timeSeriesData: []
-      };
+      return EMPTY_STATISTICS;
     }
 
     // Get unique session IDs to fetch session details
@@ -528,7 +521,7 @@ export const getAttendanceStatistics = async (projectId, filters = {}) => {
     // Fetch training session details
     let sessionsQuery = supabase
       .from('training_sessions')
-      .select('id, course_name, functional_area, training_location, start_datetime')
+      .select('id, course_id, course_name, functional_area, training_location, start_datetime')
       .eq('project_id', projectId)
       .in('id', sessionIds);
 
@@ -561,6 +554,7 @@ export const getAttendanceStatistics = async (projectId, filters = {}) => {
           return {
             ...record,
             training_sessions: {
+              course_id: session.course_id,
               course_name: session.course_name,
               functional_area: session.functional_area,
               training_location: session.training_location,
@@ -580,25 +574,6 @@ export const getAttendanceStatistics = async (projectId, filters = {}) => {
     const totalAbsent = totalRecords - totalPresent;
     const overallAttendanceRate = totalRecords > 0 ? (totalPresent / totalRecords) * 100 : 0;
 
-    // Group by functional area
-    const byFunctionalArea = {};
-    data?.forEach(record => {
-      const area = record.training_sessions.functional_area;
-      if (!byFunctionalArea[area]) {
-        byFunctionalArea[area] = { total: 0, present: 0 };
-      }
-      byFunctionalArea[area].total++;
-      if (record.attendance_statuses.is_present) {
-        byFunctionalArea[area].present++;
-      }
-    });
-
-    // Calculate rates for each area
-    Object.keys(byFunctionalArea).forEach(area => {
-      const stats = byFunctionalArea[area];
-      stats.attendance_rate = stats.total > 0 ? (stats.present / stats.total) * 100 : 0;
-    });
-
     return {
       overall: {
         total_records: totalRecords,
@@ -606,7 +581,9 @@ export const getAttendanceStatistics = async (projectId, filters = {}) => {
         total_absent: totalAbsent,
         attendance_rate: Math.round(overallAttendanceRate * 100) / 100
       },
-      by_functional_area: byFunctionalArea
+      by_functional_area: groupAttendance(data, (record) => record.training_sessions.functional_area),
+      by_training_location: groupAttendance(data, (record) => record.training_sessions.training_location),
+      by_course: groupAttendance(data, (record) => record.training_sessions.course_name || record.training_sessions.course_id)
     };
   } catch (error) {
     console.error('❌ Error in getAttendanceStatistics:', error);

@@ -17,7 +17,7 @@ import {
 } from '../../services/attendanceService';
 import { searchUserDirectory } from '../../services/userDirectoryService';
 import { complianceLevel, formatPercentage } from './complianceLogic';
-import { EMPTY_FILTERS, filterReportSessions, summariseHistory, uniqueOptions } from './reportsLogic';
+import { EMPTY_FILTERS, GROUPINGS, defaultGrouping, filterReportSessions, groupEntries, summariseHistory, uniqueOptions } from './reportsLogic';
 
 const ALL = '__all__'; // Radix Select cannot hold an empty value
 
@@ -61,6 +61,7 @@ const AttendanceReports = () => {
   const [exporting, setExporting] = useState(false);
   const [error, setError] = useState(null);
   const [activeView, setActiveView] = useState('overview'); // overview, sessions, individual
+  const [groupBy, setGroupBy] = useState(null); // null = pick a sensible breakdown automatically
 
   const [selectedSession, setSelectedSession] = useState(null);
   const [sessionRecords, setSessionRecords] = useState(null); // null while loading
@@ -214,7 +215,9 @@ const AttendanceReports = () => {
   }
 
   const overall = statistics?.overall;
-  const areas = statistics?.by_functional_area ? Object.entries(statistics.by_functional_area) : [];
+  const grouping = groupBy || defaultGrouping(statistics);
+  const groupLabel = GROUPINGS.find((g) => g.value === grouping).label;
+  const groups = groupEntries(statistics, grouping);
   const overallLevel = complianceLevel(overall?.attendance_rate || 0).level;
 
   return (
@@ -267,10 +270,19 @@ const AttendanceReports = () => {
                 <StatCard value={formatPercentage(overall?.attendance_rate || 0)} label="Attendance Rate" tone={TONE[overallLevel]} />
               </div>
 
-              <h3 className="text-base font-semibold">Attendance by Functional Area</h3>
-              {areas.length > 0 ? (
+              <div className="flex flex-wrap items-center gap-3">
+                <h3 className="text-base font-semibold">Attendance by {groupLabel}</h3>
+                <div role="group" aria-label="Break attendance down by" className="flex gap-1">
+                  {GROUPINGS.map((option) => (
+                    <Button key={option.value} size="sm" variant={grouping === option.value ? 'default' : 'secondary'} aria-pressed={grouping === option.value} onClick={() => setGroupBy(option.value)}>
+                      {option.label}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+              {groups.length > 0 ? (
                 <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                  {areas.map(([area, stats]) => {
+                  {groups.map(([area, stats]) => {
                     const { level } = complianceLevel(stats.attendance_rate);
                     return (
                       <div key={area} className="flex flex-col gap-3 rounded-lg border border-border bg-card p-4">

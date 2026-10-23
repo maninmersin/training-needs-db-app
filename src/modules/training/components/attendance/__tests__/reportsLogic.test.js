@@ -57,3 +57,39 @@ describe('endOfDay', () => {
     expect(endOfDay(undefined)).toBeUndefined();
   });
 });
+
+describe('breakdowns', () => {
+  const { GROUPINGS, defaultGrouping, groupEntries } = require('../reportsLogic');
+  const stats = (areas, locations, courses) => ({
+    by_functional_area: Object.fromEntries(areas.map((a) => [a, { total: 1, present: 1, attendance_rate: 100 }])),
+    by_training_location: Object.fromEntries(locations.map((a) => [a, { total: 1, present: 1, attendance_rate: 100 }])),
+    by_course: Object.fromEntries(courses.map((a) => [a, { total: 1, present: 1, attendance_rate: 100 }]))
+  });
+
+  test('offers functional area, training location and course', () => {
+    expect(GROUPINGS.map((g) => g.value)).toEqual(['functional_area', 'training_location', 'course']);
+  });
+
+  test('gives the entries of the chosen breakdown, and nothing for missing data', () => {
+    const s = stats(['Finance', 'HR'], ['London'], ['Ledger']);
+    expect(groupEntries(s, 'functional_area').map(([name]) => name)).toEqual(['Finance', 'HR']);
+    expect(groupEntries(s, 'course').map(([name]) => name)).toEqual(['Ledger']);
+    expect(groupEntries(null, 'course')).toEqual([]);
+    expect(groupEntries({}, 'training_location')).toEqual([]);
+    expect(groupEntries(s, 'bogus')).toEqual([]);
+  });
+
+  test('opens on functional area when there is more than one', () => {
+    expect(defaultGrouping(stats(['Finance', 'HR'], ['London', 'Leeds'], ['A', 'B']))).toBe('functional_area');
+  });
+
+  test('with only one functional area it opens on the first breakdown that has more than one entry', () => {
+    expect(defaultGrouping(stats(['Supply Chain'], ['London', 'Manchester'], ['A', 'B', 'C']))).toBe('training_location');
+    expect(defaultGrouping(stats(['Supply Chain'], ['London'], ['A', 'B', 'C']))).toBe('course');
+  });
+
+  test('with nothing to split anywhere, or no data, it stays on functional area', () => {
+    expect(defaultGrouping(stats(['Supply Chain'], ['London'], ['A']))).toBe('functional_area');
+    expect(defaultGrouping(null)).toBe('functional_area');
+  });
+});

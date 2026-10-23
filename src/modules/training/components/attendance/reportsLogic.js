@@ -31,3 +31,28 @@ export function summariseHistory(history) {
   const attended = history.filter((record) => record.status?.is_present).length;
   return { total, attended, missed: total - attended, rate: total > 0 ? Math.round((attended / total) * 100) : 0 };
 }
+
+/** The ways the Overview can break attendance down: the label, and where the numbers are in the statistics. */
+export const GROUPINGS = [
+  { value: 'functional_area', label: 'Functional Area', key: 'by_functional_area' },
+  { value: 'training_location', label: 'Training Location', key: 'by_training_location' },
+  { value: 'course', label: 'Course', key: 'by_course' }
+];
+
+const entriesOf = (statistics, grouping) => {
+  const key = GROUPINGS.find((g) => g.value === grouping)?.key;
+  return key && statistics?.[key] ? Object.entries(statistics[key]) : [];
+};
+
+/** The cards to show for a grouping: [[name, { total, present, attendance_rate }], ...]. */
+export const groupEntries = entriesOf;
+
+/**
+ * Which breakdown to open on: functional area as usual, unless there is only one area (or none) and another
+ * breakdown has more than one entry, in which case the first such one, so the page is not a single card.
+ */
+export function defaultGrouping(statistics) {
+  if (entriesOf(statistics, 'functional_area').length > 1) return 'functional_area';
+  const better = GROUPINGS.find((g) => entriesOf(statistics, g.value).length > 1);
+  return better ? better.value : 'functional_area';
+}
