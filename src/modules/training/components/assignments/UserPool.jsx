@@ -1,7 +1,10 @@
 import React, { useState } from 'react';
 import { useDraggable } from '@dnd-kit/core';
 import { debugLog } from '@core/utils/consoleUtils';
-import './UserPool.css';
+import { Check, ChevronDown, ChevronRight, Filter, GripVertical, MapPin, UserRound, X } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { Badge, Button } from '@/components/ui';
+import ChoiceField from '@shared/components/ChoiceField';
 
 const UserPool = ({
   userCategories,
@@ -227,251 +230,181 @@ const UserPool = ({
     });
   };
 
-  return (
-    <div className="user-pool">
-      {/* Filters Section */}
-      <div className="user-pool-filters">
-        <div 
-          className="filter-header"
-          onClick={() => toggleSection('filters')}
-        >
-          <h3>🎯 Filters</h3>
-          <span className={`expand-icon ${expandedSections.filters ? 'expanded' : 'collapsed'}`}>
-            {expandedSections.filters ? '▼' : '▶'}
-          </span>
-        </div>
-        
-        {expandedSections.filters && (
-          <div className="filter-content">
-        
-        <div className="filter-group">
-          <label>🏢 Functional Area:</label>
-          <select 
-            value={selectedFunctionalArea} 
-            onChange={(e) => onFunctionalAreaChange(e.target.value)}
-          >
-            <option value="">All Areas</option>
-            {getUniqueFunctionalAreas().map(area => (
-              <option key={area} value={area}>{area}</option>
-            ))}
-          </select>
-        </div>
-        
-        <div className="filter-group">
-          <label>📍 Training Location:</label>
-          <select 
-            value={selectedTrainingLocation} 
-            onChange={(e) => onLocationChange(e.target.value)}
-          >
-            <option value="">All Locations</option>
-            {availableTrainingLocations.map(location => (
-              <option key={location} value={location}>{location}</option>
-            ))}
-          </select>
-        </div>
-        
-        {(selectedTrainingLocation || selectedFunctionalArea) && (
-          <div className="active-filters">
-            <strong>Active Filters:</strong>
-            {selectedFunctionalArea && <span className="filter-tag">🏢 {selectedFunctionalArea}</span>}
-            {selectedTrainingLocation && <span className="filter-tag">📍 {selectedTrainingLocation}</span>}
-          </div>
-        )}
-          </div>
-        )}
-      </div>
+  const readyUsers = filterUsers(userCategories.allCoursesNeeded);
+  const someCoursesUsers = Object.values(userCategories.someCoursesNeeded || {}).flat();
+  const unassignedUsers = filterUsers(userCategories.unassigned);
 
-      {/* Selection Controls */}
+  const userRowProps = { dragMode, onUserClick: handleUserClick, selectedUsers, successfulDrops };
+
+  return (
+    <div className="user-pool flex flex-col">
+      {/* Filters */}
+      <PoolSection
+        title="Filters"
+        icon={<Filter className="size-3.5" />}
+        open={expandedSections.filters}
+        onToggle={() => toggleSection('filters')}
+      >
+        <div className="flex flex-col gap-3 px-3 py-3">
+          <ChoiceField
+            label="Functional Area"
+            value={selectedFunctionalArea}
+            options={getUniqueFunctionalAreas()}
+            placeholder="All Areas"
+            onChange={onFunctionalAreaChange}
+          />
+          <ChoiceField
+            label="Training Location"
+            value={selectedTrainingLocation}
+            options={availableTrainingLocations}
+            placeholder="All Locations"
+            onChange={onLocationChange}
+          />
+          {(selectedTrainingLocation || selectedFunctionalArea) && (
+            <div className="flex flex-wrap items-center gap-1.5 text-xs">
+              <strong>Active Filters:</strong>
+              {selectedFunctionalArea && <Badge variant="primary">{selectedFunctionalArea}</Badge>}
+              {selectedTrainingLocation && <Badge variant="success">{selectedTrainingLocation}</Badge>}
+            </div>
+          )}
+        </div>
+      </PoolSection>
+
+      {/* Selection controls */}
       {dragMode && (
-        <div className="selection-controls">
+        <div className="selection-controls border-b border-border bg-secondary px-3 py-2 text-xs">
           {selectedUsers.size > 0 ? (
-            <div className="selection-info">
-              <span className="selection-count">
-                ✓ {selectedUsers.size} user{selectedUsers.size > 1 ? 's' : ''} selected
-              </span>
-              <button 
-                className="clear-selection-btn"
-                onClick={clearSelection}
-                title="Clear selection"
-              >
-                ✕ Clear
-              </button>
+            <div className="flex items-center justify-between gap-2">
+              <span className="font-medium text-primary">{selectedUsers.size} user{selectedUsers.size > 1 ? 's' : ''} selected</span>
+              <Button size="sm" variant="ghost" onClick={clearSelection} title="Clear selection"><X /> Clear</Button>
             </div>
           ) : (
-            <div className="selection-help">
-              <div className="help-text">
-                <span>💡 CTRL+Click to select multiple, SHIFT+Click for range</span>
+            <div className="flex items-start justify-between gap-2">
+              <p className="text-muted-foreground">
+                CTRL+Click to select multiple, SHIFT+Click for range.
                 <br />
-                <small>⌨️ Shortcuts: CTRL+A (Select All), CTRL+D (Clear), ESC (Clear)</small>
-              </div>
-              <button 
-                className="select-all-btn"
-                onClick={selectAll}
-                title="Select all visible users (CTRL+A)"
-              >
-                Select All
-              </button>
+                <span className="text-subtle-foreground">Shortcuts: CTRL+A (Select All), CTRL+D (Clear), ESC (Clear)</span>
+              </p>
+              <Button size="sm" onClick={selectAll} title="Select all visible users (CTRL+A)">Select All</Button>
             </div>
           )}
         </div>
       )}
 
-      {/* All Courses Needed Section */}
-      <div className="user-category-section">
-        <div 
-          className="category-header"
-          onClick={() => toggleSection('allCoursesReady')}
-        >
-          <span className="expand-icon">
-            {expandedSections.allCoursesReady ? '▼' : '▶'}
-          </span>
-          <h3>🟢 ALL COURSES NEEDED ({filterUsers(userCategories.allCoursesNeeded).length})</h3>
+      {/* All courses needed */}
+      <PoolSection
+        title="ALL COURSES NEEDED"
+        count={readyUsers.length}
+        tone="success"
+        open={expandedSections.allCoursesReady}
+        onToggle={() => toggleSection('allCoursesReady')}
+      >
+        <h4 className="px-3 pt-2 text-xs font-semibold text-muted-foreground">Ready to Assign ({readyUsers.length})</h4>
+        <div className="flex flex-col gap-1 px-2 py-2">
+          {readyUsers.map((user) => (
+            <DraggableUser key={user.id} user={user} category="all-courses" isSelected={selectedUsers.has(user.id)} {...userRowProps} />
+          ))}
+          {readyUsers.length === 0 && <p className="px-1 py-2 text-xs italic text-muted-foreground">No users matching current filters</p>}
         </div>
-        
-        {expandedSections.allCoursesReady && (
-          <div className="user-list">
-            <div className="subsection">
-              <h4>🟢 Ready to Assign ({filterUsers(userCategories.allCoursesNeeded).length})</h4>
-              {filterUsers(userCategories.allCoursesNeeded).map((user, index) => {
-                return (
-                  <DraggableUser 
-                    key={user.id} 
-                    user={user} 
-                    dragMode={dragMode}
-                    category="all-courses"
-                    isSelected={selectedUsers.has(user.id)}
-                    onUserClick={handleUserClick}
-                    selectedUsers={selectedUsers}
-                    successfulDrops={successfulDrops}
-                  />
-                );
-              })}
-              
-              {filterUsers(userCategories.allCoursesNeeded).length === 0 && (
-                <div className="empty-message">
-                  No users matching current filters
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-      </div>
+      </PoolSection>
 
-      {/* Some Courses Needed Section */}
-      <div className="user-category-section">
-        <div 
-          className="category-header"
-          onClick={() => toggleSection('someCoursesNeeded', 'main')}
-        >
-          <span className="expand-icon">
-            {expandedSections.someCoursesNeeded.main ? '▼' : '▶'}
-          </span>
-          <h3>📚 SOME COURSES NEEDED ({Object.values(userCategories.someCoursesNeeded || {}).flat().length})</h3>
-        </div>
-        
-        {expandedSections.someCoursesNeeded.main && (
-          <div className="user-list">
-            {Object.entries(userCategories.someCoursesNeeded || {}).map(([courseId, users]) => (
-              <div key={courseId} className="course-subsection">
-                <div 
-                  className="subsection-header"
+      {/* Some courses needed */}
+      <PoolSection
+        title="SOME COURSES NEEDED"
+        count={someCoursesUsers.length}
+        tone="warning"
+        open={Boolean(expandedSections.someCoursesNeeded.main)}
+        onToggle={() => toggleSection('someCoursesNeeded', 'main')}
+      >
+        <div className="flex flex-col">
+          {Object.entries(userCategories.someCoursesNeeded || {}).map(([courseId, users]) => {
+            const shown = filterUsers(users);
+            const open = Boolean(expandedSections.someCoursesNeeded[courseId]);
+            return (
+              <div key={courseId} className="border-b border-border last:border-b-0">
+                <button
+                  type="button"
+                  aria-expanded={open}
                   onClick={() => toggleSection('someCoursesNeeded', courseId)}
+                  className="flex w-full items-center gap-1.5 px-3 py-1.5 text-left text-xs font-medium hover:bg-accent"
                 >
-                  <span className="expand-icon">
-                    {expandedSections.someCoursesNeeded[courseId] ? '▼' : '▶'}
-                  </span>
-                  <h4>📖 {userCategories.courseNames?.get(courseId) || courseId} ({filterUsers(users).length})</h4>
-                </div>
-                
-                {expandedSections.someCoursesNeeded[courseId] && (
-                  <div className="course-user-list">
-                    {filterUsers(users).map(user => (
-                      <DraggableUser 
-                        key={`${courseId}-${user.id}`} 
-                        user={user} 
-                        dragMode={dragMode}
-                        category={`course-${courseId}`}
-                        requiredCourse={null}
-                        isSelected={selectedUsers.has(user.id)}
-                        onUserClick={handleUserClick}
-                        selectedUsers={selectedUsers}
-                        successfulDrops={successfulDrops}
-                      />
+                  {open ? <ChevronDown className="size-3.5" /> : <ChevronRight className="size-3.5" />}
+                  <span className="truncate">{userCategories.courseNames?.get(courseId) || courseId}</span>
+                  <span className="ml-auto text-muted-foreground">({shown.length})</span>
+                </button>
+                {open && (
+                  <div className="flex flex-col gap-1 px-2 pb-2">
+                    {shown.map((user) => (
+                      <DraggableUser key={`${courseId}-${user.id}`} user={user} category={`course-${courseId}`} requiredCourse={null} isSelected={selectedUsers.has(user.id)} {...userRowProps} />
                     ))}
-                    
-                    {filterUsers(users).length === 0 && (
-                      <div className="empty-message">
-                        No users matching current filters
-                      </div>
-                    )}
+                    {shown.length === 0 && <p className="px-1 py-2 text-xs italic text-muted-foreground">No users matching current filters</p>}
                   </div>
                 )}
               </div>
-            ))}
-            
-            {Object.keys(userCategories.someCoursesNeeded || {}).length === 0 && (
-              <div className="empty-message">
-                No users need specific courses from this schedule
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-
-      {/* Unassigned Pool Section */}
-      {userCategories.unassigned && userCategories.unassigned.length > 0 && (
-        <div className="user-category-section">
-          <div 
-            className="category-header"
-            onClick={() => toggleSection('unassigned')}
-          >
-            <span className="expand-icon">
-              {expandedSections.unassigned ? '▼' : '▶'}
-            </span>
-            <h3>❌ UNASSIGNED POOL ({filterUsers(userCategories.unassigned).length})</h3>
-          </div>
-          
-          {expandedSections.unassigned && (
-            <div className="user-list">
-              <p className="section-description">
-                Users who don't require any courses from this schedule
-              </p>
-              {filterUsers(userCategories.unassigned).map(user => (
-                <DraggableUser 
-                  key={user.id} 
-                  user={user} 
-                  dragMode={dragMode}
-                  category="unassigned"
-                  isSelected={selectedUsers.has(user.id)}
-                  onUserClick={handleUserClick}
-                  selectedUsers={selectedUsers}
-                  successfulDrops={successfulDrops}
-                />
-              ))}
-            </div>
+            );
+          })}
+          {Object.keys(userCategories.someCoursesNeeded || {}).length === 0 && (
+            <p className="px-3 py-3 text-xs italic text-muted-foreground">No users need specific courses from this schedule</p>
           )}
         </div>
+      </PoolSection>
+
+      {/* Unassigned pool */}
+      {userCategories.unassigned && userCategories.unassigned.length > 0 && (
+        <PoolSection
+          title="UNASSIGNED POOL"
+          count={unassignedUsers.length}
+          open={Boolean(expandedSections.unassigned)}
+          onToggle={() => toggleSection('unassigned')}
+        >
+          <p className="px-3 pt-2 text-xs text-muted-foreground">Users who don't require any courses from this schedule</p>
+          <div className="flex flex-col gap-1 px-2 py-2">
+            {unassignedUsers.map((user) => (
+              <DraggableUser key={user.id} user={user} category="unassigned" isSelected={selectedUsers.has(user.id)} {...userRowProps} />
+            ))}
+          </div>
+        </PoolSection>
       )}
 
-      {/* Drag Mode Indicator */}
       {dragMode && (
-        <div className="drag-mode-indicator">
-          🎯 <strong>Drag Mode Active</strong>
+        <div className="drag-mode-indicator m-3 rounded-md bg-primary-soft px-3 py-2 text-xs text-primary-soft-foreground">
+          <strong>Drag Mode Active</strong>
           <br />
-          <small>Click and drag users to calendar events</small>
+          Click and drag users to calendar events
         </div>
       )}
     </div>
   );
 };
 
+const TONE = { success: 'bg-success', warning: 'bg-warning', none: 'bg-border-strong' };
+
+// A collapsible group in the pool
+function PoolSection({ title, count, tone = 'none', icon, open, onToggle, children }) {
+  return (
+    <section className="user-category-section border-b border-border">
+      <button
+        type="button"
+        aria-expanded={open}
+        onClick={onToggle}
+        className="flex w-full items-center gap-2 bg-secondary px-3 py-2 text-left text-xs font-semibold hover:bg-accent"
+      >
+        {open ? <ChevronDown className="size-3.5" /> : <ChevronRight className="size-3.5" />}
+        {icon || <span className={`size-2 rounded-full ${TONE[tone]}`} aria-hidden="true" />}
+        <span>{title}{count !== undefined ? ` (${count})` : ''}</span>
+      </button>
+      {open && children}
+    </section>
+  );
+}
+
 // Draggable User Component
-const DraggableUser = ({ 
-  user, 
-  dragMode, 
-  category, 
-  requiredCourse, 
-  isSelected = false, 
+const DraggableUser = ({
+  user,
+  dragMode,
+  category,
+  requiredCourse,
+  isSelected = false,
   onUserClick,
   selectedUsers = new Set(),
   successfulDrops = new Set()
@@ -490,12 +423,10 @@ const DraggableUser = ({
     requiredCourse
   };
 
-
   const {
     attributes,
     listeners,
     setNodeRef,
-    transform,
     isDragging,
   } = useDraggable({
     id: user.id.toString(),
@@ -503,76 +434,45 @@ const DraggableUser = ({
     disabled: !dragMode
   });
 
-
-  // Disable transform to prevent ghost trailing - use only CSS classes for drag feedback
-  const style = isDragging ? {
-    zIndex: 1000,
-    opacity: 0.8
-  } : undefined;
-
   const handleClick = (event) => {
-    // Always call the handler for click events in drag mode
-    if (dragMode && onUserClick) {
-      onUserClick(user, event);
-    }
+    if (dragMode && onUserClick) onUserClick(user, event);
   };
 
-  // Create a mouse down handler that checks for modifier keys
+  // With a modifier key held the click selects, so the drag listener must not take the mouse-down
   const handleMouseDown = (event) => {
-    // If modifier keys are pressed, prevent drag listeners from interfering
-    if (event.ctrlKey || event.metaKey || event.shiftKey) {
-      // Don't call drag listeners, let the click event handle it
-      return;
-    }
-    
-    // For normal mouse down without modifiers, allow drag listeners
-    if (listeners?.onMouseDown) {
-      listeners.onMouseDown(event);
-    }
+    if (event.ctrlKey || event.metaKey || event.shiftKey) return;
+    if (listeners?.onMouseDown) listeners.onMouseDown(event);
   };
 
-  // Create conditional listeners object
-  const conditionalListeners = dragMode ? {
-    ...listeners,
-    onMouseDown: handleMouseDown
-  } : {};
+  const conditionalListeners = dragMode ? { ...listeners, onMouseDown: handleMouseDown } : {};
+  const dropped = successfulDrops.has(user.id) || successfulDrops.has(user.id?.toString());
 
   return (
     <div
-      ref={setNodeRef} 
-      style={style}
+      ref={setNodeRef}
       {...attributes}
       {...conditionalListeners}
       onClick={handleClick}
-      className={`user-item ${dragMode ? 'draggable' : ''} ${isDragging ? 'dragging' : ''} ${isSelected ? 'selected' : ''} ${successfulDrops.has(user.id) || successfulDrops.has(user.id?.toString()) ? 'drop-success' : ''}`}
+      className={cn(
+        'user-item relative flex items-center gap-2 rounded-md border border-border bg-card px-2 py-1.5 text-sm',
+        dragMode && 'draggable cursor-grab select-none hover:bg-accent active:cursor-grabbing',
+        isDragging && 'dragging z-[1000] opacity-80',
+        isSelected && 'selected border-primary bg-selected',
+        dropped && 'drop-success border-success bg-success-soft'
+      )}
     >
-      {isSelected && <div className="selection-indicator">✓</div>}
-      {selectedUsers.size > 1 && isSelected && (
-        <div className="multi-select-badge">{selectedUsers.size}</div>
-      )}
-      <div className="user-avatar">
-        👤
-      </div>
-      <div className="user-info">
-        <div className="user-name">{user.name}</div>
-        <div className="user-details">
+      <UserRound className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+      <div className="user-info flex min-w-0 flex-1 flex-col leading-tight">
+        <span className="user-name truncate font-medium">{user.name}</span>
+        <span className="user-details flex flex-wrap items-center gap-x-2 text-xs text-muted-foreground">
           <span className="user-role">{user.project_role}</span>
-          {user.training_location && (
-            <span className="user-location">📍 {user.training_location}</span>
-          )}
-        </div>
-        {requiredCourse && (
-          <div className="required-course">
-            📖 Needs: {requiredCourse}
-          </div>
-        )}
+          {user.training_location && <span className="user-location inline-flex items-center gap-0.5"><MapPin className="size-3" /> {user.training_location}</span>}
+        </span>
+        {requiredCourse && <span className="required-course text-xs text-muted-foreground">Needs: {requiredCourse}</span>}
       </div>
-      
-      {dragMode && (
-        <div className="drag-handle">
-          ⋮⋮
-        </div>
-      )}
+      {isSelected && <Check className="selection-indicator size-4 shrink-0 text-primary" aria-label="Selected" />}
+      {selectedUsers.size > 1 && isSelected && <Badge variant="primary" className="multi-select-badge">{selectedUsers.size}</Badge>}
+      {dragMode && <GripVertical className="drag-handle size-4 shrink-0 text-subtle-foreground" aria-hidden="true" />}
     </div>
   );
 };

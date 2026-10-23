@@ -91,7 +91,13 @@ const getSessionIdentifiers = (session) => {
 const debugLog = () => {};
 const debugWarn = () => {};
 const debugError = () => {};
-import './DragDropAssignmentPanel.css';
+import { BarChart3, CalendarDays, ClipboardList, Download, FileDown, FileUp, Loader2, MapPin, Target, Trash2, X } from 'lucide-react';
+import { toast } from 'sonner';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader,
+  AlertDialogTitle, Badge, Button, FormField, Input
+} from '@/components/ui';
+import './assignmentPanel.css';
 
 const DragDropAssignmentPanel = ({
   schedule,
@@ -138,6 +144,8 @@ const DragDropAssignmentPanel = ({
   });
   const [showStatsModal, setShowStatsModal] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
+  const [removeAllOpen, setRemoveAllOpen] = useState(false);
+  const [removeAllText, setRemoveAllText] = useState('');
 
   // Context menu state
   const [contextMenu, setContextMenu] = useState({
@@ -2086,7 +2094,7 @@ const DragDropAssignmentPanel = ({
         await ActionValidators.validateRemoveUserFromSession(userInfo, sessionInfo);
       } catch (authError) {
         console.error('❌ Authorization failed:', authError.message);
-        alert(`Access denied: ${authError.message}`);
+        toast.error('Access denied', { description: authError.message });
         return;
       }
       
@@ -2211,7 +2219,7 @@ const DragDropAssignmentPanel = ({
       await ActionValidators.validateRemoveUserFromSession(userInfo, sessionInfo);
       await ActionValidators.validateAssignUserToSession(userInfo, sessionInfo);
     } catch (authError) {
-      alert(`Access denied: ${authError.message}`);
+      toast.error('Access denied', { description: authError.message });
       return;
     }
     setMoveDialog({ isOpen: true, userInfo, sessionInfo });
@@ -2235,7 +2243,7 @@ const DragDropAssignmentPanel = ({
         await ActionValidators.validateRemoveUserFromSession(userInfo, sessionInfo);
       } catch (authError) {
         console.error('❌ Authorization failed:', authError.message);
-        alert(`Access denied: ${authError.message}`);
+        toast.error('Access denied', { description: authError.message });
         return;
       }
 
@@ -2293,44 +2301,8 @@ const DragDropAssignmentPanel = ({
   // Remove all assignments for the current schedule
   const handleRemoveAllAssignments = async () => {
     try {
-      // First confirmation dialog
-      const firstConfirm = window.confirm(
-        `⚠️ WARNING: Remove All Assignments\n\n` +
-        `This will permanently remove ALL user assignments from:\n` +
-        `• Schedule: ${schedule?.name}\n` +
-        `• All courses and events\n` +
-        `• All groups and training locations\n\n` +
-        `This action cannot be undone!\n\n` +
-        `Are you sure you want to continue?`
-      );
-
-      if (!firstConfirm) {
-        return; // User cancelled
-      }
-
-      // Second confirmation with exact count
+      // The typed DELETE confirmation happens in the dialog that calls this
       const currentAssignmentCount = assignments?.length || 0;
-      const secondConfirm = window.confirm(
-        `⚠️ FINAL CONFIRMATION\n\n` +
-        `You are about to DELETE ${currentAssignmentCount} assignments.\n\n` +
-        `Type 'DELETE' in the next prompt to confirm this action.`
-      );
-
-      if (!secondConfirm) {
-        return; // User cancelled
-      }
-
-      // Third confirmation requiring user to type DELETE
-      const deleteConfirmation = window.prompt(
-        `⚠️ FINAL SAFETY CHECK\n\n` +
-        `To permanently delete all ${currentAssignmentCount} assignments, type: DELETE\n\n` +
-        `(This action is irreversible)`
-      );
-
-      if (deleteConfirmation !== 'DELETE') {
-        alert('❌ Action cancelled. You must type "DELETE" exactly to confirm.');
-        return;
-      }
 
       setLoading(true);
       setError(null);
@@ -2352,7 +2324,7 @@ const DragDropAssignmentPanel = ({
         onAssignmentUpdate();
       }
 
-      alert(`✅ Successfully removed all ${currentAssignmentCount} assignments from the schedule.`);
+      toast.success(`Removed all ${currentAssignmentCount} assignments from the schedule`);
 
     } catch (err) {
       console.error('❌ Error removing all assignments:', err);
@@ -2390,7 +2362,7 @@ const DragDropAssignmentPanel = ({
       });
 
       if (model.rows.length === 0) {
-        alert('📄 No assignment data to export for the current selection.');
+        toast.info('No assignment data to export for the current selection');
         return;
       }
 
@@ -3608,10 +3580,9 @@ const DragDropAssignmentPanel = ({
       // Show results to user
       const successCount = results.successful.length;
       const failedCount = results.failed.length;
-      const message = `Auto-assignment completed: ${successCount} users assigned successfully` + 
-                     (failedCount > 0 ? `, ${failedCount} failed` : '');
-      
-      alert(message);
+      const message = `Auto-assignment completed: ${successCount} users assigned successfully` + (failedCount > 0 ? `, ${failedCount} failed` : '');
+      if (failedCount > 0) toast.warning(message);
+      else toast.success(message);
       
       // Refresh data
       await initializeAssignmentData();
@@ -3642,13 +3613,18 @@ const DragDropAssignmentPanel = ({
 
   if (loading && Object.keys(userCategories).length === 0) {
     return (
-      <div className="drag-drop-assignment-panel loading">
-        <div className="loading-message">
-          🔄 Loading assignment interface...
+      <div className="assignment-panel-root">
+        <div role="status" className="flex flex-1 items-center justify-center gap-2 text-sm text-muted-foreground">
+          <Loader2 className="size-5 animate-spin" /> Loading assignment interface...
         </div>
       </div>
     );
   }
+
+  const busy = loading || autoAssignProgress.isRunning;
+  const progressPercent = autoAssignProgress.total > 0 ? Math.round((autoAssignProgress.processed / autoAssignProgress.total) * 100) : 0;
+  const calendarSucceeded = Boolean(calendarError) && calendarError.startsWith('✅');
+  const assignmentCount = assignments?.length || 0;
 
   return (
     <DndContext
@@ -3657,156 +3633,98 @@ const DragDropAssignmentPanel = ({
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
     >
-      <div className="drag-drop-assignment-panel">
+      <div className="assignment-panel-root">
         {/* Header with controls */}
-        <div className="assignment-panel-header">
-          <div className="header-title">
-            <h2>🎯 Drag & Drop Assignment</h2>
-            <span className="schedule-name">
-              {schedule?.name}{' '}
-              <span
-                style={{opacity: 0.6, fontSize: '0.85em', cursor: 'pointer', textDecoration: 'underline'}}
+        <div className="flex flex-wrap items-start justify-between gap-3 border-b border-border bg-card px-4 py-3">
+          <div className="flex min-w-0 flex-col gap-1">
+            <h2 className="flex items-center gap-2 text-lg font-semibold leading-tight">
+              <Target className="size-5 text-primary" /> Drag &amp; Drop Assignment
+            </h2>
+            <p className="flex flex-wrap items-center gap-x-2 text-sm text-muted-foreground">
+              <span className="font-medium text-foreground">{schedule?.name}</span>
+              <button
+                type="button"
                 title="Click to copy full schedule ID"
-                onClick={() => {navigator.clipboard.writeText(schedule?.id); alert('Schedule ID copied: ' + schedule?.id);}}
+                className="text-xs underline underline-offset-2 hover:text-foreground"
+                onClick={() => { navigator.clipboard.writeText(schedule?.id); toast.success('Schedule ID copied', { description: schedule?.id }); }}
               >
-                • ID: {schedule?.id?.substring(0, 8)}... (click to copy)
-              </span>
-            </span>
+                ID: {schedule?.id?.substring(0, 8)}... (click to copy)
+              </button>
+            </p>
             {isStakeholder && (assignedFunctionalAreas.length > 0 || assignedTrainingLocations.length > 0) && (
-              <div className="stakeholder-scope">
-                <span className="scope-label">Managing:</span>
-                {assignedFunctionalAreas.length > 0 && (
-                  <span className="scope-areas">
-                    📋 {assignedFunctionalAreas.join(', ')}
-                  </span>
-                )}
-                {assignedTrainingLocations.length > 0 && (
-                  <span className="scope-locations">
-                    📍 {assignedTrainingLocations.join(', ')}
-                  </span>
-                )}
+              <div className="flex flex-wrap items-center gap-1.5 text-xs">
+                <span className="font-medium text-muted-foreground">Managing:</span>
+                {assignedFunctionalAreas.length > 0 && <Badge variant="primary"><ClipboardList className="size-3" /> {assignedFunctionalAreas.join(', ')}</Badge>}
+                {assignedTrainingLocations.length > 0 && <Badge variant="success"><MapPin className="size-3" /> {assignedTrainingLocations.join(', ')}</Badge>}
               </div>
             )}
           </div>
-          
-          <div className="header-controls">
+
+          <div className="flex flex-wrap items-center gap-1.5">
             {!isStakeholder && (
-              <>
-                <button 
-                  onClick={handleAutoAssign} 
-                  disabled={loading || autoAssignProgress.isRunning}
-                  className="auto-assign-btn"
-                >
-                  {loading || autoAssignProgress.isRunning ? '🔄 Processing...' : '🎯 Auto Assign All'}
-                </button>
-                
-                <button 
-                  onClick={handleRemoveAllAssignments}
-                  disabled={loading}
-                  className="remove-all-btn"
-                  title="Remove all user assignments from this schedule"
-                >
-                  🗑️ Remove All Assignments
-                </button>
-              </>
+              <Button variant="default" onClick={handleAutoAssign} disabled={busy}>
+                {busy ? <><Loader2 className="animate-spin" /> Processing...</> : <><Target /> Auto Assign All</>}
+              </Button>
             )}
-            
-            <button 
+            <Button
               onClick={handleExportAssignments}
               disabled={loading || !schedule?.id}
-              className="export-assignments-btn"
               title="Export an Excel review sheet: one row per person per course, with a Move To Group column for stakeholders to fill in"
             >
-              📄 Export Review Sheet
-            </button>
-            
-            <button 
+              <FileDown /> Export Review Sheet
+            </Button>
+            <Button
               onClick={() => setShowImportModal(true)}
               disabled={loading || !schedule?.id}
-              className="import-assignments-btn"
               title="Import a review sheet that stakeholders have filled in (you will see what it would do before anything changes)"
             >
-              📥 Import Review Sheet
-            </button>
-            
-            <button 
-              onClick={() => setShowStatsModal(true)}
-              className="assignment-stats-btn"
-            >
-              📊 Assignment Stats
-            </button>
-            
-            <button 
+              <FileUp /> Import Review Sheet
+            </Button>
+            <Button onClick={() => setShowStatsModal(true)}><BarChart3 /> Assignment Stats</Button>
+            <Button
               onClick={handleCalendarGeneration}
               disabled={generatingCalendar || !schedule || !getAllSessionsFlat()?.length || !assignments?.length}
-              className="generate-calendar-btn"
               title="Generate and download training calendar for all assignments"
             >
-              {generatingCalendar ? '🔄 Generating...' : '🗓️ Generate Training Calendar'}
-            </button>
-            
-            <button
-              onClick={handleShowExportDialog}
-              disabled={loading || !schedule?.id}
-              className="export-data-btn"
-              title="Export assignment data with advanced filtering options"
-            >
-              📋 Export Assignment Data
-            </button>
-
-
-            <button onClick={onClose} className="close-btn">
-              ✕
-            </button>
+              {generatingCalendar ? <><Loader2 className="animate-spin" /> Generating...</> : <><CalendarDays /> Generate Training Calendar</>}
+            </Button>
+            <Button onClick={handleShowExportDialog} disabled={loading || !schedule?.id} title="Export assignment data with advanced filtering options">
+              <Download /> Export Assignment Data
+            </Button>
+            {!isStakeholder && (
+              <Button variant="destructive" onClick={() => { setRemoveAllText(''); setRemoveAllOpen(true); }} disabled={loading} title="Remove all user assignments from this schedule">
+                <Trash2 /> Remove All Assignments
+              </Button>
+            )}
+            <Button variant="ghost" size="icon" onClick={onClose} aria-label="Close" title="Back to the schedule list"><X /></Button>
           </div>
         </div>
 
         {error && (
-          <div className="error-message">
-            ❌ {error}
-          </div>
+          <div role="alert" className="border-b border-border bg-destructive-soft px-4 py-2 text-sm text-destructive">{error}</div>
         )}
 
         {/* Auto-assignment progress bar */}
         {autoAssignProgress.isRunning && (
-          <div className="auto-assign-progress">
-            <div className="progress-header">
-              <h3>🎯 Auto-Assignment in Progress</h3>
-              <button
-                onClick={handleCancelAutoAssign}
-                className="cancel-assign-btn"
-                title="Stop the assignment process by refreshing the page"
-              >
-                🛑 Stop & Refresh
-              </button>
+          <div role="status" className="flex flex-col gap-2 border-b border-border bg-primary-soft px-4 py-3 text-sm text-primary-soft-foreground">
+            <div className="flex items-center justify-between gap-3">
+              <h3 className="font-semibold">Auto-Assignment in Progress</h3>
+              <Button size="sm" variant="destructive" onClick={handleCancelAutoAssign} title="Stop the assignment process by refreshing the page">Stop &amp; Refresh</Button>
             </div>
-            
-            <div className="progress-details">
-              <div className="current-user">
-                Currently processing: <strong>{autoAssignProgress.currentUser}</strong>
-              </div>
-              <div className="progress-stats">
-                Progress: {autoAssignProgress.processed} / {autoAssignProgress.total} users
-                ({Math.round((autoAssignProgress.processed / autoAssignProgress.total) * 100)}%)
-              </div>
-              <div className="success-fail-stats">
-                ✅ Successful: {autoAssignProgress.successful} | ❌ Failed: {autoAssignProgress.failed}
-              </div>
+            <div className="flex flex-wrap gap-x-6 gap-y-1">
+              <span>Currently processing: <strong>{autoAssignProgress.currentUser}</strong></span>
+              <span>Progress: {autoAssignProgress.processed} / {autoAssignProgress.total} users ({progressPercent}%)</span>
+              <span>Successful: {autoAssignProgress.successful} | Failed: {autoAssignProgress.failed}</span>
             </div>
-            
-            <div className="progress-bar-container">
-              <div 
-                className="progress-bar"
-                style={{
-                  width: `${(autoAssignProgress.processed / autoAssignProgress.total) * 100}%`
-                }}
-              />
+            <div className="h-2 overflow-hidden rounded-full bg-card" role="progressbar" aria-valuenow={progressPercent} aria-valuemin={0} aria-valuemax={100}>
+              {/* The bar's width is the progress itself */}
+              <div className="h-full rounded-full bg-primary transition-[width]" style={{ width: `${progressPercent}%` }} />
             </div>
           </div>
         )}
 
         {calendarError && (
-          <div className={`error-message ${calendarError.startsWith('✅') ? 'success-message' : ''}`}>
+          <div role={calendarSucceeded ? 'status' : 'alert'} className={`border-b border-border px-4 py-2 text-sm ${calendarSucceeded ? 'bg-success-soft text-success' : 'bg-destructive-soft text-destructive'}`}>
             {calendarError}
           </div>
         )}
@@ -3814,14 +3732,13 @@ const DragDropAssignmentPanel = ({
         <div className="assignment-panel-content">
           {/* Left: User Pool */}
           <div className="user-pool-section">
-
             <CalendarDayControls
               visibleDays={visibleDays}
               onDayToggle={handleDayToggle}
               collapsed={dayControlsCollapsed}
               onToggle={toggleDayControls}
             />
-            
+
             <UserPool
               userCategories={userCategories}
               selectedTrainingLocation={selectedTrainingLocation}
@@ -3837,13 +3754,6 @@ const DragDropAssignmentPanel = ({
 
           {/* Right: Enhanced Calendar */}
           <div className="calendar-section">
-            {/* DIAGNOSTIC: Log what we're passing to calendar */}
-            {console.log('📋 DRAG-DROP PANEL: Passing to calendar:', {
-              assignmentsCount: assignments?.length,
-              flattenedSessionsCount: flattenedSessions?.length,
-              scheduleId: schedule?.id,
-              currentScheduleId: currentSchedule?.id
-            })}
             <EnhancedScheduleCalendar
               sessions={flattenedSessions || []}
               onSessionUpdated={() => {}} // Would connect to existing handler
@@ -3870,7 +3780,6 @@ const DragDropAssignmentPanel = ({
           </div>
         </div>
 
-
         {/* Context Menu */}
         <UserContextMenu
           visible={contextMenu.visible}
@@ -3894,7 +3803,7 @@ const DragDropAssignmentPanel = ({
           onClose={() => setMoveDialog(prev => ({ ...prev, isOpen: false }))}
           onMoved={handleUserMoved}
         />
-        
+
         {/* Assignment Stats Modal */}
         <AssignmentStatsModal
           isOpen={showStatsModal}
@@ -3902,7 +3811,7 @@ const DragDropAssignmentPanel = ({
           schedule={schedule}
           selectedTrainingLocation={selectedTrainingLocation}
         />
-        
+
         {/* Import stakeholder review sheet */}
         <ImportReviewDialog
           isOpen={showImportModal}
@@ -3923,6 +3832,31 @@ const DragDropAssignmentPanel = ({
             assignments={assignments}
           />
         )}
+
+        {/* Remove all assignments: typing DELETE is required */}
+        <AlertDialog open={removeAllOpen} onOpenChange={setRemoveAllOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Remove all assignments?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This permanently removes all {assignmentCount} user assignments from the schedule "{schedule?.name}": every course, group and training location. This cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <FormField label="Type DELETE to confirm">
+              <Input value={removeAllText} onChange={(event) => setRemoveAllText(event.target.value)} autoComplete="off" />
+            </FormField>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                destructive
+                disabled={removeAllText !== 'DELETE'}
+                onClick={() => { setRemoveAllOpen(false); handleRemoveAllAssignments(); }}
+              >
+                Remove all assignments
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </DndContext>
   );

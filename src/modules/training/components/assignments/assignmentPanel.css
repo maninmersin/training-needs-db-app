@@ -1,0 +1,65 @@
+/* Layout of the User Assignments screen: a panel that fills the space beside the sidebar, with the
+   people on the left and the calendar on the right. Everything inside uses the design tokens. */
+
+.assignment-panel-root {
+  position: fixed;
+  top: var(--shell-top, 44px);
+  left: var(--sidebar-width);
+  right: 0;
+  bottom: 0;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  background: var(--background);
+  color: var(--foreground);
+}
+
+/* The shell narrows the sidebar when it is collapsed */
+body.sidebar-collapsed .assignment-panel-root {
+  left: var(--sidebar-collapsed-width);
+}
+
+.assignment-panel-content {
+  display: flex;
+  flex: 1;
+  min-height: 0; /* lets the two sides scroll on their own */
+}
+
+.assignment-panel-content .user-pool-section {
+  display: flex;
+  flex: 0 0 350px;
+  flex-direction: column;
+  max-height: 100%;
+  overflow-y: auto;
+  border-right: 1px solid var(--border);
+  background: var(--card);
+}
+
+.assignment-panel-content .calendar-section {
+  flex: 1;
+  overflow: auto;
+  padding: 12px;
+  background: var(--background);
+}
+
+@media (max-width: 1200px) {
+  .assignment-panel-content .user-pool-section {
+    flex-basis: 300px;
+  }
+}
+
+@media (max-width: 768px) {
+  .assignment-panel-root {
+    left: 0;
+  }
+
+  .assignment-panel-content {
+    flex-direction: column;
+  }
+
+  .assignment-panel-content .user-pool-section {
+    flex: 0 0 300px;
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+  }
+}
