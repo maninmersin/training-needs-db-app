@@ -1,136 +1,37 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import {
-  FaCogs, FaUsers, FaKey, FaUserCog,
-  FaLock, FaChartLine
-} from 'react-icons/fa';
-import './AdminDashboard.css';
+import { FolderKanban, KeyRound, UserCog } from 'lucide-react';
+import { Card, PageHeader } from '@/components/ui';
 
-const AdminDashboard = () => {
-  const adminProcesses = [
-    {
-      title: 'User Management',
-      description: 'Manage user accounts, profiles, and system access',
-      icon: FaUserCog,
-      path: '/user-management',
-      color: '#3498db'
-    },
-    {
-      title: 'Roles & Permissions',
-      description: 'Define system roles and manage user permissions',
-      icon: FaKey,
-      path: '/role-permissions',
-      color: '#e74c3c'
-    }
-  ];
+const ADMIN_FUNCTIONS = [
+  { title: 'Projects', description: 'Create and manage projects, and choose where each one gets its training data', icon: FolderKanban, path: '/projects' },
+  { title: 'User Management', description: 'Manage user accounts, profiles, and system access', icon: UserCog, path: '/user-management' },
+  { title: 'Roles & Permissions', description: 'Define system roles and manage user permissions', icon: KeyRound, path: '/role-permissions' }
+];
 
-  const adminFeatures = [
-    {
-      title: 'Centralized User Control',
-      description: 'Single point of control for all user accounts and access management',
-      icon: FaUsers,
-      color: '#27ae60'
-    },
-    {
-      title: 'Security & Compliance',
-      description: 'Robust security controls and compliance monitoring capabilities',
-      icon: FaLock,
-      color: '#16a085'
-    },
-    {
-      title: 'System Monitoring',
-      description: 'Track system usage, performance metrics, and user activity',
-      icon: FaChartLine,
-      color: '#8e44ad'
-    }
-  ];
+const AdminDashboard = () => (
+  <div className="mx-auto flex max-w-5xl flex-col gap-4">
+    <PageHeader title="System Administration" description="Centralized management of projects, users, access controls, and system security." />
 
-  return (
-    <div className="admin-dashboard">
-      <div className="dashboard-header">
-        <div className="header-content">
-          <FaCogs className="header-icon" />
-          <div>
-            <h1>System Administration</h1>
-            <p>Centralized management of users, access controls, and system security</p>
-          </div>
-        </div>
+    <section aria-label="Core admin functions" className="flex flex-col gap-3">
+      <h2 className="text-base font-semibold">Core Admin Functions</h2>
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        {ADMIN_FUNCTIONS.map(({ title, description, icon: Icon, path }) => (
+          <Link key={path} to={path} className="rounded-lg focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">
+            <Card className="flex h-full items-start gap-3 p-4 transition-colors hover:border-border-strong hover:bg-accent">
+              <span className="grid size-9 shrink-0 place-content-center rounded-md bg-primary-soft text-primary-soft-foreground">
+                <Icon className="size-5" aria-hidden="true" />
+              </span>
+              <span className="flex flex-col gap-0.5">
+                <span className="text-sm font-semibold">{title}</span>
+                <span className="text-sm text-muted-foreground">{description}</span>
+              </span>
+            </Card>
+          </Link>
+        ))}
       </div>
-
-      <div className="dashboard-content">
-        <section className="quick-actions">
-          <h2>Core Admin Functions</h2>
-          <div className="actions-grid">
-            {adminProcesses.map((process, index) => {
-              const IconComponent = process.icon;
-              return (
-                <Link 
-                  key={index} 
-                  to={process.path} 
-                  className="action-card"
-                  style={{ borderLeftColor: process.color }}
-                >
-                  <div className="action-icon" style={{ backgroundColor: process.color }}>
-                    <IconComponent />
-                  </div>
-                  <div className="action-content">
-                    <h3>{process.title}</h3>
-                    <p>{process.description}</p>
-                  </div>
-                </Link>
-              );
-            })}
-          </div>
-        </section>
-
-        <section className="upcoming-features">
-          <h2>Administration Capabilities</h2>
-          <div className="features-grid">
-            {adminFeatures.map((feature, index) => {
-              const IconComponent = feature.icon;
-              return (
-                <div 
-                  key={index} 
-                  className="feature-card"
-                  style={{ borderLeftColor: feature.color }}
-                >
-                  <div className="feature-icon" style={{ backgroundColor: feature.color }}>
-                    <IconComponent />
-                  </div>
-                  <div className="feature-content">
-                    <h3>{feature.title}</h3>
-                    <p>{feature.description}</p>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </section>
-
-        <section className="stats-overview">
-          <h2>Administrative Benefits</h2>
-          <div className="stats-grid">
-            <div className="stat-card">
-              <div className="stat-number">✓</div>
-              <div className="stat-label">Secure Access</div>
-            </div>
-            <div className="stat-card">
-              <div className="stat-number">✓</div>
-              <div className="stat-label">User Control</div>
-            </div>
-            <div className="stat-card">
-              <div className="stat-number">✓</div>
-              <div className="stat-label">Audit Trail</div>
-            </div>
-            <div className="stat-card">
-              <div className="stat-number">✓</div>
-              <div className="stat-label">Compliance</div>
-            </div>
-          </div>
-        </section>
-      </div>
-    </div>
-  );
-};
+    </section>
+  </div>
+);
 
 export default AdminDashboard;
