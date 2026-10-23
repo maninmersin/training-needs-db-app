@@ -8,7 +8,6 @@ import { ModuleProvider } from '@core/contexts';
 import { ProjectProvider } from '@core/contexts/ProjectContext';
 import './App.css';
 import '@core/components/ErrorBoundary.css';
-import '@modules/training/components/schedule-manager/ScheduleSelector.css';
 import { supabase } from '@core/services';
 
 // Lazy load heavy components

@@ -7,7 +7,8 @@ import ScheduleSelector from '../schedule-manager/ScheduleSelector';
 import { loadTrainingSessionsForSchedule } from '@core/services/scheduleService';
 import { SimpleAuthService } from '@auth/services/simpleAuthService';
 import { debugLog, debugWarn, debugError } from '@core/utils/consoleUtils';
-import './DragDropAssignmentPage.css';
+import { Loader2, RefreshCw } from 'lucide-react';
+import { Button, PageHeader } from '@/components/ui';
 
 const DragDropAssignmentPage = () => {
   const [searchParams] = useSearchParams();
@@ -348,28 +349,21 @@ const DragDropAssignmentPage = () => {
 
   if (loading) {
     return (
-      <div className="drag-drop-assignment-page loading">
-        <div className="loading-content">
-          <div className="loading-spinner"></div>
-          <h2>🎯 Loading Drag & Drop Assignments</h2>
-          <p>Preparing your assignment interface...</p>
-        </div>
+      <div role="status" className="mx-auto flex min-h-64 max-w-md flex-col items-center justify-center gap-2 text-center">
+        <Loader2 className="size-6 animate-spin text-muted-foreground" />
+        <h2 className="text-base font-semibold">Loading Drag &amp; Drop Assignments</h2>
+        <p className="text-sm text-muted-foreground">Preparing your assignment interface...</p>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="drag-drop-assignment-page error">
-        <div className="error-content">
-          <h2>❌ Error Loading Assignment Interface</h2>
-          <p>{error}</p>
-          <button 
-            onClick={initializePage}
-            className="retry-btn"
-          >
-            🔄 Retry
-          </button>
+      <div className="mx-auto flex max-w-2xl flex-col gap-4">
+        <PageHeader title="User Assignments" />
+        <div role="alert" className="flex items-center gap-3 rounded-md bg-destructive-soft px-3 py-2 text-sm text-destructive">
+          <span className="flex-1"><strong>Error loading the assignment interface:</strong> {error}</span>
+          <Button onClick={initializePage}><RefreshCw /> Retry</Button>
         </div>
       </div>
     );
@@ -378,29 +372,14 @@ const DragDropAssignmentPage = () => {
   // Show schedule selector if no schedule is selected
   if (showScheduleSelector && !currentSchedule) {
     return (
-      <div className="drag-drop-assignment-page selector">
-        <div className="schedule-selector-container">
-          <div className="selector-card">
-            <div className="selector-header">
-              <h2>🎯 Select Training Schedule</h2>
-            </div>
-
-            <ScheduleSelector
-              schedules={schedules}
-              onScheduleSelect={handleScheduleSelect}
-              onRefresh={fetchSchedules}
-            />
-            
-            {schedules.length === 0 && (
-              <div className="no-schedules-message">
-                <h3>📝 No Schedules Available</h3>
-                <p>You need to create a training schedule first.</p>
-                <p>Visit the <strong>Schedule Manager</strong> to create or import schedules.</p>
-              </div>
-            )}
-          </div>
-          
-        </div>
+      <div className="mx-auto flex max-w-6xl flex-col gap-4">
+        <PageHeader title="Select Training Schedule" description="Pick the schedule you want to assign people to." />
+        <ScheduleSelector schedules={schedules} onScheduleSelect={handleScheduleSelect} onRefresh={fetchSchedules} />
+        {schedules.length === 0 && (
+          <p className="text-sm text-muted-foreground">
+            You need to create a training schedule first. Use the <strong className="font-medium text-foreground">Training Schedule Creator</strong>, then manage it in the <strong className="font-medium text-foreground">Schedule Manager</strong>.
+          </p>
+        )}
       </div>
     );
   }
