@@ -12,7 +12,8 @@ jest.mock('@core/contexts/ProjectContext', () => ({ useProject: jest.fn() }));
 jest.mock('../../../services/attendanceService', () => ({
   getAssignmentVsAttendanceStats: jest.fn(),
   getDrillDownStats: jest.fn(),
-  getAttendanceGaps: jest.fn()
+  getAttendanceGaps: jest.fn(),
+  getUnscheduledAreas: jest.fn()
 }));
 
 beforeAll(() => {
@@ -46,17 +47,21 @@ const Where = () => {
   return <div data-testid="where">{location.pathname + location.search}</div>;
 };
 
-const setup = async ({ drill = PROJECT_LEVEL, gaps = GAPS } = {}) => {
+const NOT_SCHEDULED = [{ functional_area: 'Procurement', people: 38, courses: 2 }, { functional_area: 'Payroll', people: 1, courses: 1 }];
+
+const setup = async ({ drill = PROJECT_LEVEL, gaps = GAPS, unscheduled = [] } = {}) => {
   useProject.mockReturnValue({ currentProject: { id: 'p1', title: 'ACME Corp' } });
   service.getAssignmentVsAttendanceStats.mockResolvedValue(STATS);
   service.getDrillDownStats.mockImplementation(async (projectId, path) => (path.functionalArea ? AREA_LEVEL : drill));
   service.getAttendanceGaps.mockResolvedValue(gaps);
+  service.getUnscheduledAreas.mockResolvedValue(unscheduled);
   const user = userEvent.setup();
   render(
     <MemoryRouter initialEntries={['/attendance-compliance']}>
       <Routes>
         <Route path="/attendance-compliance" element={<AttendanceComplianceDashboard />} />
         <Route path="/attendance-tracker" element={<Where />} />
+        <Route path="/training-scheduler" element={<Where />} />
       </Routes>
     </MemoryRouter>
   );
@@ -155,5 +160,56 @@ describe('AttendanceComplianceDashboard', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('Failed to load attendance compliance data');
     await user.click(screen.getByRole('button', { name: 'Dismiss' }));
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+});
+
+describe('areas with training needs but no sessions', () => {
+  test('are listed as "Not scheduled yet" with how many people and courses are involved', async () => {
+    await setup({ unscheduled: NOT_SCHEDULED });
+    expect(screen.getByRole('heading', { name: 'Not scheduled yet (2)' })).toBeInTheDocument();
+    const section = screen.getByRole('region', { name: 'Not scheduled yet' });
+    expect(within(section).getByText('Procurement')).toBeInTheDocument();
+    expect(within(section).getByText('38', { selector: 'b' }).parentElement).toHaveTextContent('38 people need 2 courses');
+    expect(within(section).getByRole('heading', { name: 'Payroll' }).parentElement.parentElement).toHaveTextContent('1 person needs 1 course');
+    expect(service.getUnscheduledAreas).toHaveBeenCalledWith('p1', ['Finance', 'HR']);
+  });
+
+  test('Create a schedule opens the Schedule Creator', async () => {
+    const user = await setup({ unscheduled: NOT_SCHEDULED });
+    await user.click(within(screen.getByRole('region', { name: 'Not scheduled yet' })).getAllByRole('button', { name: /Create a schedule/ })[0]);
+    expect(await screen.findByTestId('where')).toHaveTextContent('/training-scheduler?restart=true');
+  });
+
+  test('nothing is shown when every area has sessions', async () => {
+    await setup({ unscheduled: [] });
+    expect(screen.queryByRole('region', { name: 'Not scheduled yet' })).not.toBeInTheDocument();
+  });
+
+  test('they are hidden once a date range is chosen, because the sessions may just be outside it', async () => {
+    const user = await setup({ unscheduled: NOT_SCHEDULED });
+    expect(screen.getByRole('region', { name: 'Not scheduled yet' })).toBeInTheDocument();
+    service.getUnscheduledAreas.mockClear();
+    await user.click(screen.getByRole('button', { name: 'This Month' }));
+    await waitFor(() => expect(screen.queryByRole('region', { name: 'Not scheduled yet' })).not.toBeInTheDocument());
+    expect(service.getUnscheduledAreas).not.toHaveBeenCalled();
+  });
+
+  test('they are hidden when drilled into an area', async () => {
+    const user = await setup({ unscheduled: NOT_SCHEDULED });
+    await user.click(screen.getByRole('button', { name: /Finance/ }));
+    await screen.findByRole('heading', { name: 'By Training Location' });
+    expect(screen.queryByRole('region', { name: 'Not scheduled yet' })).not.toBeInTheDocument();
+  });
+
+  test('if they cannot be worked out the rest of the dashboard still works', async () => {
+    useProject.mockReturnValue({ currentProject: { id: 'p1', title: 'ACME Corp' } });
+    service.getAssignmentVsAttendanceStats.mockResolvedValue(STATS);
+    service.getDrillDownStats.mockResolvedValue(PROJECT_LEVEL);
+    service.getAttendanceGaps.mockResolvedValue(GAPS);
+    service.getUnscheduledAreas.mockRejectedValue(new Error('function does not exist'));
+    render(<MemoryRouter><AttendanceComplianceDashboard /></MemoryRouter>);
+    expect(await screen.findByRole('button', { name: /Finance/ })).toBeInTheDocument();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    expect(screen.queryByRole('region', { name: 'Not scheduled yet' })).not.toBeInTheDocument();
   });
 });

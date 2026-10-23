@@ -3,6 +3,8 @@ import { fetchUserDirectory, userOrPlaceholder } from './userDirectoryService';
 import { summariseAttendance } from './attendanceSummary';
 import { endOfDay } from './dateFilters';
 import { EMPTY_STATISTICS, groupAttendance } from './attendanceGroups';
+import { findUnscheduled, summariseNeed } from './unscheduledAreas';
+import { fetchAllRows } from '@core/utils/fetchAllRows';
 
 /**
  * Attendance Service Layer
@@ -1053,4 +1055,25 @@ export const getAttendanceGaps = async (projectId, dateRange = {}) => {
     console.error('❌ Error in getAttendanceGaps:', error);
     throw error;
   }
+};
+
+/**
+ * Functional areas in the project's training needs that have no sessions yet, with how many people and
+ * courses each involves. `scheduledAreas` are the areas that DO have sessions.
+ * @returns {Promise<Array<{ functional_area: string, people: number, courses: number }>>}
+ */
+export const getUnscheduledAreas = async (projectId, scheduledAreas) => {
+  if (!projectId) {
+    throw new Error('Project ID is required for all attendance operations');
+  }
+  const { data, error } = await supabase.rpc('get_distinct_functional_areas', { p_project_id: projectId });
+  if (error) throw error;
+
+  const unscheduled = findUnscheduled((data || []).map((row) => row.functional_area), scheduledAreas);
+  if (unscheduled.length === 0) return [];
+
+  const rows = await fetchAllRows(() =>
+    supabase.from('training_data_combined').select('functional_area, user_id, course_id').eq('project_id', projectId).in('functional_area', unscheduled)
+  );
+  return summariseNeed(unscheduled, rows);
 };

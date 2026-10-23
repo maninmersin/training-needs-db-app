@@ -1,13 +1,14 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { BarChart3, ClipboardList, Loader2 } from 'lucide-react';
+import { BarChart3, CalendarPlus, ClipboardList, Loader2 } from 'lucide-react';
 import { useProject } from '@core/contexts/ProjectContext';
-import { Button, EmptyState, Input, PageHeader, StatCard } from '@/components/ui';
+import { Badge, Button, EmptyState, Input, PageHeader, StatCard } from '@/components/ui';
 import { cn } from '@/lib/utils';
 import {
   getAssignmentVsAttendanceStats,
   getDrillDownStats,
-  getAttendanceGaps
+  getAttendanceGaps,
+  getUnscheduledAreas
 } from '../../services/attendanceService';
 import ComplianceMetricCard from './ComplianceMetricCard';
 import BreadcrumbNavigation from './BreadcrumbNavigation';
@@ -23,6 +24,7 @@ const AttendanceComplianceDashboard = () => {
   const [complianceData, setComplianceData] = useState(null);
   const [drillDownData, setDrillDownData] = useState({});
   const [attendanceGaps, setAttendanceGaps] = useState(null);
+  const [unscheduled, setUnscheduled] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -45,6 +47,12 @@ const AttendanceComplianceDashboard = () => {
       setDrillDownData(drillStats.drillDownData || {});
       setBreadcrumb(drillStats.breadcrumb || []);
       setAttendanceGaps(gapsData);
+
+      // Areas with training needs but no sessions. Only when nothing narrows the data (a date range could hide
+      // an area's sessions and make it look unscheduled), and only at the top level. A failure here never
+      // stops the dashboard.
+      const topLevelAllTime = dateRange.preset === 'all' && !currentPath.functionalArea;
+      setUnscheduled(topLevelAllTime ? await getUnscheduledAreas(currentProject.id, Object.keys(drillStats.drillDownData || {})).catch(() => []) : []);
     } catch (loadError) {
       console.error('❌ Error loading compliance data:', loadError);
       setError('Failed to load attendance compliance data');
@@ -160,6 +168,32 @@ const AttendanceComplianceDashboard = () => {
           </div>
         )}
       </section>
+
+      {unscheduled.length > 0 && (
+        <section aria-label="Not scheduled yet" className="flex flex-col gap-3">
+          <div>
+            <h3 className="text-base font-semibold">Not scheduled yet ({unscheduled.length})</h3>
+            <p className="text-sm text-muted-foreground">These functional areas have training needs but no sessions, so there is nothing to attend yet.</p>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {unscheduled.map((area) => (
+              <div key={area.functional_area} className="flex flex-col gap-3 rounded-lg border border-dashed border-border-strong bg-card p-4">
+                <div className="flex items-start justify-between gap-2">
+                  <h4 className="text-sm font-semibold leading-snug">{area.functional_area}</h4>
+                  <Badge variant="warning">Not scheduled</Badge>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  <b className="tabular-nums text-foreground">{area.people}</b> {area.people === 1 ? 'person needs' : 'people need'}{' '}
+                  <b className="tabular-nums text-foreground">{area.courses}</b> {area.courses === 1 ? 'course' : 'courses'}
+                </p>
+                <Button size="sm" className="self-start" onClick={() => navigate('/training-scheduler?restart=true')}>
+                  <CalendarPlus /> Create a schedule
+                </Button>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
       {attendanceGaps && (
         <AttendanceIssuesPanel gaps={attendanceGaps} onIssueClick={(sessionId) => navigate(`/attendance-tracker?session=${encodeURIComponent(sessionId)}`)} />
