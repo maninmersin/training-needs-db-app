@@ -30,37 +30,17 @@
 }
 
 /* Calendar Groups and Blocks - preserve existing styles */
-.calendar-group {
+.enhanced-schedule-calendar .calendar-group {
   margin-bottom: 30px;
 }
 
-.calendar-group h3 {
-  background: #007bff;
-  color: white;
-  padding: 10px 15px;
-  margin: 0 0 20px 0;
-  border-radius: 6px 6px 0 0;
-  font-size: 18px;
-  font-weight: 600;
-}
-
-.calendar-block {
-  background: white;
-  border: 1px solid #dee2e6;
+.enhanced-schedule-calendar .calendar-block {
+  background: var(--card);
+  border: 1px solid var(--border);
   border-radius: 6px;
   margin-bottom: 20px;
-  overflow: visible; /* Changed from hidden to allow expansion */
-  min-height: 1000px; /* Force minimum height for calendar blocks */
-}
-
-.calendar-block h4 {
-  background: #f8f9fa;
-  color: #495057;
-  padding: 8px 15px;
-  margin: 0;
-  border-bottom: 1px solid #dee2e6;
-  font-size: 14px;
-  font-weight: 500;
+  overflow: visible; /* allow expansion */
+  min-height: 1000px; /* force minimum height for calendar blocks */
 }
 
 /* Droppable Event Enhancements */

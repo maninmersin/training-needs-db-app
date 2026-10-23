@@ -11,6 +11,7 @@ import { generateEventIdFromSession } from '@core/utils/eventIdUtils';
 import { fromLocalDateTime } from '@core/utils/dateTimeUtils';
 // Temporarily enable debug logging for classroom troubleshooting
 import { debugLog, debugWarn, debugError } from '@core/utils/consoleUtils';
+import { MapPin, School } from 'lucide-react';
 import './calendarTheme.css';
 import './EnhancedScheduleCalendar.css';
 
@@ -863,8 +864,8 @@ const EnhancedScheduleCalendar = ({
     <div className={`enhanced-schedule-calendar ${dragMode ? 'drag-mode' : ''}`}>
       {sortedLocationEntries.map(([trainingLocation, classrooms]) => (
         <div key={trainingLocation} className="calendar-group">
-          <h3 style={{ color: '#495057', borderBottom: '2px solid #007bff', paddingBottom: '8px', marginBottom: '20px' }}>
-            📍 {trainingLocation}
+          <h3 className="mb-4 flex items-center gap-1.5 border-b-2 border-primary pb-2 text-base font-semibold">
+            <MapPin className="size-4 text-primary" /> {trainingLocation}
           </h3>
           {Object.entries(classrooms).sort(([classroomA], [classroomB]) => {
             // Extract numbers from classroom names for proper numeric sorting
@@ -872,27 +873,10 @@ const EnhancedScheduleCalendar = ({
             const bNumber = parseInt(classroomB.replace(/[^\d]/g, '')) || 0;
             return aNumber - bNumber;
           }).map(([classroomName, sessionList]) => (
-            <div key={classroomName} className="calendar-block" style={{isolation: 'isolate', marginBottom: '25px'}}>
-              <h4 style={{ 
-                color: '#0066cc', 
-                margin: '0 0 15px 0', 
-                padding: '8px 12px', 
-                backgroundColor: '#f8f9fa', 
-                border: '1px solid #dee2e6', 
-                borderRadius: '6px',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px'
-              }}>
-                🏫 {classroomName}
-                <span style={{ 
-                  fontSize: '12px', 
-                  color: '#6c757d', 
-                  fontWeight: 'normal',
-                  marginLeft: 'auto'
-                }}>
-                  {sessionList.length} sessions
-                </span>
+            <div key={classroomName} className="calendar-block isolate mb-6">
+              <h4 className="mb-3 flex items-center gap-2 rounded-md border border-border bg-secondary px-3 py-2 text-sm font-semibold">
+                <School className="size-4 text-primary" /> {classroomName}
+                <span className="ml-auto text-xs font-normal text-muted-foreground">{sessionList.length} sessions</span>
               </h4>
               <FullCalendar
                 key={`${trainingLocation}-${classroomName}`}
