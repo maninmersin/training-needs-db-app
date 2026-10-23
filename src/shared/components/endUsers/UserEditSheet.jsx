@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Trash2 } from 'lucide-react';
 import {
   Button, FormField, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Sheet, SheetBody, SheetContent,
   SheetDescription, SheetFooter, SheetHeader, SheetTitle
@@ -32,8 +32,9 @@ function ChoiceField({ label, value, options, placeholder, error, onChange, disa
 /**
  * Side panel for adding or editing one person. `onSubmit(values)` gets the whole new row when adding,
  * or only the changed fields when editing, and may reject with an Error to be shown in the panel.
+ * When editing, `onDelete(user)` adds a Delete button (the caller asks for confirmation).
  */
-export default function UserEditSheet({ mode, user, columns, roles, locations, onSubmit, onClose }) {
+export default function UserEditSheet({ mode, user, columns, roles, locations, onSubmit, onDelete, onClose }) {
   const isNew = mode === 'create';
   const [draft, setDraft] = useState({});
   const [errors, setErrors] = useState({});
@@ -121,6 +122,11 @@ export default function UserEditSheet({ mode, user, columns, roles, locations, o
           </SheetBody>
 
           <SheetFooter>
+            {!isNew && onDelete && (
+              <Button variant="destructive" className="mr-auto" onClick={() => onDelete(user)} disabled={saving}>
+                <Trash2 /> Delete user
+              </Button>
+            )}
             <Button onClick={onClose} disabled={saving}>Cancel</Button>
             <Button type="submit" variant="default" disabled={saving}>
               {saving && <Loader2 className="animate-spin" aria-hidden="true" />}

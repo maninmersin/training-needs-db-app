@@ -97,6 +97,7 @@ const DynamicUserForm = () => {
       const { error: deleteError } = await supabase.from('end_users').delete().eq('id', user.id);
       if (deleteError) throw deleteError;
       setUsers((previous) => previous.filter((item) => item.id !== user.id));
+      setSheet((current) => (current?.user?.id === user.id ? null : current)); // close the panel if it was open on this person
       toast.success('User deleted', { description: user.name || String(user.id) });
     } catch (deleteError) {
       setError(deleteError.message);
@@ -255,6 +256,7 @@ const DynamicUserForm = () => {
         roles={roles}
         locations={trainingLocations}
         onSubmit={saveSheet}
+        onDelete={setUserToDelete}
         onClose={() => setSheet(null)}
       />
 

@@ -176,6 +176,29 @@ describe('DynamicUserForm', () => {
     expect(log).toEqual([['delete', ['id', 3]]]);
   });
 
+  test('the edit panel has a Delete button that asks first, then removes the person and closes the panel', async () => {
+    const user = userEvent.setup();
+    const log = await setup();
+    await user.click(screen.getByText('Oliver Patel'));
+    const panel = await screen.findByRole('dialog');
+    await user.click(within(panel).getByRole('button', { name: 'Delete user' }));
+    const confirm = await screen.findByRole('alertdialog');
+    expect(within(confirm).getByText(/delete user Oliver Patel\?/)).toBeInTheDocument();
+    expect(log).toEqual([]);
+    await user.click(within(confirm).getByRole('button', { name: 'Delete' }));
+    await waitFor(() => expect(screen.queryByText('Oliver Patel')).not.toBeInTheDocument());
+    expect(log).toEqual([['delete', ['id', 2]]]);
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+  });
+
+  test('the Add panel has no Delete button', async () => {
+    const user = userEvent.setup();
+    await setup();
+    await user.click(screen.getByRole('button', { name: /Add New User/ }));
+    const panel = await screen.findByRole('dialog');
+    expect(within(panel).queryByRole('button', { name: 'Delete user' })).not.toBeInTheDocument();
+  });
+
   test('cancelling the delete keeps the person', async () => {
     const user = userEvent.setup();
     const log = await setup();
