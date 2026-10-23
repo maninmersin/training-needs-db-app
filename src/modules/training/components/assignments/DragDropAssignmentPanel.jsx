@@ -96,6 +96,8 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader,
   AlertDialogTitle, Badge, Button, FormField, Input
 } from '@/components/ui';
+import { applyNames, idsMissingNames } from './assignmentNames';
+import { fetchUserDirectory } from '../../services/userDirectoryService';
 import './assignmentPanel.css';
 
 const DragDropAssignmentPanel = ({
@@ -363,6 +365,18 @@ const DragDropAssignmentPanel = ({
     }
   };
 
+  // Rows saved without a name (or older ones) would show as "User 100014": look the names up
+  const withNames = async (rows) => {
+    const missing = idsMissingNames(rows);
+    if (missing.length === 0) return rows;
+    try {
+      return applyNames(rows, await fetchUserDirectory(currentProject?.id || schedule?.project_id, missing));
+    } catch (err) {
+      debugWarn('Could not look up names for assignments:', err.message);
+      return rows;
+    }
+  };
+
   const fetchAssignments = async () => {
     if (!schedule?.id) return [];
     
@@ -383,12 +397,12 @@ const DragDropAssignmentPanel = ({
           .eq('schedule_id', schedule.id);
         
         if (basicError) throw basicError;
-        const assignments = basicData || [];
+        const assignments = await withNames(basicData || []);
         setAssignments(assignments);
         return assignments;
       }
 
-      const assignments = data || [];
+      const assignments = await withNames(data || []);
       setAssignments(assignments);
 
       // DIAGNOSTIC: Log fetched assignments (ALWAYS VISIBLE)
@@ -1705,6 +1719,11 @@ const DragDropAssignmentPanel = ({
   };
 
   const handleMultiCourseAssignment = async (userId, assignmentData, sessionData) => {
+    // The person's name and email are saved on every assignment row so the calendar can show them
+    const multiUser = userCategories.allCoursesNeeded.find(u => u.id.toString() === String(userId)) ||
+                      Object.values(userCategories.someCoursesNeeded).flat().find(u => u.id.toString() === String(userId)) ||
+                      userCategories.unassigned.find(u => u.id.toString() === String(userId)) ||
+                      userCategories.partiallyAssigned.find(u => u.id.toString() === String(userId));
     console.log(`🔍 MULTI-COURSE ASSIGNMENT START:`);
     console.log(`  User ID: ${userId}`);
     console.log(`  Assignment Data:`, assignmentData);
@@ -1814,6 +1833,8 @@ const DragDropAssignmentPanel = ({
           const courseAssignmentData = {
             schedule_id: schedule.id,
             end_user_id: parseInt(userId),
+            user_name: multiUser?.name || null,
+            user_email: multiUser?.email || null,
             assignment_level: 'session',
             course_id: courseId,
             group_identifier: `${courseId}-group-${targetGroupNumber}`,
