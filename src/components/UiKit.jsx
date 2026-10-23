@@ -66,13 +66,15 @@ export default function UiKit() {
             <FormField label="Name" hint="As shown on invitations"><Input defaultValue="Isla Walker" /></FormField>
             <FormField label="Email" error="Enter a full email address"><Input defaultValue="isla@acme" /></FormField>
             <FormField label="Location">
-              <Select defaultValue="mcr">
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="lon">London</SelectItem>
-                  <SelectItem value="mcr">Manchester</SelectItem>
-                </SelectContent>
-              </Select>
+              {(fieldProps) => (
+                <Select defaultValue="mcr">
+                  <SelectTrigger {...fieldProps}><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="lon">London</SelectItem>
+                    <SelectItem value="mcr">Manchester</SelectItem>
+                  </SelectContent>
+                </Select>
+              )}
             </FormField>
             <div className="flex items-end gap-4 pb-1">
               <label className="flex items-center gap-2"><Checkbox defaultChecked /> Active</label>

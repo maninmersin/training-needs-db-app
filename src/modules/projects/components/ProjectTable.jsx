@@ -1,244 +1,156 @@
-import React, { useState } from 'react';
-import { format } from 'date-fns';
+import React, { useMemo, useState } from 'react';
+import { FolderOpen, Pencil, Trash2 } from 'lucide-react';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter,
+  AlertDialogHeader, AlertDialogTitle, Badge, Button, DataTable, EmptyState, Input, Label, Tooltip, TooltipContent, TooltipTrigger
+} from '@/components/ui';
 
-const ProjectTable = ({ 
-  projects, 
-  onEdit, 
-  onDelete,
-  onSelect,
-  currentProject
-}) => {
-  const [deleteConfirmText, setDeleteConfirmText] = useState('');
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+const STATUS = {
+  active: { label: 'Active', variant: 'success' },
+  on_hold: { label: 'On Hold', variant: 'warning' },
+  completed: { label: 'Completed', variant: 'primary' },
+  archived: { label: 'Archived', variant: 'neutral' }
+};
+
+const canDelete = (project) => project.user_role === 'admin' || project.user_role === 'owner';
+const canEdit = (project) => ['owner', 'admin', 'member'].includes(project.user_role);
+
+function RowAction({ label, onClick, children, destructive = false }) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button variant={destructive ? 'destructive' : 'ghost'} size="icon-sm" aria-label={label} onClick={onClick}>
+          {children}
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent>{label}</TooltipContent>
+    </Tooltip>
+  );
+}
+
+const ProjectTable = ({ projects, onEdit, onDelete, onSelect, currentProject }) => {
   const [projectToDelete, setProjectToDelete] = useState(null);
+  const [confirmText, setConfirmText] = useState('');
 
+  const columns = useMemo(
+    () => [
+      {
+        id: 'project',
+        header: 'Project Name',
+        accessorFn: (project) => project.title,
+        meta: { className: 'min-w-72 whitespace-normal py-1.5' },
+        cell: ({ row }) => {
+          const project = row.original;
+          return (
+            <div className="flex flex-col leading-tight">
+              <span className="flex items-center gap-2 font-medium">
+                {project.title}
+                {project.id === currentProject?.id && <Badge variant="primary">Current</Badge>}
+              </span>
+              <span className="text-xs text-subtle-foreground">@{project.name}</span>
+              {project.description && <span className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">{project.description}</span>}
+            </div>
+          );
+        }
+      },
+      {
+        accessorKey: 'id',
+        header: 'Project ID',
+        meta: { className: 'font-mono text-xs text-subtle-foreground' }
+      },
+      {
+        accessorKey: 'status',
+        header: 'Status',
+        cell: ({ getValue }) => {
+          const status = STATUS[getValue()] || { label: getValue(), variant: 'neutral' };
+          return <Badge variant={status.variant}>{status.label}</Badge>;
+        }
+      },
+      {
+        id: 'actions',
+        header: 'Actions',
+        enableSorting: false,
+        meta: { align: 'right' },
+        cell: ({ row }) => {
+          const project = row.original;
+          return (
+            <div className="flex items-center justify-end gap-1" onClick={(event) => event.stopPropagation()}>
+              {canEdit(project) && (
+                <RowAction label="Edit Project" onClick={() => onEdit(project)}>
+                  <Pencil />
+                </RowAction>
+              )}
+              {canDelete(project) && (
+                <RowAction label="Delete Project" destructive onClick={() => setProjectToDelete(project)}>
+                  <Trash2 />
+                </RowAction>
+              )}
+            </div>
+          );
+        }
+      }
+    ],
+    [currentProject?.id, onEdit]
+  );
 
-  const formatDate = (dateString) => {
-    try {
-      return format(new Date(dateString), 'MMM dd, yyyy');
-    } catch {
-      return dateString;
-    }
-  };
-
-  const getStatusColor = (status) => {
-    switch (status) {
-      case 'active': return '#10b981';
-      case 'on_hold': return '#f59e0b';
-      case 'completed': return '#6366f1';
-      case 'archived': return '#6b7280';
-      default: return '#6b7280';
-    }
-  };
-
-  const getStatusLabel = (status) => {
-    switch (status) {
-      case 'active': return 'Active';
-      case 'on_hold': return 'On Hold';
-      case 'completed': return 'Completed';
-      case 'archived': return 'Archived';
-      default: return status;
-    }
-  };
-
-  const handleDeleteClick = (project, e) => {
-    e.stopPropagation();
-    setProjectToDelete(project);
-    setShowDeleteConfirm(true);
-  };
-
-  const handleConfirmDelete = () => {
-    if (deleteConfirmText === 'DELETE' && projectToDelete) {
-      onDelete(projectToDelete.id);
-      setShowDeleteConfirm(false);
-      setDeleteConfirmText('');
-      setProjectToDelete(null);
-    }
-  };
-
-  const handleCancelDelete = () => {
-    setShowDeleteConfirm(false);
-    setDeleteConfirmText('');
+  const closeDelete = () => {
     setProjectToDelete(null);
+    setConfirmText('');
   };
 
-  const canDelete = (project) => {
-    return project.user_role === 'admin' || project.user_role === 'owner';
+  const confirmDelete = () => {
+    if (confirmText !== 'DELETE' || !projectToDelete) return;
+    onDelete(projectToDelete.id);
+    closeDelete();
   };
-
-  const canEdit = (project) => {
-    return project.user_role === 'owner' || project.user_role === 'admin' || project.user_role === 'member';
-  };
-
-  if (projects.length === 0) {
-    return (
-      <div className="empty-state">
-        <div className="empty-state-content">
-          <h3>📁 No Projects Found</h3>
-          <p>No projects match your current filters.</p>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <>
-      <div className="project-table">
-        <div className="table-header">
-          <div className="header-row">
-            <div className="header-cell name-cell">Project Name</div>
-            <div className="header-cell id-cell">Project ID</div>
-            <div className="header-cell status-cell">Status</div>
-            <div className="header-cell actions-cell">Actions</div>
-          </div>
-        </div>
+      <DataTable
+        caption="Projects"
+        columns={columns}
+        data={projects}
+        getRowId={(project) => project.id}
+        onRowClick={onSelect}
+        emptyState={<EmptyState icon={FolderOpen} title="No Projects Found" description="No projects match your current filters." />}
+      />
 
-        <div className="table-body">
-          {projects.map(project => {
-            return (
-              <div 
-                key={project.id} 
-                className="table-row"
-                onClick={() => onSelect(project)}
-              >
-                <div className="table-cell name-cell">
-                  <div className="project-info">
-                    <div className="project-title">{project.title}</div>
-                    <div className="project-name">@{project.name}</div>
-                    {project.description && (
-                      <div className="project-description">{project.description}</div>
-                    )}
-                  </div>
-                </div>
-                
-                <div className="table-cell id-cell">
-                  <code className="project-id">{project.id}</code>
-                </div>
-                
-                <div className="table-cell status-cell">
-                  <span 
-                    className="status-badge"
-                    style={{ backgroundColor: getStatusColor(project.status) }}
-                  >
-                    {getStatusLabel(project.status)}
-                  </span>
-                </div>
-                
-                <div className="table-cell actions-cell" onClick={e => e.stopPropagation()}>
-                  {canEdit(project) && (
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onEdit(project);
-                      }}
-                      className="action-btn edit-btn"
-                      title="Edit Project"
-                      style={{ backgroundColor: '#f8f9fa', border: '1px solid #007bff', padding: '4px' }}
-                    >
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-                      </svg>
-                    </button>
-                  )}
-                  
-                  {canDelete(project) && (
-                    <button
-                      onClick={(e) => {
-                        handleDeleteClick(project, e);
-                      }}
-                      className="action-btn delete-btn"
-                      title="Delete Project"
-                      style={{ backgroundColor: '#f8f9fa', border: '1px solid #dc3545', padding: '4px' }}
-                    >
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <polyline points="3,6 5,6 21,6"/>
-                        <path d="m19,6v14a2,2 0 0,1 -2,2H7a2,2 0 0,1 -2,-2V6m3,0V4a2,2 0 0,1 2,-2h4a2,2 0 0,1 2,2v2"/>
-                        <line x1="10" y1="11" x2="10" y2="17"/>
-                        <line x1="14" y1="11" x2="14" y2="17"/>
-                      </svg>
-                    </button>
-                  )}
-                </div>
+      <AlertDialog open={Boolean(projectToDelete)} onOpenChange={(open) => !open && closeDelete()}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Project</AlertDialogTitle>
+          </AlertDialogHeader>
+          <AlertDialogDescription asChild>
+            <div className="flex flex-col gap-3">
+              <p>Are you sure you want to delete "{projectToDelete?.title}"?</p>
+              <p className="font-semibold text-destructive">This will permanently delete ALL associated data including:</p>
+              <ul className="list-disc pl-5 text-destructive">
+                <li>Training schedules and sessions</li>
+                <li>Courses and assignments</li>
+                <li>User data and roles</li>
+                <li>All project settings</li>
+              </ul>
+              <div className="flex flex-col gap-1">
+                <Label htmlFor="delete-confirm">Type "DELETE" to confirm:</Label>
+                <Input
+                  id="delete-confirm"
+                  value={confirmText}
+                  onChange={(event) => setConfirmText(event.target.value)}
+                  placeholder="DELETE"
+                  className="font-mono"
+                  autoComplete="off"
+                />
               </div>
-            );
-          })}
-        </div>
-      </div>
-
-      <div className="table-footer">
-        <div className="table-stats">
-          Showing {projects.length} project(s)
-        </div>
-      </div>
-
-      {showDeleteConfirm && (
-        <div className="delete-confirm-overlay" onClick={handleCancelDelete}>
-          <div className="delete-confirm-dialog" onClick={e => e.stopPropagation()}>
-            <div className="delete-confirm-icon">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/>
-                <line x1="12" y1="9" x2="12" y2="13"/>
-                <line x1="12" y1="17" x2="12.01" y2="17"/>
-              </svg>
             </div>
-            
-            <h4>Delete Project</h4>
-            <p>Are you sure you want to delete "{projectToDelete?.title}"?</p>
-            <p style={{ color: '#dc2626', fontWeight: 'bold', marginBottom: '16px' }}>
-              ⚠️ This will permanently delete ALL associated data including:
-            </p>
-            <ul style={{ textAlign: 'left', margin: '0 0 16px 0', color: '#dc2626' }}>
-              <li>Training schedules and sessions</li>
-              <li>Courses and assignments</li>
-              <li>User data and roles</li>
-              <li>All project settings</li>
-            </ul>
-            
-            <div style={{ marginBottom: '16px' }}>
-              <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold' }}>
-                Type "DELETE" to confirm:
-              </label>
-              <input
-                type="text"
-                value={deleteConfirmText}
-                onChange={(e) => setDeleteConfirmText(e.target.value)}
-                placeholder="DELETE"
-                style={{
-                  width: '100%',
-                  padding: '8px',
-                  border: '2px solid #dc2626',
-                  borderRadius: '4px',
-                  fontSize: '14px',
-                  fontFamily: 'monospace'
-                }}
-                onClick={(e) => e.stopPropagation()}
-                autoFocus
-              />
-            </div>
-            
-            <div className="delete-confirm-actions">
-              <button 
-                className="btn btn-secondary"
-                onClick={handleCancelDelete}
-              >
-                Cancel
-              </button>
-              <button 
-                className="btn btn-danger"
-                onClick={handleConfirmDelete}
-                disabled={deleteConfirmText !== 'DELETE'}
-                style={{
-                  opacity: deleteConfirmText !== 'DELETE' ? 0.5 : 1,
-                  cursor: deleteConfirmText !== 'DELETE' ? 'not-allowed' : 'pointer'
-                }}
-              >
-                Delete Project Forever
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+          </AlertDialogDescription>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction destructive disabled={confirmText !== 'DELETE'} onClick={confirmDelete}>
+              Delete Project Forever
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 };

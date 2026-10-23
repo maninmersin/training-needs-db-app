@@ -23,21 +23,23 @@ export const Textarea = React.forwardRef(function Textarea({ className, ...props
 
 /**
  * A label + control + hint/error. The control is cloned with the generated id and aria attributes, so
- * the label is associated and screen readers read the hint or error.
+ * the label is associated and screen readers read the hint or error. Pass a function child to place
+ * the props yourself: <FormField label="X">{(props) => <SelectTrigger {...props} />}</FormField>.
  */
 export function FormField({ label, hint, error, className, children }) {
   const id = useId();
   const describedBy = error ? `${id}-error` : hint ? `${id}-hint` : undefined;
-  const control = React.isValidElement(children)
-    ? React.cloneElement(children, {
-        id: children.props.id || id,
-        'aria-invalid': error ? true : undefined,
-        'aria-describedby': describedBy
-      })
-    : children;
+  const controlProps = { id, 'aria-invalid': error ? true : undefined, 'aria-describedby': describedBy };
+  // A function child receives the props to spread on the real control (needed for Select, whose root ignores them)
+  const control =
+    typeof children === 'function'
+      ? children(controlProps)
+      : React.isValidElement(children)
+        ? React.cloneElement(children, { ...controlProps, id: children.props.id || id })
+        : children;
   return (
     <div className={cn('flex flex-col gap-1', className)}>
-      {label && <Label htmlFor={children?.props?.id || id}>{label}</Label>}
+      {label && <Label htmlFor={typeof children === 'function' ? id : children?.props?.id || id}>{label}</Label>}
       {control}
       {error ? (
         <p id={`${id}-error`} className="text-xs text-destructive">{error}</p>
