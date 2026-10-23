@@ -6,7 +6,9 @@ import TSCDefineCriteriaStage from './TSCDefineCriteriaStage';
 import TSCFetchDataStage from './TSCFetchDataStage';
 import TSCProcessDataStage from './TSCProcessDataStage';
 import TSCReviewAdjustStage from './TSCReviewAdjustStage';
-import './TSCWizard.css';
+import { Check, Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
+import { PageHeader } from '@/components/ui';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
   calculateClassroomsNeeded,
@@ -669,13 +671,10 @@ const TSCWizard = () => {
       
       // Validate that we have the required data from the criteria stage
       if (!endUsers.length || !groupingKeys.length) {
-        alert(
-          'No user-course combinations found. Please check:\n\n' +
-          '1. At least one Functional Area is selected\n' +
-          '2. At least one Training Location is selected\n' +
-          '3. Role-Course Mappings are configured for the selected roles and courses\n\n' +
-          'Tip: Go to Reference Data → Role-Course Mappings to assign courses to roles.'
-        );
+        toast.error('No user-course combinations found', {
+          duration: 12000,
+          description: 'Check that at least one Functional Area and one Training Location are selected, and that courses are assigned to the people (in-app projects: Role-Course Mappings or individual courses; MS Access projects: import the training data).'
+        });
         return;
       }
       
@@ -697,7 +696,7 @@ const TSCWizard = () => {
         console.error('❌ Background processing failed:', error);
         console.error('❌ Error details:', error.message);
         // Stay on current stage if there's an error
-        alert(`Processing failed: ${error.message}`);
+        toast.error('Processing failed', { description: error.message });
       } finally {
         setProcessingInBackground(false);
         console.log('🏁 Background processing complete');
@@ -741,14 +740,14 @@ const TSCWizard = () => {
       await saveTrainingSessionsForSchedule(sessionsForCalendar, scheduleId, selectedFunctionalArea, criteria[selectedFunctionalArea] || {}, currentProject.id);
       
       console.log('✅ Schedule created successfully');
-      alert(`✅ Schedule "${scheduleNameFromReview}" saved successfully!\n\nUse the Schedule Manager to edit or delete schedules.`);
+      toast.success(`Schedule "${scheduleNameFromReview}" saved`, { description: 'Use the Schedule Manager to edit or delete schedules.' });
 
       // Stay on the same page after successful save (user can manually navigate if needed)
       localStorage.removeItem('tscWizardState');
       // Removed: navigate('/'); - user requested to stay on the same page
     } catch (error) {
       console.error('❌ Error saving schedule:', error);
-      alert(`Failed to save schedule: ${error.message}`);
+      toast.error('Failed to save schedule', { description: error.message });
     }
   };
 
@@ -788,28 +787,33 @@ const TSCWizard = () => {
   };
 
   return (
-    <div className="tsc-wizard-container">
-      <h2>Training Schedule Creator</h2>
-      
-      {processingInBackground && (
-        <div style={{ 
-          position: 'relative',
-          minHeight: '200px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          backgroundColor: 'rgba(249, 249, 249, 0.9)',
-          borderRadius: '8px',
-          padding: '40px'
-        }}>
-          <div style={{ textAlign: 'center' }}>
-            <div style={{ fontSize: '24px', marginBottom: '10px' }}>🔄</div>
-            <div>Processing training schedule...</div>
-          </div>
+    <div className="mx-auto flex max-w-5xl flex-col gap-4">
+      <PageHeader title="Training Schedule Creator" description="Choose who to schedule and how, check the result on the calendar, then save it." />
+
+      <ol className="flex items-center gap-3 text-sm" aria-label="Steps">
+        {visibleStageTitles.map((title, index) => {
+          const done = index < visibleStage;
+          const current = index === visibleStage;
+          return (
+            <li key={title} className="flex items-center gap-3" aria-current={current ? 'step' : undefined}>
+              <span className={`grid size-6 place-content-center rounded-full text-xs font-semibold ${done ? 'bg-success-soft text-success' : current ? 'bg-primary text-primary-foreground' : 'border border-border text-muted-foreground'}`}>
+                {done ? <Check className="size-3.5" /> : index + 1}
+              </span>
+              <span className={current ? 'font-medium' : 'text-muted-foreground'}>{title}</span>
+              {index < visibleStageTitles.length - 1 && <span className="h-px w-8 bg-border" aria-hidden="true" />}
+            </li>
+          );
+        })}
+      </ol>
+
+      {processingInBackground ? (
+        <div role="status" className="flex min-h-48 flex-col items-center justify-center gap-3 rounded-lg border border-border bg-card text-sm text-muted-foreground">
+          <Loader2 className="size-6 animate-spin" />
+          Processing training schedule...
         </div>
+      ) : (
+        renderStage()
       )}
-      
-      {!processingInBackground && renderStage()}
     </div>
   );
 };

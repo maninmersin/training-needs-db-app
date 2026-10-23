@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Input } from '@/components/ui';
 
 /**
  * A number box you can clear with backspace.
@@ -39,7 +40,7 @@ const NumberInput = ({ value, onValueChange, ...inputProps }) => {
   };
 
   return (
-    <input
+    <Input
       {...inputProps}
       type="number"
       value={text}
