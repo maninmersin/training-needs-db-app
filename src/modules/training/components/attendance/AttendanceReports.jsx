@@ -1,605 +1,414 @@
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { BarChart3, CalendarDays, Download, Loader2, Search, UserRound } from 'lucide-react';
 import { useProject } from '@core/contexts/ProjectContext';
-import { supabase } from '@core/services/supabaseClient';
+import {
+  Badge, Button, DataTable, Dialog, DialogBody, DialogContent, DialogDescription, DialogHeader, DialogTitle, DropdownMenu,
+  DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, EmptyState, FormField, Input, PageHeader, Select, SelectContent,
+  SelectItem, SelectTrigger, SelectValue, StatCard, Tabs, TabsContent, TabsList, TabsTrigger, toast
+} from '@/components/ui';
+import { cn } from '@/lib/utils';
+import { downloadTable } from '@shared/import/exportFiles';
 import {
   getAttendanceStatistics,
   exportAttendanceData,
   getSessionsForAttendance,
+  getSessionAttendanceRecords,
   getAttendeeHistory
 } from '../../services/attendanceService';
-import * as XLSX from 'xlsx';
-import './AttendanceReports.css';
+import { searchUserDirectory } from '../../services/userDirectoryService';
+import { complianceLevel, formatPercentage } from './complianceLogic';
+import { EMPTY_FILTERS, filterReportSessions, summariseHistory, uniqueOptions } from './reportsLogic';
+
+const ALL = '__all__'; // Radix Select cannot hold an empty value
+
+const BAR = { excellent: 'bg-success', good: 'bg-primary', warning: 'bg-warning', critical: 'bg-destructive' };
+const TEXT = { excellent: 'text-success', good: 'text-primary', warning: 'text-warning', critical: 'text-destructive' };
+const TONE = { excellent: 'success', good: 'default', warning: 'warning', critical: 'danger' };
+
+function StatusBadge({ status }) {
+  if (!status) return <Badge>Unknown</Badge>;
+  return (
+    <span className="inline-flex items-center gap-1.5 text-sm font-medium">
+      <span className="size-2 rounded-full" style={{ backgroundColor: status.color_code }} aria-hidden="true" />
+      {status.status_name}
+    </span>
+  );
+}
+
+function FilterSelect({ label, value, onChange, allLabel, options }) {
+  return (
+    <FormField label={label}>
+      {(fieldProps) => (
+        <Select value={value || ALL} onValueChange={(next) => onChange(next === ALL ? '' : next)}>
+          <SelectTrigger {...fieldProps}><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value={ALL}>{allLabel}</SelectItem>
+            {options.map((option) => (<SelectItem key={option} value={option}>{option}</SelectItem>))}
+          </SelectContent>
+        </Select>
+      )}
+    </FormField>
+  );
+}
 
 const AttendanceReports = () => {
   const { currentProject } = useProject();
-  
-  // State management
+
   const [statistics, setStatistics] = useState(null);
   const [sessions, setSessions] = useState([]);
-  const [selectedAttendee, setSelectedAttendee] = useState(null);
-  const [attendeeHistory, setAttendeeHistory] = useState([]);
-  
-  // Modal state
-  const [showSessionModal, setShowSessionModal] = useState(false);
-  const [selectedSession, setSelectedSession] = useState(null);
-  const [sessionAttendees, setSessionAttendees] = useState([]);
-  
-  // Filters
-  const [filters, setFilters] = useState({
-    startDate: '',
-    endDate: '',
-    functionalArea: '',
-    trainingLocation: ''
-  });
-  
-  // UI state
+  const [filters, setFilters] = useState(EMPTY_FILTERS);
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
   const [error, setError] = useState(null);
   const [activeView, setActiveView] = useState('overview'); // overview, sessions, individual
 
-  // Available filter options
-  const [functionalAreas, setFunctionalAreas] = useState([]);
-  const [trainingLocations, setTrainingLocations] = useState([]);
+  const [selectedSession, setSelectedSession] = useState(null);
+  const [sessionRecords, setSessionRecords] = useState(null); // null while loading
 
-  // Load initial data
-  useEffect(() => {
-    if (currentProject) {
-      loadReportsData();
-    }
-  }, [currentProject, filters]);
+  const [personTerm, setPersonTerm] = useState('');
+  const [people, setPeople] = useState([]);
+  const [searching, setSearching] = useState(false);
+  const [person, setPerson] = useState(null);
+  const [history, setHistory] = useState(null); // null while loading
 
-  const loadReportsData = async () => {
+  const loadReportsData = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
-      
-      const [statsData, sessionsData] = await Promise.all([
-        getAttendanceStatistics(currentProject.id, filters),
-        getSessionsForAttendance(currentProject.id)
-      ]);
-      
+      const [statsData, sessionsData] = await Promise.all([getAttendanceStatistics(currentProject.id, filters), getSessionsForAttendance(currentProject.id)]);
       setStatistics(statsData);
       setSessions(sessionsData);
-      
-      // Extract unique functional areas and training locations for filters
-      const uniqueFunctionalAreas = [...new Set(sessionsData.map(s => s.functional_area))];
-      const uniqueTrainingLocations = [...new Set(sessionsData.map(s => s.training_location))];
-      
-      setFunctionalAreas(uniqueFunctionalAreas);
-      setTrainingLocations(uniqueTrainingLocations);
-      
-    } catch (error) {
-      console.error('Error loading reports data:', error);
+    } catch (loadError) {
+      console.error('Error loading reports data:', loadError);
       setError('Failed to load attendance reports');
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentProject, filters]);
 
-  const handleFilterChange = (field, value) => {
-    setFilters(prev => ({
-      ...prev,
-      [field]: value
-    }));
-  };
+  useEffect(() => {
+    if (currentProject) loadReportsData();
+  }, [currentProject, loadReportsData]);
 
-  const resetFilters = () => {
-    setFilters({
-      startDate: '',
-      endDate: '',
-      functionalArea: '',
-      trainingLocation: ''
-    });
-  };
+  const setFilter = (field, value) => setFilters((previous) => ({ ...previous, [field]: value }));
 
-  const handleExportData = async (format = 'excel') => {
+  const handleExportData = async (format) => {
     try {
       setExporting(true);
-      
       const exportData = await exportAttendanceData(currentProject.id, filters);
-      
       if (exportData.length === 0) {
-        alert('No attendance data found for the selected filters.');
+        toast.info('No attendance data found for the selected filters.');
         return;
       }
-
-      const filename = `attendance-report-${new Date().toISOString().split('T')[0]}`;
-      
-      if (format === 'excel') {
-        const ws = XLSX.utils.json_to_sheet(exportData);
-        const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, 'Attendance Report');
-        XLSX.writeFile(wb, `${filename}.xlsx`);
-      } else {
-        // CSV format
-        const csvData = [
-          Object.keys(exportData[0]),
-          ...exportData.map(row => Object.values(row))
-        ];
-        const csvContent = csvData.map(row => 
-          row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',')
-        ).join('\n');
-        
-        const blob = new Blob([csvContent], { type: 'text/csv' });
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `${filename}.csv`;
-        a.click();
-        window.URL.revokeObjectURL(url);
-      }
-      
-    } catch (error) {
-      console.error('Error exporting data:', error);
+      downloadTable(`attendance-report-${new Date().toISOString().split('T')[0]}`, Object.keys(exportData[0]), exportData.map((row) => Object.values(row)), format);
+    } catch (exportError) {
+      console.error('Error exporting data:', exportError);
       setError('Failed to export attendance data');
     } finally {
       setExporting(false);
     }
   };
 
-  const handleViewSessionDetails = async (session) => {
+  const openSession = async (session) => {
+    setSelectedSession(session);
+    setSessionRecords(null);
     try {
-      setSelectedSession(session);
-      setShowSessionModal(true);
-      setSessionAttendees([]); // Reset while loading
-      
-      // Fetch attendance records for this session
-      const attendees = await getSessionAttendees(currentProject.id, session.id);
-      setSessionAttendees(attendees);
-    } catch (error) {
-      console.error('Error loading session attendees:', error);
+      setSessionRecords(await getSessionAttendanceRecords(session.id, currentProject.id));
+    } catch (loadError) {
+      console.error('Error loading session attendees:', loadError);
       setError('Failed to load session attendees');
+      setSelectedSession(null);
     }
   };
 
-  const getSessionAttendees = async (projectId, sessionId) => {
-    const { data, error } = await supabase
-      .from('attendance_records')
-      .select(`
-        id,
-        notes,
-        marked_at,
-        attendee_id,
-        attendance_statuses!fk_attendance_records_status (
-          status_name,
-          is_present,
-          color_code
-        )
-      `)
-      .eq('project_id', projectId)
-      .eq('session_id', sessionId);
-
-    if (error) {
-      throw error;
-    }
-
-    // If we have data, fetch the end user details separately
-    if (data && data.length > 0) {
-      const attendeeIds = [...new Set(data.map(record => record.attendee_id))];
-      
-      const { data: users, error: usersError } = await supabase
-        .from('end_users')
-        .select('id, name, email')
-        .eq('project_id', projectId)
-        .in('id', attendeeIds);
-
-      if (usersError) {
-        console.warn('Could not fetch user details:', usersError);
-        return data.map(record => ({
-          ...record,
-          end_users: { name: 'Unknown User' }
-        }));
+  // Individual tab: search as the person types, after a short pause
+  useEffect(() => {
+    if (activeView !== 'individual' || person || !currentProject) return undefined;
+    let active = true;
+    const timer = setTimeout(async () => {
+      setSearching(true);
+      try {
+        const found = await searchUserDirectory(currentProject.id, personTerm);
+        if (active) setPeople(found);
+      } catch (searchError) {
+        if (active) setError(`Could not search: ${searchError.message}`);
+      } finally {
+        if (active) setSearching(false);
       }
+    }, 250);
+    return () => {
+      active = false;
+      clearTimeout(timer);
+    };
+  }, [personTerm, activeView, person, currentProject]);
 
-      // Join the data manually
-      return data.map(record => ({
-        ...record,
-        end_users: users.find(user => user.id === record.attendee_id) || { name: 'Unknown User' }
-      }));
+  const choosePerson = async (chosen) => {
+    setPerson(chosen);
+    setHistory(null);
+    try {
+      setHistory(await getAttendeeHistory(chosen.id, currentProject.id, { startDate: filters.startDate, endDate: filters.endDate }));
+    } catch (loadError) {
+      console.error('Error loading attendee history:', loadError);
+      setError('Failed to load attendance history');
+      setPerson(null);
     }
-
-    return data || [];
   };
 
-  const closeSessionModal = () => {
-    setShowSessionModal(false);
-    setSelectedSession(null);
-    setSessionAttendees([]);
-  };
+  const areaOptions = useMemo(() => uniqueOptions(sessions, 'functional_area'), [sessions]);
+  const locationOptions = useMemo(() => uniqueOptions(sessions, 'training_location'), [sessions]);
+  const shownSessions = useMemo(() => filterReportSessions(sessions, filters), [sessions, filters]);
+  const personSummary = useMemo(() => summariseHistory(history || []), [history]);
 
-  const formatPercentage = (value) => {
-    return `${Math.round(value)}%`;
-  };
+  const sessionColumns = useMemo(
+    () => [
+      { accessorKey: 'course_name', header: 'Course', meta: { className: 'font-medium' } },
+      { id: 'when', header: 'Date & Time', accessorFn: (session) => session.start_datetime, cell: ({ row }) => new Date(row.original.start_datetime).toLocaleString('en-GB') },
+      { id: 'where', header: 'Location', accessorFn: (session) => `${session.training_location} - Room ${session.classroom_number}` },
+      { accessorKey: 'functional_area', header: 'Functional Area' },
+      {
+        id: 'attendance',
+        header: 'Attendance',
+        enableSorting: false,
+        cell: ({ row }) => <Button size="sm" aria-label={`View details - ${row.original.course_name}`} onClick={() => openSession(row.original)}>View Details</Button>
+      }
+    ],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [currentProject]
+  );
 
-  const getAttendanceRateColor = (rate) => {
-    if (rate >= 90) return '#28a745';
-    if (rate >= 75) return '#ffc107';
-    if (rate >= 60) return '#fd7e14';
-    return '#dc3545';
-  };
+  const historyColumns = useMemo(
+    () => [
+      { id: 'course', header: 'Course', accessorFn: (record) => record.session?.course_name || record.session?.session_title || '', meta: { className: 'font-medium' } },
+      { id: 'when', header: 'Date & Time', accessorFn: (record) => record.session?.start_datetime || '', cell: ({ row }) => (row.original.session?.start_datetime ? new Date(row.original.session.start_datetime).toLocaleString('en-GB') : '') },
+      { id: 'where', header: 'Location', accessorFn: (record) => record.session?.training_location || '' },
+      { id: 'status', header: 'Status', accessorFn: (record) => record.status?.status_name || '', cell: ({ row }) => <StatusBadge status={row.original.status} /> },
+      { id: 'notes', header: 'Notes', enableSorting: false, accessorFn: (record) => record.notes || '-', meta: { className: 'text-muted-foreground' } }
+    ],
+    []
+  );
 
-  if (loading && !statistics) {
-    return (
-      <div className="attendance-reports">
-        <div className="loading-state">
-          <h3>Loading attendance reports...</h3>
-        </div>
-      </div>
-    );
-  }
+  const recordColumns = useMemo(
+    () => [
+      { id: 'name', header: 'Name', accessorFn: (record) => record.user?.name || 'Unknown User', meta: { className: 'font-medium' } },
+      { id: 'status', header: 'Status', accessorFn: (record) => record.status?.status_name || '', cell: ({ row }) => <StatusBadge status={row.original.status} /> },
+      { id: 'notes', header: 'Notes', accessorFn: (record) => record.notes || '-', meta: { className: 'text-muted-foreground' } }
+    ],
+    []
+  );
 
   if (!currentProject) {
     return (
-      <div className="attendance-reports">
-        <div className="no-project-state">
-          <h3>No Project Selected</h3>
-          <p>Please select a project to view attendance reports.</p>
-        </div>
+      <div className="mx-auto max-w-6xl rounded-lg border border-border bg-card">
+        <EmptyState icon={BarChart3} title="No Project Selected" description="Please select a project to view attendance reports." />
       </div>
     );
   }
 
-  return (
-    <div className="attendance-reports">
-      <div className="reports-header">
-        <h2>Attendance Reports & Analytics</h2>
-        {currentProject && (
-          <div className="project-indicator">
-            <strong>Project:</strong> {currentProject.title}
-          </div>
-        )}
-        <p className="reports-description">
-          Analyze attendance patterns, generate reports, and track training effectiveness.
-        </p>
+  if (loading && !statistics && !error) {
+    return (
+      <div role="status" className="flex items-center justify-center gap-2 py-16 text-sm text-muted-foreground">
+        <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+        Loading attendance reports...
       </div>
+    );
+  }
+
+  const overall = statistics?.overall;
+  const areas = statistics?.by_functional_area ? Object.entries(statistics.by_functional_area) : [];
+  const overallLevel = complianceLevel(overall?.attendance_rate || 0).level;
+
+  return (
+    <div className="mx-auto flex max-w-6xl flex-col gap-4">
+      <PageHeader
+        title="Attendance Reports & Analytics"
+        description={`Analyze attendance patterns, generate reports, and track training effectiveness. Project: ${currentProject.title}.`}
+        actions={
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button disabled={exporting}>{exporting ? <Loader2 className="animate-spin" aria-hidden="true" /> : <Download />} Export</Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onSelect={() => handleExportData('xlsx')}>Excel (.xlsx)</DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => handleExportData('csv')}>CSV</DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        }
+      />
 
       {error && (
-        <div className="error-message">
-          <span className="error-icon">⚠️</span>
-          {error}
-          <button onClick={() => setError(null)} className="dismiss-error">×</button>
+        <div role="alert" className="flex items-center gap-3 rounded-md bg-destructive-soft px-3 py-2 text-sm text-destructive">
+          <span className="flex-1">{error}</span>
+          <Button variant="ghost" size="sm" onClick={() => setError(null)}>Dismiss</Button>
         </div>
       )}
 
-      {/* View Navigation */}
-      <div className="view-navigation">
-        <button
-          className={`nav-btn ${activeView === 'overview' ? 'active' : ''}`}
-          onClick={() => setActiveView('overview')}
-        >
-          📊 Overview
-        </button>
-        <button
-          className={`nav-btn ${activeView === 'sessions' ? 'active' : ''}`}
-          onClick={() => setActiveView('sessions')}
-        >
-          📅 By Session
-        </button>
-        <button
-          className={`nav-btn ${activeView === 'individual' ? 'active' : ''}`}
-          onClick={() => setActiveView('individual')}
-        >
-          👤 Individual
-        </button>
-      </div>
+      <section aria-label="Filters" className="grid gap-3 rounded-lg border border-border bg-card p-4 sm:grid-cols-2 lg:grid-cols-[repeat(4,1fr)_auto]">
+        <FormField label="Start Date"><Input type="date" value={filters.startDate} onChange={(event) => setFilter('startDate', event.target.value)} /></FormField>
+        <FormField label="End Date"><Input type="date" value={filters.endDate} onChange={(event) => setFilter('endDate', event.target.value)} /></FormField>
+        <FilterSelect label="Functional Area" value={filters.functionalArea} onChange={(value) => setFilter('functionalArea', value)} allLabel="All Areas" options={areaOptions} />
+        <FilterSelect label="Training Location" value={filters.trainingLocation} onChange={(value) => setFilter('trainingLocation', value)} allLabel="All Locations" options={locationOptions} />
+        <div className="flex items-end"><Button variant="ghost" onClick={() => setFilters(EMPTY_FILTERS)}>Reset Filters</Button></div>
+      </section>
 
-      {/* Filters Section */}
-      <div className="filters-section">
-        <h3>Filters</h3>
-        <div className="filters-grid">
-          <div className="filter-group">
-            <label>Start Date</label>
-            <input
-              type="date"
-              value={filters.startDate}
-              onChange={(e) => handleFilterChange('startDate', e.target.value)}
-            />
-          </div>
-          <div className="filter-group">
-            <label>End Date</label>
-            <input
-              type="date"
-              value={filters.endDate}
-              onChange={(e) => handleFilterChange('endDate', e.target.value)}
-            />
-          </div>
-          <div className="filter-group">
-            <label>Functional Area</label>
-            <select
-              value={filters.functionalArea}
-              onChange={(e) => handleFilterChange('functionalArea', e.target.value)}
-            >
-              <option value="">All Areas</option>
-              {functionalAreas.map(area => (
-                <option key={area} value={area}>{area}</option>
-              ))}
-            </select>
-          </div>
-          <div className="filter-group">
-            <label>Training Location</label>
-            <select
-              value={filters.trainingLocation}
-              onChange={(e) => handleFilterChange('trainingLocation', e.target.value)}
-            >
-              <option value="">All Locations</option>
-              {trainingLocations.map(location => (
-                <option key={location} value={location}>{location}</option>
-              ))}
-            </select>
-          </div>
-        </div>
-        <div className="filter-actions">
-          <button onClick={resetFilters} className="reset-filters-btn">
-            Reset Filters
-          </button>
-          <div className="export-buttons">
-            <button
-              onClick={() => handleExportData('excel')}
-              disabled={exporting}
-              className="export-btn excel"
-            >
-              📊 Export Excel
-            </button>
-            <button
-              onClick={() => handleExportData('csv')}
-              disabled={exporting}
-              className="export-btn csv"
-            >
-              📄 Export CSV
-            </button>
-          </div>
-        </div>
-      </div>
+      <Tabs value={activeView} onValueChange={setActiveView}>
+        <TabsList>
+          <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="sessions">By Session</TabsTrigger>
+          <TabsTrigger value="individual">Individual</TabsTrigger>
+        </TabsList>
 
-      {/* Overview View */}
-      {activeView === 'overview' && (
-        <div className="overview-section">
+        <TabsContent value="overview" className="flex flex-col gap-4">
           {statistics ? (
             <>
-              {/* Overall Statistics */}
-              <div className="stats-overview">
-                <h3>Overall Statistics</h3>
-                <div className="stats-grid">
-                  <div className="stat-card">
-                    <div className="stat-icon">📊</div>
-                    <div className="stat-content">
-                      <span className="stat-value">{statistics.overall?.total_records || 0}</span>
-                      <span className="stat-label">Total Records</span>
-                    </div>
-                  </div>
-                  <div className="stat-card">
-                    <div className="stat-icon">✅</div>
-                    <div className="stat-content">
-                      <span className="stat-value">{statistics.overall?.total_present || 0}</span>
-                      <span className="stat-label">Present</span>
-                    </div>
-                  </div>
-                  <div className="stat-card">
-                    <div className="stat-icon">❌</div>
-                    <div className="stat-content">
-                      <span className="stat-value">{statistics.overall?.total_absent || 0}</span>
-                      <span className="stat-label">Absent</span>
-                    </div>
-                  </div>
-                  <div className="stat-card attendance-rate">
-                    <div className="stat-icon">📈</div>
-                    <div className="stat-content">
-                      <span 
-                        className="stat-value"
-                        style={{ color: getAttendanceRateColor(statistics.overall?.attendance_rate || 0) }}
-                      >
-                        {formatPercentage(statistics.overall?.attendance_rate || 0)}
-                      </span>
-                      <span className="stat-label">Attendance Rate</span>
-                    </div>
-                  </div>
-            </div>
-          </div>
-
-              {/* By Functional Area */}
-              <div className="functional-area-breakdown">
-                <h3>Attendance by Functional Area</h3>
-                <div className="area-cards">
-                  {statistics.by_functional_area && Object.entries(statistics.by_functional_area).map(([area, stats]) => (
-                <div key={area} className="area-card">
-                  <div className="area-header">
-                    <h4>{area}</h4>
-                    <span 
-                      className="area-rate"
-                      style={{ color: getAttendanceRateColor(stats.attendance_rate) }}
-                    >
-                      {formatPercentage(stats.attendance_rate)}
-                    </span>
-                  </div>
-                  <div className="area-stats">
-                    <div className="area-stat">
-                      <span className="area-stat-value">{stats.present}</span>
-                      <span className="area-stat-label">Present</span>
-                    </div>
-                    <div className="area-stat">
-                      <span className="area-stat-value">{stats.total - stats.present}</span>
-                      <span className="area-stat-label">Absent</span>
-                    </div>
-                    <div className="area-stat">
-                      <span className="area-stat-value">{stats.total}</span>
-                      <span className="area-stat-label">Total</span>
-                    </div>
-                  </div>
-                  <div className="progress-bar">
-                    <div 
-                      className="progress-fill"
-                      style={{ 
-                        width: `${stats.attendance_rate}%`,
-                        backgroundColor: getAttendanceRateColor(stats.attendance_rate)
-                      }}
-                    ></div>
-                    </div>
-                  </div>
-                  ))}
-                </div>
+              <div className={cn('flex flex-wrap gap-3', loading && 'opacity-60')}>
+                <StatCard value={overall?.total_records || 0} label="Total Records" />
+                <StatCard value={overall?.total_present || 0} label="Present" tone="success" />
+                <StatCard value={overall?.total_absent || 0} label="Absent" tone={(overall?.total_absent || 0) > 0 ? 'danger' : 'default'} />
+                <StatCard value={formatPercentage(overall?.attendance_rate || 0)} label="Attendance Rate" tone={TONE[overallLevel]} />
               </div>
-            </>
-          ) : (
-            <div className="no-data-state">
-              <h3>No Attendance Data Available</h3>
-              <p>No attendance records found for the current filters. Try adjusting your date range or clearing filters.</p>
-            </div>
-          )}
-        </div>
-      )}
 
-      {/* Sessions View */}
-      {activeView === 'sessions' && (
-        <div className="sessions-section">
-          <h3>Session-wise Attendance</h3>
-          {loading ? (
-            <div className="loading-sessions">Loading session data...</div>
-          ) : (
-            <div className="sessions-table">
-              <div className="table-header">
-                <span>Course</span>
-                <span>Date & Time</span>
-                <span>Location</span>
-                <span>Functional Area</span>
-                <span>Attendance</span>
-              </div>
-              {sessions.map(session => (
-                <div key={session.id} className="table-row">
-                  <span className="session-course">{session.course_name}</span>
-                  <span className="session-datetime">
-                    {new Date(session.start_datetime).toLocaleString('en-GB')}
-                  </span>
-                  <span className="session-location">
-                    {session.training_location} - Room {session.classroom_number}
-                  </span>
-                  <span className="session-area">{session.functional_area}</span>
-                  <span className="session-attendance">
-                    <button 
-                      className="attendance-badge view-details-btn"
-                      onClick={() => handleViewSessionDetails(session)}
-                    >
-                      View Details
-                    </button>
-                  </span>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Individual View */}
-      {activeView === 'individual' && (
-        <div className="individual-section">
-          <h3>Individual Attendance History</h3>
-          <div className="individual-search">
-            <input
-              type="text"
-              placeholder="Search for an attendee..."
-              className="attendee-search"
-            />
-            <button className="search-btn">Search</button>
-          </div>
-          
-          {selectedAttendee && (
-            <div className="attendee-details">
-              <h4>{selectedAttendee.name}</h4>
-              <div className="attendee-stats">
-                <div className="attendee-stat">
-                  <span className="stat-value">85%</span>
-                  <span className="stat-label">Attendance Rate</span>
-                </div>
-                <div className="attendee-stat">
-                  <span className="stat-value">12</span>
-                  <span className="stat-label">Sessions Attended</span>
-                </div>
-                <div className="attendee-stat">
-                  <span className="stat-value">2</span>
-                  <span className="stat-label">Sessions Missed</span>
-                </div>
-              </div>
-              
-              <div className="attendance-history">
-                <h5>Recent Attendance</h5>
-                {/* Attendance history would go here */}
-                <div className="history-placeholder">
-                  <p>Select an attendee to view their attendance history</p>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-
-      {exporting && (
-        <div className="export-overlay">
-          <div className="export-message">
-            <div className="loading-spinner"></div>
-            <p>Exporting attendance data...</p>
-          </div>
-        </div>
-      )}
-
-      {/* Session Attendees Modal */}
-      {showSessionModal && selectedSession && (
-        <div className="modal-overlay" onClick={closeSessionModal}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <h3>Session Attendees</h3>
-              <button className="modal-close" onClick={closeSessionModal}>×</button>
-            </div>
-            
-            <div className="modal-session-info">
-              <div className="session-info-grid">
-                <div><strong>Course:</strong> {selectedSession.course_name}</div>
-                <div><strong>Date:</strong> {new Date(selectedSession.start_datetime).toLocaleDateString('en-GB')}</div>
-                <div><strong>Time:</strong> {new Date(selectedSession.start_datetime).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}</div>
-                <div><strong>Location:</strong> {selectedSession.training_location}</div>
-                <div><strong>Area:</strong> {selectedSession.functional_area}</div>
-              </div>
-            </div>
-
-            <div className="modal-body">
-              {sessionAttendees.length === 0 ? (
-                <div className="loading-attendees">
-                  <div className="loading-spinner"></div>
-                  <p>Loading attendees...</p>
+              <h3 className="text-base font-semibold">Attendance by Functional Area</h3>
+              {areas.length > 0 ? (
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                  {areas.map(([area, stats]) => {
+                    const { level } = complianceLevel(stats.attendance_rate);
+                    return (
+                      <div key={area} className="flex flex-col gap-3 rounded-lg border border-border bg-card p-4">
+                        <div className="flex items-baseline justify-between gap-2">
+                          <h4 className="text-sm font-semibold">{area}</h4>
+                          <span className={cn('text-lg font-semibold tabular-nums', TEXT[level])}>{formatPercentage(stats.attendance_rate)}</span>
+                        </div>
+                        <div className="flex gap-5 text-xs text-muted-foreground">
+                          <span className="flex flex-col"><b className="text-sm tabular-nums text-foreground">{stats.present}</b>Present</span>
+                          <span className="flex flex-col"><b className="text-sm tabular-nums text-foreground">{stats.total - stats.present}</b>Absent</span>
+                          <span className="flex flex-col"><b className="text-sm tabular-nums text-foreground">{stats.total}</b>Total</span>
+                        </div>
+                        <div role="progressbar" aria-label={`${area} attendance`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(stats.attendance_rate)} className="h-1.5 overflow-hidden rounded-full bg-secondary">
+                          <div className={cn('h-full rounded-full', BAR[level])} style={{ width: `${Math.min(stats.attendance_rate, 100)}%` }} />
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               ) : (
-                <div className="attendees-table">
-                  <div className="attendees-header">
-                    <span>Name</span>
-                    <span>Status</span>
-                    <span>Notes</span>
-                  </div>
-                  {sessionAttendees.map(attendee => (
-                    <div key={attendee.id} className="attendee-row">
-                      <span className="attendee-name">
-                        {attendee.end_users?.name || 'Unknown User'}
-                      </span>
-                      <span className="attendee-status">
-                        <span 
-                          className="status-badge"
-                          style={{ 
-                            backgroundColor: attendee.attendance_statuses?.color_code || '#6c757d',
-                            color: 'white'
-                          }}
-                        >
-                          {attendee.attendance_statuses?.status_name || 'Unknown'}
-                        </span>
-                      </span>
-                      <span className="attendee-notes">
-                        {attendee.notes || '-'}
-                      </span>
-                    </div>
-                  ))}
+                <div className="rounded-lg border border-border bg-card">
+                  <EmptyState icon={BarChart3} title="No Attendance Data Available" description="No attendance records found for the current filters. Try adjusting your date range or clearing filters." />
                 </div>
               )}
+            </>
+          ) : (
+            <div className="rounded-lg border border-border bg-card">
+              <EmptyState icon={BarChart3} title="No Attendance Data Available" description="No attendance records found for the current filters. Try adjusting your date range or clearing filters." />
             </div>
-          </div>
-        </div>
-      )}
+          )}
+        </TabsContent>
+
+        <TabsContent value="sessions" className="flex flex-col gap-3">
+          <h3 className="text-base font-semibold">Session-wise Attendance</h3>
+          {loading ? (
+            <div role="status" className="flex items-center justify-center gap-2 rounded-lg border border-border bg-card py-12 text-sm text-muted-foreground">
+              <Loader2 className="size-4 animate-spin" aria-hidden="true" /> Loading session data...
+            </div>
+          ) : (
+            <DataTable
+              caption="Sessions"
+              columns={sessionColumns}
+              data={shownSessions}
+              getRowId={(session) => session.id}
+              pageSize={25}
+              emptyState={<EmptyState icon={CalendarDays} title="No sessions match" description="Try different filters." />}
+            />
+          )}
+        </TabsContent>
+
+        <TabsContent value="individual" className="flex flex-col gap-3">
+          <h3 className="text-base font-semibold">Individual Attendance History</h3>
+          {!person ? (
+            <div className="flex max-w-xl flex-col gap-2">
+              <div className="relative">
+                <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-subtle-foreground" aria-hidden="true" />
+                <Input aria-label="Search for an attendee" placeholder="Search for an attendee by name, email or ID..." value={personTerm} onChange={(event) => setPersonTerm(event.target.value)} className="pl-8" />
+              </div>
+              <ul aria-label="People found" className="max-h-64 overflow-y-auto rounded-md border border-border bg-card">
+                {people.map((candidate) => (
+                  <li key={candidate.id} className="border-b border-border last:border-b-0">
+                    <button type="button" onClick={() => choosePerson(candidate)} className="flex w-full flex-col px-3 py-2 text-left text-sm hover:bg-accent focus-visible:outline-2 focus-visible:outline-ring">
+                      <span className="font-medium">{candidate.name}</span>
+                      <span className="text-xs text-muted-foreground">{[candidate.email, candidate.project_role, candidate.training_location].filter(Boolean).join(' - ')}</span>
+                    </button>
+                  </li>
+                ))}
+                {searching && <li className="flex items-center gap-2 px-3 py-2 text-sm text-muted-foreground"><Loader2 className="size-4 animate-spin" aria-hidden="true" /> Searching...</li>}
+                {!searching && people.length === 0 && (
+                  <li className="px-3 py-2 text-sm italic text-muted-foreground">{personTerm.trim().length < 2 ? 'Type at least two letters to search' : 'No one found'}</li>
+                )}
+              </ul>
+            </div>
+          ) : (
+            <>
+              <div className="flex items-center gap-3 rounded-lg border border-border bg-card px-4 py-3">
+                <UserRound className="size-5 text-muted-foreground" aria-hidden="true" />
+                <div className="min-w-0 flex-1">
+                  <h4 className="font-semibold">{person.name}</h4>
+                  <p className="truncate text-xs text-muted-foreground">{[person.email, person.project_role, person.training_location].filter(Boolean).join(' - ')}</p>
+                </div>
+                <Button onClick={() => { setPerson(null); setHistory(null); }}>Change person</Button>
+              </div>
+              {history === null ? (
+                <div role="status" className="flex items-center justify-center gap-2 rounded-lg border border-border bg-card py-12 text-sm text-muted-foreground">
+                  <Loader2 className="size-4 animate-spin" aria-hidden="true" /> Loading attendance history...
+                </div>
+              ) : (
+                <>
+                  <div className="flex flex-wrap gap-3">
+                    <StatCard value={formatPercentage(personSummary.rate)} label="Attendance Rate" tone={TONE[complianceLevel(personSummary.rate).level]} />
+                    <StatCard value={personSummary.attended} label="Sessions Attended" tone="success" />
+                    <StatCard value={personSummary.missed} label="Sessions Missed" tone={personSummary.missed > 0 ? 'danger' : 'default'} />
+                  </div>
+                  <DataTable
+                    caption="Attendance history"
+                    columns={historyColumns}
+                    data={history}
+                    getRowId={(record) => record.id}
+                    pageSize={25}
+                    emptyState={<EmptyState icon={CalendarDays} title="No attendance recorded" description="This person has no attendance records for the dates chosen." />}
+                  />
+                </>
+              )}
+            </>
+          )}
+        </TabsContent>
+      </Tabs>
+
+      <Dialog open={Boolean(selectedSession)} onOpenChange={(open) => !open && setSelectedSession(null)}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Session Attendees</DialogTitle>
+            {selectedSession && (
+              <DialogDescription>
+                {selectedSession.course_name} - {new Date(selectedSession.start_datetime).toLocaleDateString('en-GB')}{' '}
+                {new Date(selectedSession.start_datetime).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })} - {selectedSession.training_location} - {selectedSession.functional_area}
+              </DialogDescription>
+            )}
+          </DialogHeader>
+          <DialogBody>
+            {sessionRecords === null ? (
+              <div role="status" className="flex items-center justify-center gap-2 py-8 text-sm text-muted-foreground">
+                <Loader2 className="size-4 animate-spin" aria-hidden="true" /> Loading attendees...
+              </div>
+            ) : (
+              <DataTable
+                caption="Session attendees"
+                columns={recordColumns}
+                data={sessionRecords}
+                getRowId={(record) => record.id}
+                pageSize={25}
+                emptyState={<EmptyState icon={CalendarDays} title="No attendance recorded for this session" />}
+              />
+            )}
+          </DialogBody>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

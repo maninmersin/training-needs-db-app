@@ -1,6 +1,7 @@
 import { supabase } from '@core/services/supabaseClient';
 import { fetchUserDirectory, userOrPlaceholder } from './userDirectoryService';
 import { summariseAttendance } from './attendanceSummary';
+import { endOfDay } from './dateFilters';
 
 /**
  * Attendance Service Layer
@@ -441,7 +442,7 @@ export const getAttendeeHistory = async (attendeeId, projectId, filters = {}) =>
       query = query.gte('marked_at', filters.startDate);
     }
     if (filters.endDate) {
-      query = query.lte('marked_at', filters.endDate);
+      query = query.lte('marked_at', endOfDay(filters.endDate));
     }
 
     // Apply course filter if provided
@@ -536,7 +537,7 @@ export const getAttendanceStatistics = async (projectId, filters = {}) => {
       sessionsQuery = sessionsQuery.gte('start_datetime', filters.startDate);
     }
     if (filters.endDate) {
-      sessionsQuery = sessionsQuery.lte('start_datetime', filters.endDate);
+      sessionsQuery = sessionsQuery.lte('start_datetime', endOfDay(filters.endDate));
     }
     if (filters.functionalArea) {
       sessionsQuery = sessionsQuery.eq('functional_area', filters.functionalArea);
@@ -652,7 +653,7 @@ export const exportAttendanceData = async (projectId, filters = {}) => {
       query = query.gte('training_sessions.start_datetime', filters.startDate);
     }
     if (filters.endDate) {
-      query = query.lte('training_sessions.start_datetime', filters.endDate);
+      query = query.lte('training_sessions.start_datetime', endOfDay(filters.endDate));
     }
     if (filters.functionalArea) {
       query = query.eq('training_sessions.functional_area', filters.functionalArea);
@@ -780,7 +781,7 @@ export const getAssignmentVsAttendanceStats = async (projectId, filters = {}) =>
       sessionQuery = sessionQuery.gte('start_datetime', filters.startDate);
     }
     if (filters.endDate) {
-      sessionQuery = sessionQuery.lte('start_datetime', filters.endDate);
+      sessionQuery = sessionQuery.lte('start_datetime', endOfDay(filters.endDate));
     }
     if (filters.functionalArea) {
       sessionQuery = sessionQuery.eq('functional_area', filters.functionalArea);
