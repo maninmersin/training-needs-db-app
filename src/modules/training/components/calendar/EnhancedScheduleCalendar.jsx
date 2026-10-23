@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useMemo, useCallback, useRef } from 'react';
+import { buildDisplayOrderMap, compareLocations } from './locationOrder';
 import { useDroppable } from '@dnd-kit/core';
 import FullCalendar from '@fullcalendar/react';
 import timeGridPlugin from '@fullcalendar/timegrid';
@@ -157,11 +158,7 @@ const EnhancedScheduleCalendar = ({
         return;
       }
 
-      const displayOrderMap = {};
-      data.forEach(location => {
-        displayOrderMap[location.name] = location.display_order || 999;
-      });
-      setLocationDisplayOrders(displayOrderMap);
+      setLocationDisplayOrders(buildDisplayOrderMap(data));
     } catch (err) {
       console.error('Error fetching location display orders:', err);
     }
@@ -858,14 +855,7 @@ const EnhancedScheduleCalendar = ({
 
   // Sort locations by display_order, then alphabetically as fallback
   const sortedLocationEntries = Object.entries(classroomSessions).sort(([locationA], [locationB]) => {
-    const orderA = locationDisplayOrders[locationA] || 999;
-    const orderB = locationDisplayOrders[locationB] || 999;
-    
-    if (orderA !== orderB) {
-      return orderA - orderB;
-    }
-    // If display orders are the same, sort alphabetically
-    return locationA.localeCompare(locationB);
+    return compareLocations(locationDisplayOrders, locationA, locationB);
   });
 
   return (
