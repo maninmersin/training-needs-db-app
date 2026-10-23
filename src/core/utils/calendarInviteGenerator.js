@@ -1,6 +1,7 @@
 import { createEvents } from 'ics';
 import { supabase } from '@core/services/supabaseClient';
 import { debugLog, debugError } from './consoleUtils';
+import { meetingUid } from '@core/calendar/meetingState';
 
 /**
  * Calendar Invite Generator Utility
@@ -255,7 +256,9 @@ const createSessionEvent = async (session, assignments, usersWithEmails) => {
       endOutputType: 'local',
       busyStatus: 'BUSY',
       categories: ['Training'],
-      uid: `training-${session.id || session.eventId || Date.now()}-${Math.random().toString(36).substr(2, 9)}@training-system`
+      // A permanent id for the meeting (the same every export), so importing the file again updates the
+      // meeting in Outlook instead of adding a second one. It matches the id the invite tracking uses.
+      uid: meetingUid(session.event_id || session.id || session.eventId || session.session_identifier || session.title)
     };
     
     debugLog('📅 Created calendar event:', {

@@ -139,6 +139,14 @@ describe('generateTrainingCalendar', () => {
     expect(result.error).toMatch(/No users with email addresses/);
   });
 
+  test('each meeting has a permanent id, the same on every export, so re-importing updates instead of duplicating', async () => {
+    mockEndUsers = [{ id: 1, name: 'Person 1', email: 'person1@example.com' }];
+    const first = await generateTrainingCalendar(SCHEDULE, [session(1)], [assignment(1, 'uuid-1')], PROJECT);
+    const second = await generateTrainingCalendar(SCHEDULE, [session(1)], [assignment(1, 'uuid-1')], PROJECT);
+    expect(unfold(first.content)).toMatch(/^UID:training-uuid-1@training-system\s*$/m);
+    expect(unfold(second.content).match(/^UID:.*$/m)[0]).toBe(unfold(first.content).match(/^UID:.*$/m)[0]);
+  });
+
   test('reports a clear error when the schedule has no sessions', async () => {
     const result = await generateTrainingCalendar(SCHEDULE, [], [assignment(1, 'uuid-1')], PROJECT);
     expect(result.success).toBe(false);
