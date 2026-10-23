@@ -1,0 +1,79 @@
+import { fromLocalDateTime } from '@core/utils/dateTimeUtils';
+
+// Pure rules for the Schedule Manager list and for opening a schedule in the editor.
+
+/** Sessions in a schedule: the count from the list query ([{ count }]), or the loaded sessions when editing. */
+export function sessionCountOf(schedule) {
+  const counted = schedule.session_count;
+  if (Array.isArray(counted) && counted.length > 0) return counted[0].count || 0;
+  if (!schedule.sessions) return 0;
+  return Array.isArray(schedule.sessions) ? schedule.sessions.length : 0;
+}
+
+/** Search by name (any case) and, optionally, by the day it was created (YYYY-MM-DD). */
+export function filterSchedules(schedules, searchTerm, filterDate) {
+  const term = (searchTerm || '').toLowerCase();
+  return schedules.filter((schedule) => {
+    const matchesSearch = (schedule.name || '').toLowerCase().includes(term);
+    const matchesDate = !filterDate || (schedule.created_at || '').startsWith(filterDate);
+    return matchesSearch && matchesDate;
+  });
+}
+
+export function deleteSummary(count) {
+  return `${count} schedule${count === 1 ? '' : 's'}`;
+}
+
+/**
+ * Shape the saved sessions the way the editor and calendar expect them:
+ * functional area > training location > "Classroom N" > [sessions].
+ */
+export function groupSessionsForEditor(sessions) {
+  const grouped = {};
+  (sessions || []).forEach((session) => {
+    const area = session.functional_area;
+    const location = session.training_location;
+    const classroomKey = `Classroom ${session.classroom_number}`;
+    grouped[area] = grouped[area] || {};
+    grouped[area][location] = grouped[area][location] || {};
+    grouped[area][location][classroomKey] = grouped[area][location][classroomKey] || [];
+
+    grouped[area][location][classroomKey].push({
+      course_id: session.course_id,
+      course_name: session.course_name,
+      sessionNumber: session.session_number,
+      group_type: [],
+      groupName: `${location} - Classroom ${session.classroom_number}`,
+      // fromLocalDateTime keeps the wall-clock time (no time zone shift)
+      start: fromLocalDateTime(session.start_datetime),
+      end: fromLocalDateTime(session.end_datetime),
+      duration: session.duration_hours || 1,
+      functional_area: area,
+      location,
+      title: session.session_title || `${session.course_name} - Group ${session.session_number}`,
+      custom_title: session.session_title || '',
+      trainer_id: session.instructor_id || '',
+      trainer_name: session.instructor_name || '',
+      color: null, // the calendar picks colours
+      text_color: null,
+      background_color: null,
+      notes: session.notes || '',
+      max_participants: session.max_attendees,
+      current_participants: session.current_attendees,
+      event_id: session.id, // the database id, used to match assignments
+      eventId: `${session.course_id}-session${session.session_number}-${String(location).replace(/\s+/g, '-').toLowerCase()}-${String(area).replace(/\s+/g, '-').toLowerCase()}`,
+      calendarInstance: `${location} - Classroom ${session.classroom_number}-${area}`,
+      totalParts: session.total_parts || 1,
+      totalDays: session.course_day_sequence || 1,
+      daySequence: session.course_day_sequence || 1,
+      isMultiDay: session.is_multi_day_course || false,
+      course: {
+        id: session.course_id,
+        course_id: session.course_id,
+        course_name: session.course_name,
+        duration_hrs: session.duration_hours || 1
+      }
+    });
+  });
+  return grouped;
+}
