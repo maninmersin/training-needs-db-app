@@ -20,7 +20,8 @@
     "db:pull-schema": "node db/pull-from-supabase.js schema",
     "db:pull-data": "node db/pull-from-supabase.js data",
     "auth-server": "node server/auth/index.js",
-    "test:local-stack": "node tests/local-stack/run.mjs"
+    "test:local-stack": "node tests/local-stack/run.mjs",
+    "test:rls": "node tests/rls/run.mjs"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

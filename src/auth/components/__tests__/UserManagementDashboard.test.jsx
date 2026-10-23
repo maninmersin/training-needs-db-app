@@ -30,9 +30,9 @@ const ROLES = [
   { id: 'r-trainer', name: 'trainer', description: 'Runs sessions' }
 ];
 const USERS = [
-  { id: 'u-alice', email: 'alice@x.com', is_verified: true, created_at: '2026-01-05T10:00:00Z', last_login: '2026-10-01T09:00:00Z' },
-  { id: 'u-bob', email: 'bob@x.com', is_verified: false, created_at: '2026-02-05T10:00:00Z', last_login: null },
-  { id: 'u-cara', email: 'cara@y.com', is_verified: true, created_at: '2026-03-05T10:00:00Z', last_login: null }
+  { id: 'u-alice', email: 'alice@x.com', is_active: true, created_at: '2026-01-05T10:00:00Z' },
+  { id: 'u-bob', email: 'bob@x.com', is_active: false, created_at: '2026-02-05T10:00:00Z' },
+  { id: 'u-cara', email: 'cara@y.com', is_active: true, created_at: '2026-03-05T10:00:00Z' }
 ];
 const LINKS = [
   { user_id: 'u-alice', role_id: 'r-admin' },
@@ -51,7 +51,7 @@ const makeDb = ({ users = USERS, links = LINKS, roles = ROLES, fail = {} } = {})
       const eq = (column) => call.filters.find(([kind, c]) => kind === 'eq' && c === column)?.[2];
       const within = (column) => call.filters.find(([kind, c]) => kind === 'in' && c === column)?.[2];
       if (table === 'auth_users') {
-        if (call.op === 'insert') { state.users.push({ created_at: new Date().toISOString(), last_login: null, ...call.rows }); return { error: null }; }
+        if (call.op === 'insert') { state.users.push({ created_at: new Date().toISOString(), ...call.rows }); return { error: null }; }
         if (call.op === 'update') { state.users = state.users.map((u) => (u.id === eq('id') ? { ...u, ...call.values } : u)); return { error: null }; }
         if (call.op === 'delete') { state.users = state.users.filter((u) => u.id !== eq('id')); return { error: null }; }
         return { data: state.users.map((u) => ({ ...u, auth_user_roles: state.links.filter((l) => l.user_id === u.id).map((l) => ({ role_id: l.role_id, auth_roles: state.roles.find((r) => r.id === l.role_id) })) })), error: null };
@@ -95,13 +95,12 @@ const writes = (state) => state.log.map((c) => `${c.op} ${c.table}`);
 beforeEach(() => jest.clearAllMocks());
 
 describe('UserManagementDashboard', () => {
-  test('lists users with status, roles and last login', async () => {
+  test('lists users with status and roles', async () => {
     await setup();
     const row = screen.getByText('bob@x.com').closest('tr');
-    expect(within(row).getByText('Unverified')).toBeInTheDocument();
+    expect(within(row).getByText('Inactive')).toBeInTheDocument();
     expect(within(row).getByText('trainer')).toBeInTheDocument();
-    expect(within(row).getByText('Never')).toBeInTheDocument();
-    expect(within(screen.getByText('alice@x.com').closest('tr')).getByText('Verified')).toBeInTheDocument();
+    expect(within(screen.getByText('alice@x.com').closest('tr')).getByText('Active')).toBeInTheDocument();
   });
 
   test('searching by email and filtering by role narrow the list', async () => {

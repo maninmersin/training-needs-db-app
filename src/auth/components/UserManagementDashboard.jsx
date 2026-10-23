@@ -147,8 +147,8 @@ const UserManagementDashboard = () => {
       {
         id: 'status',
         header: 'Status',
-        accessorFn: (user) => (user.is_verified ? 'Verified' : 'Unverified'),
-        cell: ({ getValue }) => <Badge variant={getValue() === 'Verified' ? 'success' : 'warning'}>{getValue()}</Badge>
+        accessorFn: (user) => (user.is_active === false ? 'Inactive' : 'Active'),
+        cell: ({ getValue }) => <Badge variant={getValue() === 'Active' ? 'success' : 'warning'}>{getValue()}</Badge>
       },
       {
         id: 'roles',
@@ -162,7 +162,6 @@ const UserManagementDashboard = () => {
         )
       },
       { id: 'created', header: 'Created', accessorFn: (user) => user.created_at || '', cell: ({ row }) => (row.original.created_at ? new Date(row.original.created_at).toLocaleDateString() : '') },
-      { id: 'lastLogin', header: 'Last Login', accessorFn: (user) => user.last_login || '', cell: ({ row }) => (row.original.last_login ? new Date(row.original.last_login).toLocaleDateString() : 'Never') },
       {
         id: 'actions',
         header: 'Actions',

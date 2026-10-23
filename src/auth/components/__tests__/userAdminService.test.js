@@ -73,7 +73,7 @@ describe('createUserAccount', () => {
     expect(id).toBe('new-id');
     expect(api.createUser).toHaveBeenCalledWith({ email: 'a@x.com', password: 'secret1' });
     expect(ops(log)).toEqual(['insert auth_users', 'insert auth_user_roles']);
-    expect(log[0].rows).toEqual({ id: 'new-id', email: 'a@x.com', password_hash: 'auth_managed', is_verified: true });
+    expect(log[0].rows).toEqual({ id: 'new-id', email: 'a@x.com' });
     expect(log[1].rows).toEqual([{ user_id: 'new-id', role_id: 'r1' }, { user_id: 'new-id', role_id: 'r2' }]);
   });
 

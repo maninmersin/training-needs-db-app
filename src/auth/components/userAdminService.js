@@ -40,7 +40,7 @@ export async function createUserAccount(db, adminApi, { email, password, roleIds
   const userId = authData.user.id;
 
   try {
-    const { error: userError } = await db.from('auth_users').insert({ id: userId, email, password_hash: 'auth_managed', is_verified: true });
+    const { error: userError } = await db.from('auth_users').insert({ id: userId, email });
     if (userError) throw userError;
 
     if (roleIds.length > 0) {
