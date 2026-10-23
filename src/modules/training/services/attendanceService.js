@@ -979,7 +979,7 @@ export const getDrillDownStats = async (projectId, filterPath = {}, dateRange = 
     drillDownData = sessionStats.reduce((acc, sessionStat) => {
       acc[sessionStat.session.id] = {
         ...sessionStat,
-        session_name: `${sessionStat.session.course_name} - ${new Date(sessionStat.session.start_datetime).toLocaleDateString()}`
+        session_name: `${sessionStat.session.course_name} - ${new Date(sessionStat.session.start_datetime).toLocaleDateString('en-GB')}`
       };
       return acc;
     }, {});
@@ -1028,7 +1028,7 @@ export const getAttendanceGaps = async (projectId, dateRange = {}) => {
       .filter(s => s.missing_records > 0)
       .map(s => ({
         session_id: s.session.id,
-        session_name: `${s.session.course_name} - ${new Date(s.session.start_datetime).toLocaleDateString()}`,
+        session_name: `${s.session.course_name} - ${new Date(s.session.start_datetime).toLocaleDateString('en-GB')}`,
         training_location: s.session.training_location,
         functional_area: s.session.functional_area,
         missing_count: s.missing_records,
@@ -1040,7 +1040,7 @@ export const getAttendanceGaps = async (projectId, dateRange = {}) => {
       .filter(s => s.compliance_rate < 80 && s.assigned > 0)
       .map(s => ({
         session_id: s.session.id,
-        session_name: `${s.session.course_name} - ${new Date(s.session.start_datetime).toLocaleDateString()}`,
+        session_name: `${s.session.course_name} - ${new Date(s.session.start_datetime).toLocaleDateString('en-GB')}`,
         training_location: s.session.training_location,
         functional_area: s.session.functional_area,
         compliance_rate: Math.round(s.compliance_rate),

@@ -881,6 +881,7 @@ const EnhancedScheduleCalendar = ({
               <FullCalendar
                 key={`${trainingLocation}-${classroomName}`}
                 plugins={[timeGridPlugin, dayGridPlugin, interactionPlugin]}
+                locale="en-gb" // day/month order, 24-hour times, weeks start on Monday
                 initialView={calendarViewRef.current}
                 initialDate={calendarDateRef.current}
                 allDaySlot={false}

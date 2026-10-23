@@ -161,7 +161,7 @@ const UserManagementDashboard = () => {
           </div>
         )
       },
-      { id: 'created', header: 'Created', accessorFn: (user) => user.created_at || '', cell: ({ row }) => (row.original.created_at ? new Date(row.original.created_at).toLocaleDateString() : '') },
+      { id: 'created', header: 'Created', accessorFn: (user) => user.created_at || '', cell: ({ row }) => (row.original.created_at ? new Date(row.original.created_at).toLocaleDateString('en-GB') : '') },
       {
         id: 'actions',
         header: 'Actions',

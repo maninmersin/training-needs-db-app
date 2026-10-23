@@ -9,7 +9,7 @@ import { progressState, scheduleStatsFrom } from './scheduleSelectorLogic';
 
 const formatDate = (value) => {
   try {
-    return format(new Date(value), 'MMM dd, yyyy HH:mm');
+    return format(new Date(value), 'dd MMM yyyy HH:mm');
   } catch {
     return value;
   }

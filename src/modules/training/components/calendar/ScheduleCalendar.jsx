@@ -694,7 +694,7 @@ const ScheduleCalendar = ({ sessions, onSessionUpdated, criteria, selectionMode 
                 variant={active ? 'default' : 'secondary'}
                 aria-pressed={active}
                 onClick={() => showWeeks(weeks)}
-                title={first ? `Jump to week of first session (${format(first, 'MMM d, yyyy')})` : weeks === 1 ? 'Show current week' : `Show current ${weeks} weeks`}
+                title={first ? `Jump to week of first session (${format(first, 'd MMM yyyy')})` : weeks === 1 ? 'Show current week' : `Show current ${weeks} weeks`}
               >
                 {weeks} {weeks === 1 ? 'Week' : 'Weeks'}
               </Button>
