@@ -1,10 +1,11 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { saveAs } from 'file-saver';
-import { Download, Loader2, Mail, RefreshCw } from 'lucide-react';
+import { Download, ExternalLink, Loader2, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import { useCurrentUser } from '@core/components/shell/useCurrentUser';
 import { planInviteChanges, KIND } from '@core/calendar/planChanges';
-import { buildInviteEmails, buildInviteFiles } from '@core/calendar/inviteFiles';
+import { buildInviteFiles } from '@core/calendar/inviteFiles';
+import { outlookComposeLink } from '@core/calendar/outlookLinks';
 import { recordSent } from '@core/calendar/ledger';
 import { loadSettings, saveSettings, validateSettings } from '@core/calendar/inviteSettings';
 import { loadLedger, saveSent } from '@core/services/calendarInviteService';
@@ -21,6 +22,7 @@ const KIND_LABEL = {
 };
 
 const TEST_LIMIT_DEFAULT = 3;
+const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 // 'YYYY-MM-DDTHH:mm' as 'dd/mm/yyyy hh:mm'
 const formatWhen = (value) => {
@@ -32,9 +34,14 @@ const formatWhen = (value) => {
 const isMissingTable = (error) => ['42P01', 'PGRST205', 'PGRST200'].includes(error?.code) || /schema cache|does not exist/i.test(error?.message || '');
 
 /**
- * Create the Outlook invitation files (.ics) for the people assigned to a schedule. In test mode only a test
- * address is invited and nothing is remembered, so it is safe to try. Otherwise only what has CHANGED since the
- * last send is included, and "Mark as sent" remembers it.
+ * Invitations for the people assigned to a schedule.
+ *
+ * "Open in Outlook" opens a new-meeting form in Outlook on the web with everything filled in; pressing Send
+ * there sends a real meeting request from your own mailbox. (A calendar file cannot do that: Outlook always
+ * treats an opened file as an invitation it has RECEIVED.) The calendar files are for importing or emailing.
+ *
+ * In test mode only a test address is invited and nothing is remembered. Otherwise only what has CHANGED since
+ * the last send is listed, and "mark as sent" remembers it.
  */
 const InviteChangesDialog = ({ isOpen, onClose, schedule, projectId }) => {
   const { user } = useCurrentUser();
@@ -46,7 +53,8 @@ const InviteChangesDialog = ({ isOpen, onClose, schedule, projectId }) => {
   const [error, setError] = useState(null);
   const [fieldErrors, setFieldErrors] = useState({});
   const [testLimit, setTestLimit] = useState(TEST_LIMIT_DEFAULT);
-  const [downloaded, setDownloaded] = useState(null); // { items, testMode } after files were created
+  const [downloaded, setDownloaded] = useState(null); // { items, testMode } after calendar files were created
+  const [opened, setOpened] = useState([]); // items opened in Outlook (real mode), waiting to be marked as sent
   const [saving, setSaving] = useState(false);
 
   const update = (patch) => setSettings((previous) => ({ ...previous, ...patch }));
@@ -79,6 +87,7 @@ const InviteChangesDialog = ({ isOpen, onClose, schedule, projectId }) => {
     if (!isOpen) return;
     setSettings(loadSettings(projectId, { organizerEmail: user?.email || '', testEmail: user?.email || '' }));
     setFieldErrors({});
+    setOpened([]);
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, projectId, schedule?.id]);
@@ -99,14 +108,27 @@ const InviteChangesDialog = ({ isOpen, onClose, schedule, projectId }) => {
   const blockedByMissingTables = !settings.testMode && ledgerMissing;
   const canCreate = Boolean(plan) && plan.items.length > 0 && !blockedByMissingTables && !loading;
 
-  // Make the files with `build` and download them. kind: 'ics' (a calendar file) or 'email' (an unsent Outlook draft)
-  const create = (build, kind) => {
+  // Open the new-meeting form in Outlook on the web (a new tab); the person presses Send there
+  const handleOpenInOutlook = (item) => {
+    if (settings.testMode && !EMAIL.test(String(settings.testEmail || '').trim())) {
+      setFieldErrors({ testEmail: 'Enter the address the test invitations go to' });
+      return;
+    }
+    setFieldErrors({});
+    saveSettings(projectId, settings);
+    const link = outlookComposeLink(item, { testMode: settings.testMode, testEmail: settings.testEmail });
+    if (link.tooLong) toast.warning('This meeting has a lot of people', { description: 'Outlook may cut the list short. Check the attendees in the form before sending.' });
+    window.open(link.url, '_blank', 'noopener');
+    if (!settings.testMode) setOpened((previous) => (previous.some((o) => o.uid === item.uid) ? previous : [...previous, item]));
+  };
+
+  const handleCreate = () => {
     const problems = validateSettings(settings);
     setFieldErrors(problems);
     if (Object.keys(problems).length > 0) return;
     saveSettings(projectId, settings);
 
-    const result = build(plan.items, {
+    const result = buildInviteFiles(plan.items, {
       organizer: { name: settings.organizerName.trim(), email: settings.organizerEmail.trim() },
       testMode: settings.testMode,
       testEmail: settings.testEmail,
@@ -117,24 +139,21 @@ const InviteChangesDialog = ({ isOpen, onClose, schedule, projectId }) => {
       return;
     }
     setError(null);
-    const type = kind === 'email' ? 'message/rfc822' : 'text/calendar;charset=utf-8';
-    result.files.forEach((file) => saveAs(new Blob([file.content], { type }), file.filename));
+    result.files.forEach((file) => saveAs(new Blob([file.content], { type: 'text/calendar;charset=utf-8' }), file.filename));
     result.warnings.forEach((warning) => toast.warning(warning));
-    setDownloaded({ items: plan.items, testMode: settings.testMode, files: result.files, kind });
-    toast.success(`Created ${result.files.length} ${kind === 'email' ? 'email draft' : 'calendar file'}${result.files.length === 1 ? '' : 's'}`, {
+    setDownloaded({ items: plan.items, testMode: settings.testMode, files: result.files });
+    toast.success(`Created ${result.files.length} calendar file${result.files.length === 1 ? '' : 's'}`, {
       description: result.files.map((file) => file.filename).join(', ')
     });
   };
 
-  const handleCreate = () => create(buildInviteFiles, 'ics');
-  const handleCreateEmails = () => create(buildInviteEmails, 'email');
-
-  // After the files were really sent: remember them, so the next plan only shows new changes
-  const handleMarkSent = async () => {
+  // After the invitations were really sent: remember them, so the next plan only shows new changes
+  const markSent = async (items) => {
     setSaving(true);
     try {
-      await saveSent(recordSent(downloaded.items, { projectId, scheduleId: schedule.id, userId: user?.id || null, testMode: false }));
-      toast.success('Marked as sent');
+      await saveSent(recordSent(items, { projectId, scheduleId: schedule.id, userId: user?.id || null, testMode: false }));
+      toast.success(`Marked ${items.length} meeting${items.length === 1 ? '' : 's'} as sent`);
+      setOpened([]);
       await load();
     } catch (err) {
       console.error('Error saving the sent invites:', err);
@@ -152,25 +171,18 @@ const InviteChangesDialog = ({ isOpen, onClose, schedule, projectId }) => {
         <DialogHeader>
           <DialogTitle>Calendar invites</DialogTitle>
           <DialogDescription>
-            Create the Outlook invitations for the people assigned to {schedule?.name}: calendar files (.ics) to open, or email drafts you can send.
+            Send meeting invitations to the people assigned to {schedule?.name}. Use <strong>Open in Outlook</strong> to send a meeting from your own mailbox.
           </DialogDescription>
         </DialogHeader>
 
         <DialogBody className="flex flex-col gap-4">
           <section className="grid gap-3 rounded-md border border-border p-3 sm:grid-cols-2">
-            <FormField label="Your name (shown as the organiser)">
-              <Input value={settings.organizerName} onChange={(event) => update({ organizerName: event.target.value })} placeholder="Training Coordinator" />
-            </FormField>
-            <FormField label="Your email address (the organiser)" error={fieldErrors.organizerEmail}>
-              <Input type="email" value={settings.organizerEmail} onChange={(event) => update({ organizerEmail: event.target.value })} placeholder="you@company.com" />
-            </FormField>
-
             <label className="flex cursor-pointer items-start gap-3 sm:col-span-2">
               <Switch aria-label="Test mode" checked={settings.testMode} onCheckedChange={(checked) => update({ testMode: checked })} className="mt-0.5" />
               <span className="flex flex-col text-sm">
                 <span className="font-medium">Test mode</span>
                 <span className="text-muted-foreground">
-                  Only the test address below is invited, the titles say [TEST], and nothing is remembered, so you can try it as often as you like. Switch it off to create the real invitations.
+                  Only the test address below is invited, the titles say [TEST], and nothing is remembered, so you can try it as often as you like. Switch it off to send the real invitations.
                 </span>
               </span>
             </label>
@@ -185,6 +197,18 @@ const InviteChangesDialog = ({ isOpen, onClose, schedule, projectId }) => {
                 </FormField>
               </>
             )}
+
+            <details className="text-sm sm:col-span-2">
+              <summary className="cursor-pointer font-medium">Calendar file settings (only for the files below)</summary>
+              <div className="mt-2 grid gap-3 sm:grid-cols-2">
+                <FormField label="Organiser name">
+                  <Input value={settings.organizerName} onChange={(event) => update({ organizerName: event.target.value })} placeholder="Training Coordinator" />
+                </FormField>
+                <FormField label="Organiser email address" error={fieldErrors.organizerEmail} hint="Replies go here. Use a mailbox that should receive them.">
+                  <Input type="email" value={settings.organizerEmail} onChange={(event) => update({ organizerEmail: event.target.value })} placeholder="you@company.com" />
+                </FormField>
+              </div>
+            </details>
           </section>
 
           {error && <div role="alert" className="rounded-md bg-destructive-soft px-3 py-2 text-sm text-destructive">{error}</div>}
@@ -219,12 +243,16 @@ const InviteChangesDialog = ({ isOpen, onClose, schedule, projectId }) => {
                 <div className="max-h-72 overflow-auto rounded-md border border-border">
                   <table className="w-full border-collapse text-sm">
                     <thead className="sticky top-0 bg-secondary text-xs text-muted-foreground">
-                      <tr><th className="h-8 px-3 text-left">What</th><th className="px-3 text-left">Meeting</th><th className="px-3 text-left">When</th><th className="px-3 text-right">People</th><th className="px-3 text-left">Details</th></tr>
+                      <tr>
+                        <th className="h-8 px-3 text-left">What</th><th className="px-3 text-left">Meeting</th><th className="px-3 text-left">When</th>
+                        <th className="px-3 text-right">People</th><th className="px-3 text-left">Details</th><th className="px-3 text-right">Outlook</th>
+                      </tr>
                     </thead>
                     <tbody>
                       {plan.items.map((item) => {
                         const [label, variant] = KIND_LABEL[item.kind];
                         const state = item.current || item.previous;
+                        const wasOpened = opened.some((o) => o.uid === item.uid);
                         return (
                           <tr key={item.uid} className="border-t border-border align-top">
                             <td className="px-3 py-1.5"><Badge variant={variant}>{label}</Badge></td>
@@ -232,6 +260,15 @@ const InviteChangesDialog = ({ isOpen, onClose, schedule, projectId }) => {
                             <td className="whitespace-nowrap px-3 py-1.5 text-muted-foreground">{formatWhen(state?.start)}</td>
                             <td className="px-3 py-1.5 text-right tabular-nums">{state?.attendees?.length ?? 0}</td>
                             <td className="px-3 py-1.5 text-xs text-muted-foreground">{item.description}</td>
+                            <td className="px-3 py-1.5 text-right">
+                              {item.kind === KIND.NEW ? (
+                                <Button size="sm" variant={wasOpened ? 'secondary' : 'default'} aria-label={`Open ${item.title} in Outlook`} onClick={() => handleOpenInOutlook(item)}>
+                                  <ExternalLink /> {wasOpened ? 'Opened' : 'Open in Outlook'}
+                                </Button>
+                              ) : (
+                                <span className="text-xs text-muted-foreground" title="A meeting that was already sent cannot be changed from a link: change or cancel it in Outlook">Change in Outlook</span>
+                              )}
+                            </td>
                           </tr>
                         );
                       })}
@@ -251,24 +288,21 @@ const InviteChangesDialog = ({ isOpen, onClose, schedule, projectId }) => {
             </section>
           )}
 
+          {opened.length > 0 && (
+            <section className="flex flex-col gap-2 rounded-md bg-primary-soft px-3 py-3 text-sm text-primary-soft-foreground">
+              <p><strong>{opened.length} meeting{opened.length === 1 ? '' : 's'} opened in Outlook.</strong> Check each form and press Send there. Then mark them as sent, so the next time only new changes are listed.</p>
+              <div><Button variant="default" onClick={() => markSent(opened)} disabled={saving}>{saving ? 'Saving...' : `I have sent them: mark ${opened.length} as sent`}</Button></div>
+            </section>
+          )}
+
           {downloaded && (
             <section className="flex flex-col gap-2 rounded-md bg-primary-soft px-3 py-3 text-sm text-primary-soft-foreground">
               {downloaded.testMode ? (
-                downloaded.kind === 'email' ? (
-                  <>
-                    <p><strong>Test email drafts created.</strong> Find them in your Downloads folder and double-click one: Outlook opens a new, unsent message addressed to the test address, with the meeting inside it.</p>
-                    <p>Press Send, then open the message you receive. Tell me whether it shows Accept / Decline and whether the meeting lands in your calendar. Nothing was remembered, so you can make them again.</p>
-                  </>
-                ) : (
-                  <>
-                    <p><strong>Test files created.</strong> Find them in your Downloads folder and double-click one to open it in Outlook. Nothing was remembered, so you can create them again.</p>
-                    <p>Outlook shows a calendar file as an invitation you have <em>received</em> (Accept / Decline), with no Send button. To really send it to someone, use the email drafts instead.</p>
-                  </>
-                )
+                <p><strong>Test calendar files created</strong> in your Downloads folder. Outlook shows an opened calendar file as an invitation you have <em>received</em> (Accept / Decline) and cannot send it on; use Open in Outlook to send a meeting.</p>
               ) : (
                 <>
-                  <p><strong>Files created.</strong> Open each one in Outlook and send it. Once you have sent them, mark them as sent so the next time only new changes are listed.</p>
-                  <div><Button variant="default" onClick={handleMarkSent} disabled={saving}>{saving ? 'Saving...' : 'I have sent them: mark as sent'}</Button></div>
+                  <p><strong>Calendar files created.</strong> Outlook cannot send an opened file; attach it to an email, or import it. If you used them, mark the meetings as sent so the next time only new changes are listed.</p>
+                  <div><Button variant="default" onClick={() => markSent(downloaded.items)} disabled={saving}>{saving ? 'Saving...' : 'I have used them: mark as sent'}</Button></div>
                 </>
               )}
             </section>
@@ -278,11 +312,8 @@ const InviteChangesDialog = ({ isOpen, onClose, schedule, projectId }) => {
         <DialogFooter>
           <Button onClick={load} disabled={loading}><RefreshCw /> Refresh</Button>
           <Button onClick={onClose} disabled={saving}>Close</Button>
-          {settings.testMode && (
-            <Button onClick={handleCreateEmails} disabled={!canCreate}><Mail /> Create test email drafts</Button>
-          )}
-          <Button variant="default" onClick={handleCreate} disabled={!canCreate}>
-            <Download /> {settings.testMode ? 'Create test file' : 'Create invite files'}
+          <Button onClick={handleCreate} disabled={!canCreate}>
+            <Download /> {settings.testMode ? 'Create test calendar file' : 'Create calendar files'}
           </Button>
         </DialogFooter>
       </DialogContent>

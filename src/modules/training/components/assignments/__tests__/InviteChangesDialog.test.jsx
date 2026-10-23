@@ -48,11 +48,14 @@ const setup = ({ ledger = [], ledgerError = null } = {}) => {
   if (ledgerError) loadLedger.mockRejectedValue(ledgerError);
   else loadLedger.mockResolvedValue(ledger);
   saveSent.mockResolvedValue();
+  window.open = jest.fn();
   const onClose = jest.fn();
   const user = userEvent.setup();
   render(<InviteChangesDialog isOpen onClose={onClose} schedule={{ id: 'sch1', name: 'Wave One' }} projectId="p1" />);
   return { user, onClose };
 };
+
+const opened = () => new URL(window.open.mock.calls[0][0]);
 
 beforeEach(() => jest.clearAllMocks());
 
@@ -62,8 +65,8 @@ describe('InviteChangesDialog', () => {
     const dialog = await screen.findByRole('dialog');
     expect(await within(dialog).findByText('Budgeting - Group 1')).toBeInTheDocument();
     expect(within(dialog).getByLabelText('Test mode')).toBeChecked();
-    expect(within(dialog).getByLabelText('Your email address (the organiser)')).toHaveValue('me@x.com');
     expect(within(dialog).getByLabelText('Send the test to')).toHaveValue('me@x.com');
+    expect(within(dialog).getByLabelText('Organiser email address')).toHaveValue('me@x.com');
     expect(within(dialog).getByText('Reporting - Group 1')).toBeInTheDocument();
     expect(within(dialog).queryByText('Empty course - Group 1')).not.toBeInTheDocument(); // nobody to invite
   });
@@ -79,11 +82,38 @@ describe('InviteChangesDialog', () => {
     expect(within(dialog).getByText('Budgeting - Group 1')).toBeInTheDocument();
   });
 
-  test('Create test file downloads an .ics file for the test address only, and remembers nothing', async () => {
+  test('Open in Outlook opens the new-meeting form with the meeting filled in, for the test address only', async () => {
     const { user } = setup();
     const dialog = await screen.findByRole('dialog');
     await within(dialog).findByText('Budgeting - Group 1');
-    await user.click(within(dialog).getByRole('button', { name: /Create test file/ }));
+    await user.click(within(dialog).getByRole('button', { name: 'Open Budgeting - Group 1 in Outlook' }));
+    expect(window.open).toHaveBeenCalledTimes(1);
+    expect(window.open.mock.calls[0][1]).toBe('_blank');
+    const url = opened();
+    expect(url.origin + url.pathname).toBe('https://outlook.office.com/calendar/0/deeplink/compose');
+    expect(url.searchParams.get('subject')).toBe('[TEST] Budgeting - Group 1');
+    expect(url.searchParams.get('startdt')).toBe('2026-10-05T09:30:00');
+    expect(url.searchParams.get('enddt')).toBe('2026-10-05T12:30:00');
+    expect(url.searchParams.get('to')).toBe('me@x.com');
+    expect(url.search).not.toContain('pat%40x.com');
+    expect(saveSent).not.toHaveBeenCalled();
+  });
+
+  test('Open in Outlook needs a test address while testing', async () => {
+    const { user } = setup();
+    const dialog = await screen.findByRole('dialog');
+    await within(dialog).findByText('Budgeting - Group 1');
+    await user.clear(within(dialog).getByLabelText('Send the test to'));
+    await user.click(within(dialog).getByRole('button', { name: 'Open Budgeting - Group 1 in Outlook' }));
+    expect(await within(dialog).findByText('Enter the address the test invitations go to')).toBeInTheDocument();
+    expect(window.open).not.toHaveBeenCalled();
+  });
+
+  test('Create test calendar file downloads an .ics file for the test address only, and remembers nothing', async () => {
+    const { user } = setup();
+    const dialog = await screen.findByRole('dialog');
+    await within(dialog).findByText('Budgeting - Group 1');
+    await user.click(within(dialog).getByRole('button', { name: /Create test calendar file/ }));
     await waitFor(() => expect(saveAs).toHaveBeenCalledTimes(1));
     const [blob, filename] = saveAs.mock.calls[0];
     expect(filename).toMatch(/^TEST_Wave_One_Invites_\d{4}-\d{2}-\d{2}\.ics$/);
@@ -94,41 +124,15 @@ describe('InviteChangesDialog', () => {
     expect(text).toContain('mailto:me@x.com');
     expect(text).not.toContain('pat@x.com'); // the real people are not invited in a test
     expect(saveSent).not.toHaveBeenCalled();
-    expect(await within(dialog).findByText(/Test files created/)).toBeInTheDocument();
+    expect(await within(dialog).findByText(/Test calendar files created/)).toBeInTheDocument();
   });
 
-  test('Create test email drafts downloads one unsent .eml per meeting, addressed to the test address only', async () => {
+  test('a calendar file needs an organiser email', async () => {
     const { user } = setup();
     const dialog = await screen.findByRole('dialog');
     await within(dialog).findByText('Budgeting - Group 1');
-    await user.click(within(dialog).getByRole('button', { name: /Create test email drafts/ }));
-    await waitFor(() => expect(saveAs).toHaveBeenCalledTimes(3)); // the 3 meetings of the test
-    const [blob, filename] = saveAs.mock.calls[0];
-    expect(filename).toMatch(/^TEST_Wave_One_Invite_.*\.eml$/);
-    expect(blob.type).toBe('message/rfc822');
-    const text = await blobText(blob);
-    expect(text).toContain('X-Unsent: 1');
-    expect(text).toContain('To: "Test recipient" <me@x.com>');
-    expect(text).toContain('Subject: [TEST] Budgeting - Group 1');
-    expect(text).not.toContain('pat@x.com');
-    expect(saveSent).not.toHaveBeenCalled();
-    expect(await within(dialog).findByText(/Test email drafts created/)).toBeInTheDocument();
-  });
-
-  test('email drafts are only offered in test mode', async () => {
-    const { user } = setup();
-    const dialog = await screen.findByRole('dialog');
-    await within(dialog).findByText('Budgeting - Group 1');
-    await user.click(within(dialog).getByLabelText('Test mode'));
-    expect(within(dialog).queryByRole('button', { name: /Create test email drafts/ })).not.toBeInTheDocument();
-  });
-
-  test('an organiser email is required', async () => {
-    const { user } = setup();
-    const dialog = await screen.findByRole('dialog');
-    await within(dialog).findByText('Budgeting - Group 1');
-    await user.clear(within(dialog).getByLabelText('Your email address (the organiser)'));
-    await user.click(within(dialog).getByRole('button', { name: /Create test file/ }));
+    await user.clear(within(dialog).getByLabelText('Organiser email address'));
+    await user.click(within(dialog).getByRole('button', { name: /Create test calendar file/ }));
     expect(await within(dialog).findByText('Enter the email address the invitations come from')).toBeInTheDocument();
     expect(saveAs).not.toHaveBeenCalled();
   });
@@ -137,13 +141,13 @@ describe('InviteChangesDialog', () => {
     const { user } = setup();
     const dialog = await screen.findByRole('dialog');
     await within(dialog).findByText('Budgeting - Group 1');
-    await user.type(within(dialog).getByLabelText('Your name (shown as the organiser)'), 'Stuart');
-    await user.click(within(dialog).getByRole('button', { name: /Create test file/ }));
+    await user.type(within(dialog).getByLabelText('Organiser name'), 'Stuart');
+    await user.click(within(dialog).getByRole('button', { name: /Create test calendar file/ }));
     await waitFor(() => expect(saveAs).toHaveBeenCalled());
     expect(JSON.parse(localStorage.getItem('tna-invite-settings:p1'))).toMatchObject({ organizerName: 'Stuart', testMode: true });
   });
 
-  test('real mode lists what changed since the last send, and Mark as sent remembers it', async () => {
+  test('real mode lists what changed since the last send; Open in Outlook uses the real attendees and Mark as sent remembers only what was opened', async () => {
     const unchangedSnapshot = {
       title: 'Budgeting - Group 1', location: 'Dubai', room: '1', trainer: 'Tess', functionalArea: '', start: '2026-10-05T09:30', end: '2026-10-05T12:30',
       attendees: [{ id: 1, name: 'Pat', email: 'pat@x.com' }]
@@ -158,23 +162,37 @@ describe('InviteChangesDialog', () => {
     expect(within(dialog).getByText('Reporting - Group 1')).toBeInTheDocument();
     expect(within(dialog).getByText(/1 assignment\(s\) have no email address/)).toBeInTheDocument();
 
-    await user.click(within(dialog).getByRole('button', { name: /Create invite files/ }));
-    await waitFor(() => expect(saveAs).toHaveBeenCalledTimes(1));
-    expect(saveAs.mock.calls[0][1]).not.toMatch(/^TEST_/);
-    await user.click(await within(dialog).findByRole('button', { name: /mark as sent/ }));
+    await user.click(within(dialog).getByRole('button', { name: 'Open Reporting - Group 1 in Outlook' }));
+    const url = opened();
+    expect(url.searchParams.get('subject')).toBe('Reporting - Group 1'); // no [TEST]
+    expect(url.searchParams.get('to')).toBe('lee@x.com');
+    await user.click(await within(dialog).findByRole('button', { name: /I have sent them: mark 1 as sent/ }));
     await waitFor(() => expect(saveSent).toHaveBeenCalledTimes(1));
     const { invites, logs } = saveSent.mock.calls[0][0];
-    expect(invites.map((i) => i.uid)).toEqual(['training-s2@training-system', 'training-s4@training-system']);
+    expect(invites.map((i) => i.uid)).toEqual(['training-s4@training-system']);
     expect(logs.every((l) => l.test_mode === false)).toBe(true);
+  });
+
+  test('real mode calendar files can also be marked as sent', async () => {
+    const { user } = setup();
+    const dialog = await screen.findByRole('dialog');
+    await within(dialog).findByText('Budgeting - Group 1');
+    await user.click(within(dialog).getByLabelText('Test mode'));
+    await user.click(await within(dialog).findByRole('button', { name: /Create calendar files/ }));
+    await waitFor(() => expect(saveAs).toHaveBeenCalledTimes(1));
+    expect(saveAs.mock.calls[0][1]).not.toMatch(/^TEST_/);
+    await user.click(await within(dialog).findByRole('button', { name: /I have used them: mark as sent/ }));
+    await waitFor(() => expect(saveSent).toHaveBeenCalledTimes(1));
+    expect(saveSent.mock.calls[0][0].invites).toHaveLength(3);
   });
 
   test('without the invite history tables, test mode still works and real mode explains what to do', async () => {
     const { user } = setup({ ledgerError: { code: 'PGRST205', message: "Could not find the table 'public.calendar_invites' in the schema cache" } });
     const dialog = await screen.findByRole('dialog');
     expect(await within(dialog).findByText('Budgeting - Group 1')).toBeInTheDocument();
-    expect(within(dialog).getByRole('button', { name: /Create test file/ })).toBeEnabled();
+    expect(within(dialog).getByRole('button', { name: /Create test calendar file/ })).toBeEnabled();
     await user.click(within(dialog).getByLabelText('Test mode'));
     expect(await within(dialog).findByText(/real invitations cannot be created/)).toBeInTheDocument();
-    expect(within(dialog).getByRole('button', { name: /Create invite files/ })).toBeDisabled();
+    expect(within(dialog).getByRole('button', { name: /Create calendar files/ })).toBeDisabled();
   });
 });
