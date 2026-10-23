@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Download, RefreshCw, Trash2, Upload } from 'lucide-react';
+import { Download, RefreshCw, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@core/services/supabaseClient';
 import { useProject } from '@core/contexts/ProjectContext';
@@ -9,7 +9,6 @@ import {
   AlertDialogTitle, Button, Input, PageHeader, Skeleton, Toolbar
 } from '@/components/ui';
 import ExcelExportDialog from '@shared/components/ExcelExportDialog';
-import ExcelImportWizard from '@shared/components/ExcelImportWizard';
 import ScheduleList from './ScheduleList';
 import ScheduleEditor from './ScheduleEditor';
 import { deleteSummary, filterSchedules, groupSessionsForEditor } from './scheduleManagerLogic';
@@ -22,7 +21,7 @@ const ScheduleManager = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedSchedules, setSelectedSchedules] = useState([]);
-  const [currentView, setCurrentView] = useState('list'); // 'list', 'edit', 'export', 'import'
+  const [currentView, setCurrentView] = useState('list'); // 'list', 'edit', 'export'
   const [currentSchedule, setCurrentSchedule] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterDate, setFilterDate] = useState('');
@@ -153,7 +152,7 @@ const ScheduleManager = () => {
     );
   }
 
-  // The editor and the Excel dialogs need the whole width; the list is a readable column
+  // The editor and the export dialog need the whole width; the list is a readable column
   return (
     <div className={currentView === 'list' ? 'mx-auto flex max-w-6xl flex-col gap-4' : 'flex flex-col gap-4'}>
       <PageHeader
@@ -163,7 +162,6 @@ const ScheduleManager = () => {
         actions={currentView === 'list' && (
           <>
             <Button onClick={fetchSchedules} aria-label="Refresh"><RefreshCw /> Refresh</Button>
-            <Button onClick={() => setCurrentView('import')}><Upload /> Import</Button>
             <Button onClick={() => setCurrentView('export')} disabled={selectedSchedules.length === 0}><Download /> Export ({selectedSchedules.length})</Button>
             <Button variant="destructive" onClick={() => setConfirmDelete(true)} disabled={selectedSchedules.length === 0}><Trash2 /> Delete ({selectedSchedules.length})</Button>
           </>
@@ -214,16 +212,6 @@ const ScheduleManager = () => {
 
       {currentView === 'export' && (
         <ExcelExportDialog selectedSchedules={selectedSchedules.map((id) => schedules.find((s) => s.id === id))} onBack={handleBack} />
-      )}
-
-      {currentView === 'import' && (
-        <ExcelImportWizard
-          onComplete={() => {
-            fetchSchedules();
-            handleBack();
-          }}
-          onBack={handleBack}
-        />
       )}
 
       <AlertDialog open={confirmDelete} onOpenChange={setConfirmDelete}>

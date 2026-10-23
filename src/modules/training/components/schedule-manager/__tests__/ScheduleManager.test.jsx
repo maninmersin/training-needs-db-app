@@ -12,7 +12,6 @@ const mockProject = { id: 'p1', name: 'proj' }; // a stable object, like the rea
 jest.mock('@core/contexts/ProjectContext', () => ({ useProject: () => ({ currentProject: mockProject }) }));
 jest.mock('../ScheduleEditor', () => ({ schedule, onBack }) => <div>editor for {schedule.name}<button onClick={onBack}>Back to list</button></div>);
 jest.mock('@shared/components/ExcelExportDialog', () => ({ selectedSchedules }) => <div>export {selectedSchedules.length}</div>);
-jest.mock('@shared/components/ExcelImportWizard', () => () => <div>import wizard</div>);
 
 beforeAll(() => {
   global.ResizeObserver = class { observe() {} unobserve() {} disconnect() {} };
