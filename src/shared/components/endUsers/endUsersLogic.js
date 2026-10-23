@@ -1,7 +1,8 @@
 // Pure rules for the End Users screen: column order, filtering, edit/validate. No React, no database.
 
-export const BLANK = '__BLANK__';
-export const NOT_BLANK = '__NOT_BLANK__';
+import { BLANK, NOT_BLANK, activeFilterCount, filterRows, textOf, uniqueColumnValues } from '../listFilters';
+
+export { BLANK, NOT_BLANK, activeFilterCount, uniqueColumnValues };
 
 const SYSTEM_COLUMNS = ['project_id', 'created_at', 'updated_at'];
 const COLUMN_ORDER = ['id', 'name', 'email', 'job_title', 'country', 'division', 'sub_division', 'location_name', 'training_location', 'project_role'];
@@ -24,38 +25,9 @@ export const columnLabel = (name) => name.replace(/_/g, ' ').replace(/\b\w/g, (l
 export const isRoleColumn = (name) => name === 'role' || name === 'project_role';
 export const isIntegerColumn = (column) => column.data_type === 'integer';
 
-const textOf = (value) => (value === null || value === undefined ? '' : String(value));
-
-/** Applies the search box (any column) and the per-column filters (any selected value matches). */
-export function filterUsers(users, columns, searchTerm, columnFilters) {
-  const needle = searchTerm.trim().toLowerCase();
-  return users.filter((user) => {
-    if (needle && !columns.some((column) => textOf(user[column.column_name]).toLowerCase().includes(needle))) return false;
-
-    return Object.entries(columnFilters).every(([columnName, selected]) => {
-      if (!selected || selected.length === 0) return true;
-      const value = textOf(user[columnName]);
-      return selected.some((choice) => {
-        if (choice === BLANK) return value.trim() === '';
-        if (choice === NOT_BLANK) return value.trim() !== '';
-        return value === choice;
-      });
-    });
-  });
-}
-
-/** Sorted distinct non-blank values of a column, as text. */
-export function uniqueColumnValues(users, columnName) {
-  const values = new Set();
-  users.forEach((user) => {
-    const value = textOf(user[columnName]);
-    if (value !== '') values.add(value);
-  });
-  return [...values].sort();
-}
-
-export const activeFilterCount = (columnFilters) =>
-  Object.values(columnFilters).reduce((total, selected) => total + (selected ? selected.length : 0), 0);
+/** Applies the search box (any column) and the per-column filters. */
+export const filterUsers = (users, columns, searchTerm, columnFilters) =>
+  filterRows(users, columns.map((column) => column.column_name), searchTerm, columnFilters);
 
 /** Turns what was typed into what is saved: integer columns become numbers (blank = null). */
 export function coerceValue(column, raw) {

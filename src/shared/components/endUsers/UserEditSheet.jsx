@@ -1,33 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { Loader2, Trash2 } from 'lucide-react';
 import {
-  Button, FormField, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Sheet, SheetBody, SheetContent,
-  SheetDescription, SheetFooter, SheetHeader, SheetTitle
+  Button, FormField, Input, Sheet, SheetBody, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle
 } from '@/components/ui';
+import ChoiceField from '../ChoiceField';
 import { blankDraft, changedFields, columnLabel, draftToRow, groupColumns, isIntegerColumn, isRoleColumn, validateDraft } from './endUsersLogic';
-
-const NONE = '__none__'; // Radix Select cannot hold an empty value, so "nothing chosen" travels as this
-
-function ChoiceField({ label, value, options, placeholder, error, onChange, disabled }) {
-  const choices = value && !options.includes(value) ? [value, ...options] : options; // keep a saved value that is no longer in the list
-  return (
-    <FormField label={label} error={error}>
-      {(fieldProps) => (
-        <Select value={value || NONE} onValueChange={(next) => onChange(next === NONE ? '' : next)} disabled={disabled}>
-          <SelectTrigger {...fieldProps}>
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value={NONE}>{placeholder}</SelectItem>
-            {choices.map((choice) => (
-              <SelectItem key={choice} value={choice}>{choice}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      )}
-    </FormField>
-  );
-}
 
 /**
  * Side panel for adding or editing one person. `onSubmit(values)` gets the whole new row when adding,

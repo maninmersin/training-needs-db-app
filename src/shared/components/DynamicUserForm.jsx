@@ -8,7 +8,7 @@ import {
   AlertDialogHeader, AlertDialogTitle, Button, DataTable, EmptyState, Input, PageHeader, Toolbar, Tooltip, TooltipContent,
   TooltipTrigger, toast
 } from '@/components/ui';
-import ColumnFilter from './endUsers/ColumnFilter';
+import ColumnFilter from './ColumnFilter';
 import UserEditSheet from './endUsers/UserEditSheet';
 import { activeFilterCount, columnLabel, filterUsers, orderColumns, uniqueColumnValues } from './endUsers/endUsersLogic';
 

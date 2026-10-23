@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { ChevronDown } from 'lucide-react';
 import { Button, Checkbox, Input, Popover, PopoverContent, PopoverTrigger } from '@/components/ui';
 import { cn } from '@/lib/utils';
-import { BLANK, NOT_BLANK } from './endUsersLogic';
+import { BLANK, NOT_BLANK } from './listFilters';
 
 function Option({ checked, onChange, children }) {
   return (

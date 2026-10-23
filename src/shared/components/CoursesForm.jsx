@@ -1,304 +1,72 @@
-import { useState, useEffect, useRef } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { BookOpen, Loader2, Pencil, Plus, Search, Trash2 } from 'lucide-react';
 import { supabase } from '@core/services/supabaseClient';
 import { useProject } from '@core/contexts/ProjectContext';
-import './CoursesForm.css';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter,
+  AlertDialogHeader, AlertDialogTitle, Button, DataTable, EmptyState, Input, PageHeader, Toolbar, Tooltip, TooltipContent,
+  TooltipTrigger, toast
+} from '@/components/ui';
+import ColumnFilter from './ColumnFilter';
+import CourseEditSheet from './courses/CourseEditSheet';
+import { activeFilterCount, filterCourses, uniqueColumnValues } from './courses/coursesLogic';
 
-// Excel-style dropdown filter component with checkboxes
-const ExcelStyleFilter = ({ columnName, uniqueValues, selectedValues, onChange }) => {
-  const [isOpen, setIsOpen] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0, width: 0 });
-  const dropdownRef = useRef(null);
-  const buttonRef = useRef(null);
-
-  // Close dropdown when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
-        setIsOpen(false);
-      }
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
-  // Calculate dropdown position when opening
-  const handleToggleDropdown = () => {
-    if (!isOpen && buttonRef.current) {
-      const rect = buttonRef.current.getBoundingClientRect();
-      setDropdownPosition({
-        top: rect.bottom + window.scrollY,
-        left: rect.left + window.scrollX,
-        width: Math.max(rect.width, 200)
-      });
-    }
-    setIsOpen(!isOpen);
-  };
-
-  // Filter values based on search term
-  const filteredValues = uniqueValues.filter(value =>
-    String(value || '').toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
-  // Handle individual checkbox change
-  const handleCheckboxChange = (value, checked) => {
-    let newSelectedValues;
-    if (checked) {
-      newSelectedValues = [...selectedValues, value];
-    } else {
-      newSelectedValues = selectedValues.filter(v => v !== value);
-    }
-    onChange(newSelectedValues);
-  };
-
-  // Handle "Select All" functionality
-  const handleSelectAll = (checked) => {
-    if (checked) {
-      const allValues = [...new Set([...selectedValues, '__BLANK__', '__NOT_BLANK__', ...filteredValues])];
-      onChange(allValues);
-    } else {
-      const newSelectedValues = selectedValues.filter(value =>
-        !filteredValues.includes(value) && value !== '__BLANK__' && value !== '__NOT_BLANK__'
-      );
-      onChange(newSelectedValues);
-    }
-  };
-
-  // Check if all visible items are selected
-  const allVisibleSelected = filteredValues.length > 0 &&
-    filteredValues.every(value => selectedValues.includes(value)) &&
-    selectedValues.includes('__BLANK__') &&
-    selectedValues.includes('__NOT_BLANK__');
-
-  const selectedCount = selectedValues.length;
-  const displayText = selectedCount === 0 ? 'All' :
-                     selectedCount === 1 ? selectedValues[0] === '__BLANK__' ? '(blank)' :
-                                         selectedValues[0] === '__NOT_BLANK__' ? '(not blank)' :
-                                         selectedValues[0] :
-                     `${selectedCount} selected`;
-
-  return (
-    <div className="excel-filter-container" ref={dropdownRef}>
-      <button
-        ref={buttonRef}
-        type="button"
-        className={`excel-filter-button ${selectedCount > 0 ? 'has-selection' : ''}`}
-        onClick={handleToggleDropdown}
-        title={selectedCount > 0 ? `${selectedCount} filter(s) applied` : 'Click to filter'}
-      >
-        <span className="filter-text">{displayText}</span>
-        <span className="filter-arrow">{isOpen ? '▲' : '▼'}</span>
-      </button>
-
-      {isOpen && (
-        <div
-          className="excel-filter-dropdown"
-          style={{
-            top: dropdownPosition.top,
-            left: dropdownPosition.left,
-            width: dropdownPosition.width
-          }}
-        >
-          <div className="filter-search">
-            <input
-              type="text"
-              placeholder="Search..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="filter-search-input"
-              onClick={(e) => e.stopPropagation()}
-            />
-          </div>
-
-          <div className="filter-options">
-            <div className="filter-option select-all">
-              <label>
-                <input
-                  type="checkbox"
-                  checked={allVisibleSelected}
-                  onChange={(e) => handleSelectAll(e.target.checked)}
-                />
-                <span className="checkmark"></span>
-                Select All
-              </label>
-            </div>
-
-            <div className="filter-divider"></div>
-
-            {/* Special options */}
-            <div className="filter-option">
-              <label>
-                <input
-                  type="checkbox"
-                  checked={selectedValues.includes('__BLANK__')}
-                  onChange={(e) => handleCheckboxChange('__BLANK__', e.target.checked)}
-                />
-                <span className="checkmark"></span>
-                <span className="special-option">(blank)</span>
-              </label>
-            </div>
-
-            <div className="filter-option">
-              <label>
-                <input
-                  type="checkbox"
-                  checked={selectedValues.includes('__NOT_BLANK__')}
-                  onChange={(e) => handleCheckboxChange('__NOT_BLANK__', e.target.checked)}
-                />
-                <span className="checkmark"></span>
-                <span className="special-option">(not blank)</span>
-              </label>
-            </div>
-
-            {filteredValues.length > 0 && <div className="filter-divider"></div>}
-
-            {/* Regular values */}
-            <div className="filter-values-container">
-              {filteredValues.length === 0 ? (
-                <div className="filter-option">
-                  <div style={{padding: '6px 12px', fontStyle: 'italic', color: '#6c757d'}}>
-                    {uniqueValues.length === 0 ? 'Loading values...' : 'No values found'}
-                  </div>
-                </div>
-              ) : (
-                filteredValues.map(value => (
-                  <div key={value} className="filter-option">
-                    <label>
-                      <input
-                        type="checkbox"
-                        checked={selectedValues.includes(value)}
-                        onChange={(e) => handleCheckboxChange(value, e.target.checked)}
-                      />
-                      <span className="checkmark"></span>
-                      <span className="filter-value" title={value}>{value}</span>
-                    </label>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-
-          <div className="filter-actions">
-            <button
-              type="button"
-              className="filter-action-btn clear-btn"
-              onClick={() => {
-                onChange([]);
-                setIsOpen(false);
-              }}
-            >
-              Clear
-            </button>
-            <button
-              type="button"
-              className="filter-action-btn apply-btn"
-              onClick={() => setIsOpen(false)}
-            >
-              Close
-            </button>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-};
+// Columns that get a filter button (course ID and name are covered by the search box)
+const FILTERS = [
+  { field: 'functional_area', label: 'Functional Area' },
+  { field: 'duration_hrs', label: 'Duration (hrs)' },
+  { field: 'priority', label: 'Priority' },
+  { field: 'application', label: 'Application' }
+];
 
 const CoursesForm = () => {
   const { currentProject } = useProject();
   const [courses, setCourses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [edits, setEdits] = useState({});
   const [searchTerm, setSearchTerm] = useState('');
-  const [density, setDensity] = useState(() => {
-    return localStorage.getItem('tablesDensity') || 'normal';
-  });
   const [functionalAreas, setFunctionalAreas] = useState([]);
   const [columnFilters, setColumnFilters] = useState({});
-  const [uniqueValues, setUniqueValues] = useState({});
+  const [sheet, setSheet] = useState(null); // { mode: 'create' | 'edit', course? }
+  const [courseToDelete, setCourseToDelete] = useState(null);
 
-  // Filter courses based on search term and column filters
-  const filteredCourses = courses.filter(course => {
-    // Search term filter
-    if (searchTerm) {
-      const searchLower = searchTerm.toLowerCase();
-      const matchesSearch = (
-        course.course_id.toLowerCase().includes(searchLower) ||
-        (course.course_name && course.course_name.toLowerCase().includes(searchLower)) ||
-        course.functional_area.toLowerCase().includes(searchLower) ||
-        course.duration_hrs.toString().includes(searchLower) ||
-        (course.application && course.application.toLowerCase().includes(searchLower)) ||
-        (course.priority && course.priority.toString().includes(searchLower))
-      );
-      if (!matchesSearch) return false;
-    }
-
-    // Column filters (multi-select)
-    for (const [columnName, filterValues] of Object.entries(columnFilters)) {
-      if (filterValues && filterValues.length > 0) {
-        const courseValue = String(course[columnName] || '');
-
-        const matchesAnyFilter = filterValues.some(filterValue => {
-          if (filterValue === '__BLANK__') {
-            return courseValue.trim() === '';
-          } else if (filterValue === '__NOT_BLANK__') {
-            return courseValue.trim() !== '';
-          } else {
-            return courseValue === filterValue;
-          }
-        });
-
-        if (!matchesAnyFilter) {
-          return false;
-        }
-      }
-    }
-
-    return true;
-  });
-
-  // Fetch courses and functional areas from Supabase
+  // Load this project's courses and the functional areas to choose from
   useEffect(() => {
     const fetchData = async () => {
       try {
         if (!currentProject) {
           setCourses([]);
           setFunctionalAreas([]);
-          setLoading(false);
           return;
         }
+        setLoading(true);
+        setError(null);
+        setColumnFilters({});
 
-        console.log('CoursesForm: Loading courses for project:', currentProject.name);
-
-        // Fetch courses filtered by project_id
         const { data: coursesData, error: coursesError } = await supabase
           .from('courses')
           .select('*')
           .eq('project_id', currentProject.id)
           .order('course_id', { ascending: true });
-
         if (coursesError) throw coursesError;
         setCourses(coursesData);
 
-        // Fetch functional areas from reference table
         const { data: areasData, error: areasError } = await supabase
           .from('functional_areas')
           .select('name')
           .eq('project_id', currentProject.id)
           .eq('active', true)
           .order('display_order');
-        
         if (areasError) {
           console.warn('Reference table not available, using fallback');
-          // Fallback: extract from existing courses if reference table doesn't exist
-          const uniqueAreas = [...new Set(coursesData?.map(c => c.functional_area).filter(Boolean))];
-          setFunctionalAreas(uniqueAreas.map(area => ({ name: area })));
+          // Fallback: take the areas the courses already use
+          const uniqueAreas = [...new Set(coursesData?.map((c) => c.functional_area).filter(Boolean))];
+          setFunctionalAreas(uniqueAreas.map((area) => ({ name: area })));
         } else {
           setFunctionalAreas(areasData || []);
         }
-      } catch (error) {
-        setError(error.message);
+      } catch (loadError) {
+        setError(loadError.message);
       } finally {
         setLoading(false);
       }
@@ -307,427 +75,196 @@ const CoursesForm = () => {
     fetchData();
   }, [currentProject]);
 
-  // Fetch unique values for column filters
-  useEffect(() => {
-    if (courses.length > 0) {
-      const columns = ['course_id', 'course_name', 'functional_area', 'duration_hrs', 'priority', 'application'];
-      const uniqueVals = {};
-
-      columns.forEach(columnName => {
-        const values = [...new Set(
-          courses
-            .map(course => course[columnName])
-            .filter(val => val !== null && val !== undefined && val !== '')
-            .map(val => String(val))
-        )].sort();
-        uniqueVals[columnName] = values;
-      });
-
-      setUniqueValues(uniqueVals);
-    }
-  }, [courses]);
-
-  // Handle course updates
-  const handleUpdate = async (courseId, updatedData) => {
-    try {
-      const { error } = await supabase
-        .from('courses')
-        .update(updatedData)
-        .eq('course_id', courseId);
-
-      if (error) throw error;
-      
-      // Update local state
-      setCourses(courses.map(course => 
-        course.course_id === courseId ? { ...course, ...updatedData } : course
-      ));
-    } catch (error) {
-      setError(error.message);
-    }
+  const handleUpdate = async (courseId, changes) => {
+    const { error: updateError } = await supabase.from('courses').update(changes).eq('course_id', courseId);
+    if (updateError) throw updateError;
+    setCourses((previous) => previous.map((course) => (course.course_id === courseId ? { ...course, ...changes } : course)));
   };
 
-  // Handle course deletion
-  const handleDelete = async (courseId) => {
-    try {
-      const { error } = await supabase
-        .from('courses')
-        .delete()
-        .eq('course_id', courseId);
-
-      if (error) throw error;
-      
-      // Update local state
-      setCourses(courses.filter(course => course.course_id !== courseId));
-    } catch (error) {
-      setError(error.message);
-    }
-  };
-
-  // Handle new course creation
   const handleCreate = async (newCourse) => {
+    if (!currentProject) throw new Error('Please select a project first');
+    const { data, error: insertError } = await supabase.from('courses').insert([{ ...newCourse, project_id: currentProject.id }]).select();
+    if (insertError) throw insertError;
+    setCourses((previous) => [...previous, data[0]]);
+  };
+
+  const handleDelete = async (course) => {
     try {
-      if (!currentProject) {
-        setError('Please select a project first');
-        return;
-      }
-
-      // Add project_id to the new course
-      const courseWithProject = {
-        ...newCourse,
-        project_id: currentProject.id
-      };
-
-      const { data, error } = await supabase
-        .from('courses')
-        .insert([courseWithProject])
-        .select();
-
-      if (error) throw error;
-      
-      // Update local state
-      setCourses([...courses, data[0]]);
-    } catch (error) {
-      setError(error.message);
+      const { error: deleteError } = await supabase.from('courses').delete().eq('course_id', course.course_id);
+      if (deleteError) throw deleteError;
+      setCourses((previous) => previous.filter((item) => item.course_id !== course.course_id));
+      setSheet((current) => (current?.course?.course_id === course.course_id ? null : current)); // close the panel if it was open on this course
+      toast.success('Course deleted', { description: course.course_id });
+    } catch (deleteError) {
+      setError(deleteError.message);
     }
   };
 
-  // Handle density change
-  const handleDensityChange = (newDensity) => {
-    setDensity(newDensity);
-    localStorage.setItem('tablesDensity', newDensity);
+  const saveSheet = async (values) => {
+    if (sheet.mode === 'create') {
+      await handleCreate(values);
+      toast.success('Course added', { description: values.course_id });
+    } else {
+      await handleUpdate(sheet.course.course_id, values);
+      toast.success('Course saved', { description: sheet.course.course_id });
+    }
+    setError(null);
+    setSheet(null);
   };
 
-  if (loading) return (
-    <div className="courses-form">
-      <div className="loading-state">
-        <h3>Loading courses...</h3>
-      </div>
-    </div>
+  const filteredCourses = useMemo(() => filterCourses(courses, searchTerm, columnFilters), [courses, searchTerm, columnFilters]);
+  const filterOptions = useMemo(
+    () => FILTERS.map((filter) => ({ ...filter, values: uniqueColumnValues(courses, filter.field) })).filter((filter) => filter.values.length > 0),
+    [courses]
   );
-  
-  if (error) return (
-    <div className="courses-form">
-      <div className="error-state">
-        <h3>Error loading courses</h3>
-        <p>{error}</p>
-      </div>
-    </div>
+  const filtersActive = activeFilterCount(columnFilters);
+
+  const tableColumns = useMemo(
+    () => [
+      { accessorKey: 'course_id', header: 'Course ID', meta: { className: 'font-medium' } },
+      { id: 'course_name', header: 'Course Name', accessorFn: (course) => course.course_name ?? '' },
+      { accessorKey: 'functional_area', header: 'Functional Area' },
+      { accessorKey: 'duration_hrs', header: 'Duration (hrs)', meta: { align: 'right', className: 'tabular-nums' } },
+      { id: 'priority', header: 'Priority', accessorFn: (course) => course.priority ?? 1, meta: { align: 'right', className: 'tabular-nums' } },
+      { id: 'application', header: 'Application', accessorFn: (course) => course.application ?? '' },
+      {
+        id: 'actions',
+        header: 'Actions',
+        enableSorting: false,
+        meta: { align: 'right' },
+        cell: ({ row }) => (
+          <div className="flex items-center justify-end gap-1" onClick={(event) => event.stopPropagation()}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="ghost" size="icon-sm" aria-label="Edit course" onClick={() => setSheet({ mode: 'edit', course: row.original })}>
+                  <Pencil />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Edit course</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="destructive" size="icon-sm" aria-label="Delete course" onClick={() => setCourseToDelete(row.original)}>
+                  <Trash2 />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Delete course</TooltipContent>
+            </Tooltip>
+          </div>
+        )
+      }
+    ],
+    []
   );
 
-  if (!currentProject) return (
-    <div className="courses-form">
-      <div className="no-project-state">
-        <h3>No Project Selected</h3>
-        <p>Please select a project from the Projects page to manage courses.</p>
-        <p>Each project has its own isolated set of courses and data.</p>
+  if (!loading && !currentProject) {
+    return (
+      <div className="mx-auto max-w-6xl rounded-lg border border-border bg-card">
+        <EmptyState
+          icon={BookOpen}
+          title="No Project Selected"
+          description="Please select a project from the Projects page to manage courses. Each project has its own isolated set of courses and data."
+        />
       </div>
-    </div>
-  );
+    );
+  }
 
   return (
-    <div className={`courses-form ${density}`}>
-      <div className="courses-form-header">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '10px' }}>
-          <h2>Courses Management</h2>
-          <div style={{ textAlign: 'right' }}>
-            <div style={{ fontSize: '1.5rem', fontWeight: '600', color: '#2c3e50' }}>
-              {filteredCourses.length} of {courses.length} courses
-            </div>
-            {Object.values(columnFilters).some(filter => filter && filter.length > 0) && (
-              <div style={{ fontSize: '0.9rem', color: '#28a745', fontWeight: '500' }}>
-                {Object.values(columnFilters).filter(filter => filter && filter.length > 0)
-                    .reduce((total, filterArray) => total + filterArray.length, 0)} filter(s) active
-              </div>
-            )}
-          </div>
+    <div className="mx-auto flex max-w-[1400px] flex-col gap-4">
+      <PageHeader
+        title="Courses Management"
+        count={loading ? undefined : filteredCourses.length === courses.length ? courses.length : `${filteredCourses.length} of ${courses.length}`}
+        description={`Manage your training courses${currentProject ? ` for ${currentProject.title}` : ''}, including course details, duration, and functional areas. Use the Priority field to sequence the courses, the lower the number the higher the priority.`}
+        actions={
+          <Button variant="default" onClick={() => setSheet({ mode: 'create' })} disabled={loading}>
+            <Plus /> Add New Course
+          </Button>
+        }
+      />
+
+      {error && (
+        <div role="alert" className="flex items-center gap-3 rounded-md bg-destructive-soft px-3 py-2 text-sm text-destructive">
+          <span className="flex-1">{error}</span>
+          <Button variant="ghost" size="sm" onClick={() => setError(null)}>Dismiss</Button>
         </div>
-        {currentProject && (
-          <div className="project-indicator">
-            <strong>Project:</strong> {currentProject.title}
-          </div>
+      )}
+
+      <Toolbar>
+        <div className="relative w-80 max-w-full">
+          <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-subtle-foreground" aria-hidden="true" />
+          <Input
+            type="search"
+            aria-label="Search courses"
+            placeholder="Search by ID, name, functional area, or priority..."
+            value={searchTerm}
+            onChange={(event) => setSearchTerm(event.target.value)}
+            className="pl-8"
+          />
+        </div>
+        {filterOptions.map((filter) => (
+          <ColumnFilter
+            key={filter.field}
+            label={filter.label}
+            values={filter.values}
+            selected={columnFilters[filter.field] || []}
+            onChange={(selected) => setColumnFilters((previous) => ({ ...previous, [filter.field]: selected }))}
+          />
+        ))}
+        {filtersActive > 0 && (
+          <>
+            <span className="text-xs font-medium text-success">{filtersActive} filter(s) active</span>
+            <Button variant="ghost" onClick={() => setColumnFilters({})}>Clear filters</Button>
+          </>
         )}
-        <p className="courses-form-description">
-          Manage your training courses, including course details, duration, and functional areas. Use the Priority field to sequence the courses, the lower the number the higher the priority
-        </p>
-      </div>
-      
-      <div className="courses-controls">
-        <div className="search-container">
-          <div className="search-section">
-            <input
-              type="text"
-              placeholder="Search courses by ID, name, functional area, or priority..."
-              value={searchTerm}
-              onChange={e => setSearchTerm(e.target.value)}
-              className="search-input"
+      </Toolbar>
+
+      {loading ? (
+        <div role="status" className="flex items-center justify-center gap-2 rounded-lg border border-border bg-card py-16 text-sm text-muted-foreground">
+          <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+          Loading courses...
+        </div>
+      ) : (
+        <DataTable
+          caption="Courses"
+          columns={tableColumns}
+          data={filteredCourses}
+          getRowId={(course) => course.course_id}
+          pageSize={50}
+          pageSizes={[25, 50, 100, 200]}
+          onRowClick={(course) => setSheet({ mode: 'edit', course })}
+          emptyState={
+            <EmptyState
+              icon={BookOpen}
+              title={courses.length === 0 ? 'No courses yet' : 'No courses match'}
+              description={courses.length === 0 ? 'Add courses one at a time here, or use Import/Export Courses.' : 'Try a different search or clear the filters.'}
             />
-          </div>
-          <div className="action-section">
-            <div className="density-control">
-              <label htmlFor="density-select">Density:</label>
-              <select 
-                id="density-select"
-                className="density-select"
-                value={density}
-                onChange={(e) => handleDensityChange(e.target.value)}
-              >
-                <option value="normal">Normal</option>
-                <option value="compact">Compact</option>
-                <option value="dense">Dense</option>
-              </select>
-            </div>
-            <button 
-              onClick={() => {
-                const newId = prompt('Enter new course ID:');
-                if (newId) {
-                  handleCreate({
-                    course_name: '',
-                    functional_area: functionalAreas[0]?.name || '',
-                    duration_hrs: 0,
-                    application: '',
-                    course_id: newId
-                  });
-                }
-              }}
-              className="add-course-btn"
-            >
-              Add New Course
-            </button>
-            <button 
-              onClick={() => {
-                Object.entries(edits).forEach(([courseId, updatedData]) => {
-                  handleUpdate(courseId, updatedData);
-                });
-                setEdits({});
-              }}
-              disabled={Object.keys(edits).length === 0}
-              className="add-course-btn"
-              style={{ background: Object.keys(edits).length > 0 ? '#007bff' : '#6c757d' }}
-            >
-              Save All Changes {Object.keys(edits).length > 0 && `(${Object.keys(edits).length})`}
-            </button>
-          </div>
-        </div>
-      </div>
-      
-      <div className="courses-table-container">
-        <table>
-        <thead className="table-header">
-          <tr>
-            <th style={{width: '15%'}}>Course ID</th>
-            <th style={{width: '20%'}}>Course Name</th>
-            <th style={{width: '15%'}}>Functional Area</th>
-            <th style={{width: '10%'}}>Duration (hrs)</th>
-            <th style={{width: '10%'}}>Priority</th>
-            <th style={{width: '15%'}}>Application</th>
-            <th style={{width: '15%'}}>Actions</th>
-          </tr>
-          <tr className="filter-row">
-            <th className="filter-cell">
-              <ExcelStyleFilter
-                columnName="course_id"
-                uniqueValues={uniqueValues['course_id'] || []}
-                selectedValues={columnFilters['course_id'] || []}
-                onChange={(selectedValues) => {
-                  setColumnFilters(prev => ({
-                    ...prev,
-                    course_id: selectedValues
-                  }));
-                }}
-              />
-            </th>
-            <th className="filter-cell">
-              <ExcelStyleFilter
-                columnName="course_name"
-                uniqueValues={uniqueValues['course_name'] || []}
-                selectedValues={columnFilters['course_name'] || []}
-                onChange={(selectedValues) => {
-                  setColumnFilters(prev => ({
-                    ...prev,
-                    course_name: selectedValues
-                  }));
-                }}
-              />
-            </th>
-            <th className="filter-cell">
-              <ExcelStyleFilter
-                columnName="functional_area"
-                uniqueValues={uniqueValues['functional_area'] || []}
-                selectedValues={columnFilters['functional_area'] || []}
-                onChange={(selectedValues) => {
-                  setColumnFilters(prev => ({
-                    ...prev,
-                    functional_area: selectedValues
-                  }));
-                }}
-              />
-            </th>
-            <th className="filter-cell">
-              <ExcelStyleFilter
-                columnName="duration_hrs"
-                uniqueValues={uniqueValues['duration_hrs'] || []}
-                selectedValues={columnFilters['duration_hrs'] || []}
-                onChange={(selectedValues) => {
-                  setColumnFilters(prev => ({
-                    ...prev,
-                    duration_hrs: selectedValues
-                  }));
-                }}
-              />
-            </th>
-            <th className="filter-cell">
-              <ExcelStyleFilter
-                columnName="priority"
-                uniqueValues={uniqueValues['priority'] || []}
-                selectedValues={columnFilters['priority'] || []}
-                onChange={(selectedValues) => {
-                  setColumnFilters(prev => ({
-                    ...prev,
-                    priority: selectedValues
-                  }));
-                }}
-              />
-            </th>
-            <th className="filter-cell">
-              <ExcelStyleFilter
-                columnName="application"
-                uniqueValues={uniqueValues['application'] || []}
-                selectedValues={columnFilters['application'] || []}
-                onChange={(selectedValues) => {
-                  setColumnFilters(prev => ({
-                    ...prev,
-                    application: selectedValues
-                  }));
-                }}
-              />
-            </th>
-            <th className="filter-cell">
-              <button
-                onClick={() => setColumnFilters({})}
-                className="clear-filters-btn"
-                title="Clear all filters"
-              >
-                Clear
-              </button>
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          {filteredCourses.map(course => (
-            <tr key={course.course_id}>
-              <td>
-                <input
-                  type="text"
-                  value={edits[course.course_id]?.course_id ?? course.course_id}
-                  onChange={e => setEdits(prev => ({
-                    ...prev,
-                    [course.course_id]: {
-                      ...prev[course.course_id],
-                      course_id: e.target.value
-                    }
-                  }))}
-                />
-              </td>
-              <td>
-                <input
-                  type="text"
-                  value={edits[course.course_id]?.course_name ?? course.course_name ?? ''}
-                  onChange={e => setEdits(prev => ({
-                    ...prev,
-                    [course.course_id]: {
-                      ...prev[course.course_id],
-                      course_name: e.target.value
-                    }
-                  }))}
-                />
-              </td>
-              <td>
-                <select
-                  value={edits[course.course_id]?.functional_area ?? course.functional_area}
-                  onChange={e => setEdits(prev => ({
-                    ...prev,
-                    [course.course_id]: {
-                      ...prev[course.course_id],
-                      functional_area: e.target.value
-                    }
-                  }))}
-                >
-                  <option value="">Select functional area</option>
-                  {functionalAreas.map((area, index) => (
-                    <option key={index} value={area.name}>
-                      {area.name}
-                    </option>
-                  ))}
-                </select>
-              </td>
-              <td>
-                <input
-                  type="number"
-                  value={edits[course.course_id]?.duration_hrs ?? course.duration_hrs}
-                  onChange={e => setEdits(prev => ({
-                    ...prev,
-                    [course.course_id]: {
-                      ...prev[course.course_id],
-                      duration_hrs: e.target.value
-                    }
-                  }))}
-                />
-              </td>
-              <td>
-                <input
-                  type="number"
-                  min="1"
-                  value={edits[course.course_id]?.priority ?? course.priority ?? 1}
-                  onChange={e => setEdits(prev => ({
-                    ...prev,
-                    [course.course_id]: {
-                      ...prev[course.course_id],
-                      priority: parseInt(e.target.value) || 1
-                    }
-                  }))}
-                  title="Priority (1 = highest priority)"
-                />
-              </td>
-              <td>
-                <input
-                  type="text"
-                  value={edits[course.course_id]?.application ?? course.application ?? ''}
-                  onChange={e => setEdits(prev => ({
-                    ...prev,
-                    [course.course_id]: {
-                      ...prev[course.course_id],
-                      application: e.target.value
-                    }
-                  }))}
-                />
-              </td>
-              <td>
-                <button 
-                  onClick={() => {
-                    if (window.confirm(`Are you sure you want to delete course ${course.course_id}?`)) {
-                      handleDelete(course.course_id);
-                    }
-                  }}
-                  className="delete-btn"
-                  title="Delete course"
-                >
-                  Delete
-                </button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-      
-      <div className="table-footer">
-        Showing {filteredCourses.length} of {courses.length} courses
-        {Object.keys(edits).length > 0 && (
-          <span style={{marginLeft: '20px', color: '#007bff', fontWeight: '500'}}>
-            • {Object.keys(edits).length} unsaved changes
-          </span>
-        )}
-      </div>
-      </div>
+          }
+        />
+      )}
+
+      <CourseEditSheet
+        mode={sheet?.mode}
+        course={sheet?.course}
+        functionalAreas={functionalAreas}
+        onSubmit={saveSheet}
+        onDelete={setCourseToDelete}
+        onClose={() => setSheet(null)}
+      />
+
+      <AlertDialog open={Boolean(courseToDelete)} onOpenChange={(open) => !open && setCourseToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete course</AlertDialogTitle>
+          </AlertDialogHeader>
+          <AlertDialogDescription>
+            Are you sure you want to delete course {courseToDelete?.course_id}? Any individual course assignments for it are removed too.
+          </AlertDialogDescription>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction destructive onClick={() => handleDelete(courseToDelete)}>Delete</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
