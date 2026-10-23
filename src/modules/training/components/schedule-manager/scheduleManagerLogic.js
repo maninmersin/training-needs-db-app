@@ -77,3 +77,36 @@ export function groupSessionsForEditor(sessions) {
   });
   return grouped;
 }
+
+/** Every session in the area > location > classroom structure, as one list. */
+export function flattenSessions(sessionsByArea) {
+  try {
+    return Object.values(sessionsByArea || {})
+      .flatMap((locations) => Object.values(locations || {}))
+      .flatMap((classrooms) => Object.values(classrooms || {}))
+      .flatMap((sessions) => sessions || []);
+  } catch {
+    return [];
+  }
+}
+
+/** The figures under the editor: sessions, functional areas and different courses. */
+export function editorStats(sessionsByArea) {
+  const sessions = flattenSessions(sessionsByArea);
+  const courses = new Set(sessions.map((session) => session.course?.course_name || session.course_name || 'Unknown Course'));
+  return { totalSessions: sessions.length, functionalAreas: Object.keys(sessionsByArea || {}).length, uniqueCourses: courses.size };
+}
+
+/**
+ * Tells the user when a course is longer than one morning or afternoon block and will be split.
+ * `criteria` may be the saved object or its JSON text. Returns null for a single session.
+ */
+export function multiDayNote(durationHrs, criteria) {
+  const parsed = typeof criteria === 'string' ? JSON.parse(criteria) : criteria || {};
+  const amHours = ((parsed.am_end_hour || 12) + (parsed.am_end_min || 30) / 60) - ((parsed.am_start_hour || 9) + (parsed.am_start_min || 30) / 60);
+  const pmHours = ((parsed.pm_end_hour || 16) + (parsed.pm_end_min || 30) / 60) - ((parsed.pm_start_hour || 13) + (parsed.pm_start_min || 30) / 60);
+  if (durationHrs <= amHours || durationHrs <= pmHours) return null;
+  if (durationHrs <= amHours + pmHours) return 'This course will be split into 2 parts (AM + PM same day)';
+  const totalParts = Math.ceil(durationHrs / (amHours + pmHours)) * 2;
+  return `This course will be split into ${totalParts} parts across ${Math.ceil(totalParts / 2)} days`;
+}

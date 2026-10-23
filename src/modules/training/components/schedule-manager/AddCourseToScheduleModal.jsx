@@ -4,7 +4,13 @@ import { useProject } from '@core/contexts/ProjectContext';
 import { generateEventIdFromSession } from '@core/utils/eventIdUtils';
 import { toLocalDateTime } from '@core/utils/dateTimeUtils';
 import { generateStableSessionId } from '@core/services/scheduleService';
-import './AddCourseToScheduleModal.css';
+import { multiDayNote } from './scheduleManagerLogic';
+import {
+  Button, Dialog, DialogBody, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, FormField, Input, Select, SelectContent,
+  SelectItem, SelectTrigger, SelectValue
+} from '@/components/ui';
+
+const NONE = '__none__'; // Radix Select cannot hold an empty value
 
 const AddCourseToScheduleModal = ({ isOpen, onClose, schedule, currentSessions, onCourseAdded }) => {
   const { currentProject } = useProject();
@@ -659,216 +665,122 @@ const AddCourseToScheduleModal = ({ isOpen, onClose, schedule, currentSessions, 
 
   if (!isOpen) return null;
 
+  const multiDay = selectedCourse ? multiDayNote(selectedCourse.duration_hrs, schedule.criteria) : null;
+  const groupWord = `group${formData.numberOfGroups !== 1 ? 's' : ''}`;
+
   return (
-    <div className="modal-overlay">
-      <div className="modal-content add-course-modal">
-        <div className="modal-header">
-          <h2>➕ Add Course to Schedule</h2>
-          <button onClick={onClose} className="close-btn">×</button>
-        </div>
+    <Dialog open onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="max-w-2xl">
+        <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col">
+          <DialogHeader>
+            <DialogTitle>Add Course to Schedule</DialogTitle>
+            <DialogDescription>Create sessions for one more course in this schedule.</DialogDescription>
+          </DialogHeader>
+          <DialogBody className="flex flex-col gap-5">
+            {loading && <p className="text-sm text-muted-foreground" role="status">Loading available courses...</p>}
 
-        <div className="modal-body">
-          {loading && (
-            <div className="loading-state">
-              <p>🔄 Loading available courses...</p>
-            </div>
-          )}
+            {error && <div role="alert" className="rounded-md bg-destructive-soft px-3 py-2 text-sm text-destructive">{error}</div>}
 
-          {error && (
-            <div className="error-message">
-              <p>❌ {error}</p>
-            </div>
-          )}
-
-          {!loading && courses.length === 0 && (
-            <div className="empty-state">
-              <p>📚 No courses available to add.</p>
-              <p><small>No courses found in the training_data flat file for this project. Please ensure your training data has been imported.</small></p>
-              <div className="debug-info" style={{marginTop: '16px', padding: '12px', background: '#f8f9fa', borderRadius: '4px', fontSize: '12px', textAlign: 'left'}}>
-                <strong>Debug Info:</strong>
-                <p>• Project ID: {currentProject?.id || 'None'}</p>
-                <p>• Check browser console for detailed filtering logs</p>
+            {!loading && courses.length === 0 && (
+              <div className="rounded-md bg-muted px-3 py-3 text-sm">
+                <p className="font-medium">No courses available to add.</p>
+                <p className="mt-1 text-muted-foreground">No courses were found in the training data for this project. Please make sure your training data has been imported.</p>
               </div>
-            </div>
-          )}
+            )}
 
-          {!loading && courses.length > 0 && (
-            <form onSubmit={handleSubmit} className="add-course-form">
-              {/* Course Selection */}
-              <div className="form-section">
-                <h3>Course Selection</h3>
-                <div className="form-group">
-                  <label htmlFor="course-select">Select Course:</label>
-                  <select
-                    id="course-select"
-                    value={selectedCourse?.course_id || ''}
-                    onChange={(e) => handleCourseSelect(e.target.value)}
-                    required
-                  >
-                    <option value="">-- Select a Course --</option>
-                    {courses.map(course => (
-                      <option key={course.course_id} value={course.course_id}>
-                        {course.course_name} ({course.functional_area} - {course.duration_hrs}hrs)
-                      </option>
-                    ))}
-                  </select>
-                </div>
+            {!loading && courses.length > 0 && (
+              <>
+                <fieldset className="flex flex-col gap-3">
+                  <legend className="mb-1 text-sm font-semibold">Course selection</legend>
+                  <FormField label="Select Course">
+                    {(props) => (
+                      <Select value={selectedCourse?.course_id || NONE} onValueChange={(value) => value !== NONE && handleCourseSelect(value)}>
+                        <SelectTrigger {...props}><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value={NONE}>-- Select a Course --</SelectItem>
+                          {courses.map((course) => (
+                            <SelectItem key={course.course_id} value={course.course_id}>{course.course_name} ({course.functional_area} - {course.duration_hrs}hrs)</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  </FormField>
 
-                {selectedCourse && (
-                  <div className="course-info">
-                    <h4>Course Details:</h4>
-                    <div className="course-details">
+                  {selectedCourse && (
+                    <div className="flex flex-col gap-1 rounded-md bg-muted px-3 py-2 text-sm">
                       <p><strong>Name:</strong> {selectedCourse.course_name}</p>
                       <p><strong>Functional Area:</strong> {selectedCourse.functional_area}</p>
                       <p><strong>Duration:</strong> {selectedCourse.duration_hrs} hours</p>
-                      {(() => {
-                        const parsedCriteria = typeof schedule.criteria === 'string'
-                          ? JSON.parse(schedule.criteria)
-                          : (schedule.criteria || {});
-                        const amHours = ((parsedCriteria.am_end_hour || 12) + (parsedCriteria.am_end_min || 30) / 60) -
-                                       ((parsedCriteria.am_start_hour || 9) + (parsedCriteria.am_start_min || 30) / 60);
-                        const pmHours = ((parsedCriteria.pm_end_hour || 16) + (parsedCriteria.pm_end_min || 30) / 60) -
-                                       ((parsedCriteria.pm_start_hour || 13) + (parsedCriteria.pm_start_min || 30) / 60);
-
-                        if (selectedCourse.duration_hrs <= amHours || selectedCourse.duration_hrs <= pmHours) {
-                          return null; // Single session, no multi-day message
-                        } else if (selectedCourse.duration_hrs <= (amHours + pmHours)) {
-                          return <p><strong>Multi-day:</strong> This course will be split into 2 parts (AM + PM same day)</p>;
-                        } else {
-                          const totalParts = Math.ceil(selectedCourse.duration_hrs / (amHours + pmHours)) * 2;
-                          return <p><strong>Multi-day:</strong> This course will be split into {totalParts} parts across {Math.ceil(totalParts / 2)} days</p>;
-                        }
-                      })()}
-                      {selectedCourse.application && (
-                        <p><strong>Application:</strong> {selectedCourse.application}</p>
-                      )}
-                      <p style={{marginTop: '12px', padding: '8px', background: '#e7f3ff', borderRadius: '4px'}}>
-                        <strong>📊 Next Group Number:</strong> Group {nextSessionNumber}
+                      {multiDay && <p><strong>Multi-day:</strong> {multiDay}</p>}
+                      {selectedCourse.application && <p><strong>Application:</strong> {selectedCourse.application}</p>}
+                      <p className="mt-1 rounded bg-primary-soft px-2 py-1 text-primary-soft-foreground">
+                        <strong>Next Group Number:</strong> Group {nextSessionNumber}
                         {formData.numberOfGroups > 1 && ` - ${nextSessionNumber + formData.numberOfGroups - 1}`}
                       </p>
                     </div>
-                  </div>
-                )}
-              </div>
+                  )}
+                </fieldset>
 
-              {/* Session Configuration */}
-              <div className="form-section">
-                <h3>Session Configuration</h3>
-                
-                <div className="form-row">
-                  <div className="form-group">
-                    <label htmlFor="training-location">Training Location:</label>
-                    <select
-                      id="training-location"
-                      value={formData.trainingLocation}
-                      onChange={(e) => handleFormChange('trainingLocation', e.target.value)}
-                      required
-                    >
-                      <option value="">-- Select Location --</option>
-                      {trainingLocations.map(location => (
-                        <option key={location} value={location}>{location}</option>
-                      ))}
-                    </select>
+                <fieldset className="flex flex-col gap-3">
+                  <legend className="mb-1 text-sm font-semibold">Session configuration</legend>
+                  <div className="grid gap-3 sm:grid-cols-3">
+                    <FormField label="Training Location">
+                      {(props) => (
+                        <Select value={formData.trainingLocation || NONE} onValueChange={(value) => handleFormChange('trainingLocation', value === NONE ? '' : value)}>
+                          <SelectTrigger {...props}><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value={NONE}>-- Select Location --</SelectItem>
+                            {trainingLocations.map((location) => <SelectItem key={location} value={location}>{location}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      )}
+                    </FormField>
+                    <FormField label="Classroom">
+                      {(props) => (
+                        <Select value={formData.classroom || NONE} onValueChange={(value) => handleFormChange('classroom', value === NONE ? '' : value)} disabled={!formData.trainingLocation}>
+                          <SelectTrigger {...props}><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value={NONE}>-- Select Classroom --</SelectItem>
+                            {availableClassrooms.map((classroom) => <SelectItem key={classroom} value={classroom}>{classroom}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      )}
+                    </FormField>
+                    <FormField label="Number of Groups">
+                      <Input type="number" min="1" max="10" value={formData.numberOfGroups} onChange={(event) => handleFormChange('numberOfGroups', parseInt(event.target.value))} required />
+                    </FormField>
                   </div>
-
-                  <div className="form-group">
-                    <label htmlFor="classroom">Classroom:</label>
-                    <select
-                      id="classroom"
-                      value={formData.classroom}
-                      onChange={(e) => handleFormChange('classroom', e.target.value)}
-                      required
-                      disabled={!formData.trainingLocation}
-                    >
-                      <option value="">-- Select Classroom --</option>
-                      {availableClassrooms.map(classroom => (
-                        <option key={classroom} value={classroom}>
-                          {classroom}
-                        </option>
-                      ))}
-                    </select>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <FormField label="Start Date"><Input type="date" value={formData.startDate} onChange={(event) => handleFormChange('startDate', event.target.value)} required /></FormField>
+                    <FormField label="Start Time"><Input type="time" value={formData.startTime} onChange={(event) => handleFormChange('startTime', event.target.value)} required /></FormField>
+                    <FormField label="Session Spacing">
+                      {(props) => (
+                        <Select value={formData.sessionSpacing} onValueChange={(value) => handleFormChange('sessionSpacing', value)}>
+                          <SelectTrigger {...props}><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="daily">Daily (consecutive days)</SelectItem>
+                            <SelectItem value="weekly">Weekly (same day each week)</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      )}
+                    </FormField>
+                    <FormField label="Max Participants">
+                      <Input type="number" min="1" max="50" value={formData.maxParticipants} onChange={(event) => handleFormChange('maxParticipants', parseInt(event.target.value))} required />
+                    </FormField>
                   </div>
-
-                  <div className="form-group">
-                    <label htmlFor="number-of-groups">Number of Groups:</label>
-                    <input
-                      type="number"
-                      id="number-of-groups"
-                      min="1"
-                      max="10"
-                      value={formData.numberOfGroups}
-                      onChange={(e) => handleFormChange('numberOfGroups', parseInt(e.target.value))}
-                      required
-                    />
-                  </div>
-                </div>
-
-                <div className="form-row">
-                  <div className="form-group">
-                    <label htmlFor="start-date">Start Date:</label>
-                    <input
-                      type="date"
-                      id="start-date"
-                      value={formData.startDate}
-                      onChange={(e) => handleFormChange('startDate', e.target.value)}
-                      required
-                    />
-                  </div>
-
-                  <div className="form-group">
-                    <label htmlFor="start-time">Start Time:</label>
-                    <input
-                      type="time"
-                      id="start-time"
-                      value={formData.startTime}
-                      onChange={(e) => handleFormChange('startTime', e.target.value)}
-                      required
-                    />
-                  </div>
-                </div>
-
-                <div className="form-row">
-                  <div className="form-group">
-                    <label htmlFor="session-spacing">Session Spacing:</label>
-                    <select
-                      id="session-spacing"
-                      value={formData.sessionSpacing}
-                      onChange={(e) => handleFormChange('sessionSpacing', e.target.value)}
-                    >
-                      <option value="daily">Daily (consecutive days)</option>
-                      <option value="weekly">Weekly (same day each week)</option>
-                    </select>
-                  </div>
-
-                  <div className="form-group">
-                    <label htmlFor="max-participants">Max Participants:</label>
-                    <input
-                      type="number"
-                      id="max-participants"
-                      min="1"
-                      max="50"
-                      value={formData.maxParticipants}
-                      onChange={(e) => handleFormChange('maxParticipants', parseInt(e.target.value))}
-                      required
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Actions */}
-              <div className="modal-actions">
-                <button type="button" onClick={onClose} className="cancel-btn">
-                  Cancel
-                </button>
-                <button type="submit" className="add-btn" disabled={!selectedCourse}>
-                  Add Course ({formData.numberOfGroups} group{formData.numberOfGroups !== 1 ? 's' : ''})
-                </button>
-              </div>
-            </form>
-          )}
-        </div>
-      </div>
-    </div>
+                </fieldset>
+              </>
+            )}
+          </DialogBody>
+          <DialogFooter>
+            <Button type="button" onClick={onClose}>Cancel</Button>
+            {!loading && courses.length > 0 && (
+              <Button type="submit" variant="default" disabled={!selectedCourse}>Add Course ({formData.numberOfGroups} {groupWord})</Button>
+            )}
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 };
 

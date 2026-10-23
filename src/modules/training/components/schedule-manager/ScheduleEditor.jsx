@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { CalendarDays, CheckSquare, Copy, Plus, Save, SquareDashedMousePointer } from 'lucide-react';
+import { toast } from 'sonner';
 import { supabase } from '@core/services/supabaseClient';
 import { useProject } from '@core/contexts/ProjectContext';
 import ScheduleCalendar from '../calendar/ScheduleCalendar';
@@ -7,8 +9,14 @@ import { ensureEventId, generateEventIdFromSession } from '@core/utils/eventIdUt
 import { toLocalDateTime } from '@core/utils/dateTimeUtils';
 import { saveScheduleAs } from '@core/services/scheduleService';
 import { getColorPaletteOptions } from '@core/utils/colorUtils';
-import './AddCourseToScheduleModal.css'; // Import modal styles
-import './ScheduleEditor.css'; // Import ScheduleEditor styles
+import { editorStats } from './scheduleManagerLogic';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+  Badge, Button, Card, Dialog, DialogBody, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, EmptyState, FormField, Input,
+  PageHeader, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Skeleton, Textarea, Toolbar
+} from '@/components/ui';
+
+const NO_TRAINER = '__none__'; // Radix Select cannot hold an empty value
 
 // Get the modern color palette
 const colorPalette = getColorPaletteOptions();
@@ -56,6 +64,7 @@ const ScheduleEditor = ({ schedule, onSave, onBack }) => {
   const [showSaveAsModal, setShowSaveAsModal] = useState(false);
   const [saveAsForm, setSaveAsForm] = useState({ name: '', description: '' });
   const [saveAsLoading, setSaveAsLoading] = useState(false);
+  const [confirmDiscard, setConfirmDiscard] = useState(false);
 
   // Multi-select functionality state
   const [selectionMode, setSelectionMode] = useState(false);
@@ -468,7 +477,7 @@ const ScheduleEditor = ({ schedule, onSave, onBack }) => {
         console.error('❌ DEBUG: No sessions found to update!');
         console.error('❌ DEBUG: Selected event IDs:', selectedEventIds);
         console.error('❌ DEBUG: Sessions structure:', sessionsForCalendar);
-        alert('No sessions found to update. Check browser console for details.');
+        toast.error('No sessions found to update', { description: 'Check the browser console for details.' });
         return;
       }
       
@@ -531,10 +540,10 @@ const ScheduleEditor = ({ schedule, onSave, onBack }) => {
       setSelectionMode(false);
       
       console.log(`✅ Bulk updated ${sessionUpdates.length} sessions`);
-      alert(`✅ Successfully updated ${sessionUpdates.length} sessions with trainer assignment.`);
+      toast.success(`Updated ${sessionUpdates.length} sessions`);
     } catch (error) {
       console.error('❌ Error in bulk save:', error);
-      alert('Error saving selected sessions: ' + error.message);
+      toast.error('Error saving selected sessions', { description: error.message });
     } finally {
       setBulkSaving(false);
     }
@@ -733,7 +742,7 @@ const ScheduleEditor = ({ schedule, onSave, onBack }) => {
       if (sessionsToSave.length === 0) {
         console.error('🚨 CRITICAL: No sessions to save! This would delete all existing sessions.');
         console.error('🚨 DEBUG: Original sessions structure:', sessionsForCalendar);
-        alert('⚠️ CRITICAL ERROR: No sessions found to save. This would delete all your existing sessions. Save operation cancelled.');
+        toast.error('Nothing to save', { duration: 12000, description: 'No sessions were found to save, and saving would delete all your existing sessions. The save was cancelled.' });
         return;
       }
 
@@ -893,7 +902,7 @@ const ScheduleEditor = ({ schedule, onSave, onBack }) => {
       sessionStorage.removeItem(sessionStorageKey);
       console.log('🗑️ Cleared unsaved sessions from sessionStorage');
 
-      alert('✅ Schedule saved successfully!');
+      toast.success('Schedule saved');
       
       // Optionally refresh parent component (for schedule list updates)
       if (onSave) {
@@ -902,7 +911,7 @@ const ScheduleEditor = ({ schedule, onSave, onBack }) => {
 
     } catch (error) {
       console.error('❌ Error saving schedule:', error);
-      alert(`Failed to save schedule: ${error.message}`);
+      toast.error('Failed to save schedule', { description: error.message });
     } finally {
       setSaving(false);
     }
@@ -1013,7 +1022,7 @@ const ScheduleEditor = ({ schedule, onSave, onBack }) => {
     console.log('💾 Saved newly added courses to sessionStorage');
 
     // Show success message
-    alert(`✅ Course added successfully! ${newSessions.length} session${newSessions.length !== 1 ? 's' : ''} created.`);
+    toast.success(`Course added: ${newSessions.length} session${newSessions.length !== 1 ? 's' : ''} created`);
   };
 
   const handleSaveAs = () => {
@@ -1027,7 +1036,7 @@ const ScheduleEditor = ({ schedule, onSave, onBack }) => {
 
   const handleSaveAsSubmit = async () => {
     if (!saveAsForm.name.trim()) {
-      alert('Please enter a name for the new schedule');
+      toast.error('Please enter a name for the new schedule');
       return;
     }
 
@@ -1042,7 +1051,7 @@ const ScheduleEditor = ({ schedule, onSave, onBack }) => {
 
       console.log('✅ Schedule copied successfully:', result);
 
-      alert(`✅ Schedule copied successfully!\n\nNew schedule: "${result.schedule.name}"\nCopied ${result.sessionCount} sessions from "${result.originalScheduleName}"\n\nThe new schedule is now available in the Schedule Manager.`);
+      toast.success(`Schedule copied: "${result.schedule.name}"`, { description: `Copied ${result.sessionCount} sessions from "${result.originalScheduleName}". It is now in the Schedule Manager.` });
 
       setShowSaveAsModal(false);
       setSaveAsForm({ name: '', description: '' });
@@ -1054,7 +1063,7 @@ const ScheduleEditor = ({ schedule, onSave, onBack }) => {
 
     } catch (error) {
       console.error('❌ Error saving schedule as copy:', error);
-      alert(`Failed to copy schedule: ${error.message}`);
+      toast.error('Failed to copy schedule', { description: error.message });
     } finally {
       setSaveAsLoading(false);
     }
@@ -1062,220 +1071,113 @@ const ScheduleEditor = ({ schedule, onSave, onBack }) => {
 
   const discardChanges = () => {
     if (hasChanges) {
-      const confirmed = window.confirm(
-        'You have unsaved changes. Are you sure you want to discard them?'
-      );
-      if (!confirmed) return;
+      setConfirmDiscard(true);
+      return;
     }
     onBack();
   };
 
+  const stats = editorStats(sessionsForCalendar);
+  const hasSessions = sessionsForCalendar && Object.keys(sessionsForCalendar).length > 0;
+
   if (loading) {
     return (
-      <div className="schedule-editor">
-        <div className="loading-state">
-          <div>📅 Loading schedule...</div>
-        </div>
+      <div className="flex flex-col gap-3" aria-busy="true">
+        <p className="text-sm text-muted-foreground">Loading schedule...</p>
+        <Skeleton className="h-10 w-full" />
+        <Skeleton className="h-64 w-full" />
       </div>
     );
   }
 
   return (
-    <div className="schedule-editor">
-      <div className="editor-header">
-        <div className="header-info">
-          <h2>✏️ Edit Schedule: {schedule.name}</h2>
-          <div className="schedule-metadata">
+    <div className="flex flex-col gap-4">
+      <PageHeader
+        title={`Edit Schedule: ${schedule.name}`}
+        description={
+          <span className="flex flex-wrap items-center gap-x-2">
             <span>Created: {new Date(schedule.created_at).toLocaleDateString('en-GB')}</span>
-            <span>•</span>
-            <span>Version: {schedule.version ? new Date(schedule.version).toLocaleDateString('en-GB') : 'v1.0'}</span>
-            <span>•</span>
-            <span
+            <span aria-hidden="true">•</span>
+            <button
+              type="button"
               title="Click to copy full schedule ID"
-              onClick={() => {navigator.clipboard.writeText(schedule.id); alert('Schedule ID copied: ' + schedule.id);}}
-              style={{cursor: 'pointer', textDecoration: 'underline', fontSize: '0.9em'}}
+              className="underline underline-offset-2 hover:text-foreground"
+              onClick={() => { navigator.clipboard.writeText(schedule.id); toast.success('Schedule ID copied', { description: schedule.id }); }}
             >
               ID: {schedule.id.substring(0, 8)}... (click to copy full)
-            </span>
-            {hasChanges && <span className="changes-indicator">• Unsaved changes</span>}
-          </div>
-        </div>
+            </button>
+            {hasChanges && <Badge variant="warning">Unsaved changes</Badge>}
+          </span>
+        }
+        actions={
+          <>
+            <Button onClick={() => setShowAddCourseModal(true)} disabled={saving}><Plus /> Add Course</Button>
+            <Button onClick={handleSaveAs} disabled={saving} title="Create a copy of this schedule"><Copy /> Save As...</Button>
+            <Button variant={selectionMode ? 'default' : 'secondary'} onClick={toggleSelectionMode} disabled={saving} title="Toggle selection mode" aria-pressed={selectionMode}>
+              {selectionMode ? <><CheckSquare /> Exit Select</> : <><SquareDashedMousePointer /> Select</>}
+            </Button>
+            <Button onClick={discardChanges}>Cancel</Button>
+            <Button variant="default" onClick={saveChanges} disabled={!hasChanges || saving}><Save /> {saving ? 'Saving...' : 'Save Changes'}</Button>
+          </>
+        }
+      />
 
-        <div className="header-actions">
-          <button 
-            onClick={() => setShowAddCourseModal(true)} 
-            className="add-course-btn"
-            disabled={saving}
-          >
-            ➕ Add Course
-          </button>
-          <button 
-            onClick={handleSaveAs} 
-            className="save-as-btn"
-            disabled={saving}
-            title="Create a copy of this schedule"
-          >
-            📋 Save As...
-          </button>
-          
-          {/* Multi-select controls */}
-          <div className="multi-select-divider" style={{width: '1px', height: '30px', background: '#dee2e6', margin: '0 8px'}}></div>
-          
-          <button 
-            onClick={toggleSelectionMode}
-            className={selectionMode ? 'select-btn active' : 'select-btn'}
-            disabled={saving}
-            title="Toggle selection mode"
-          >
-            {selectionMode ? '✅ Exit Select' : '☑️ Select'}
-          </button>
-          
-          {/* Bulk controls - only show when events are selected */}
-          {selectionMode && selectedEventIds.length > 0 && (
-            <>
-              <div className="bulk-controls">
-                <span className="selection-count">{selectedEventIds.length} selected</span>
-                
-                <div className="color-section">
-                  <div className="color-palette">
-                    {colorPalette.map((colorOption) => (
-                      <button
-                        key={colorOption.id}
-                        type="button"
-                        className={`color-option ${bulkColor === colorOption.backgroundColor ? 'selected' : ''}`}
-                        style={{ 
-                          backgroundColor: colorOption.backgroundColor,
-                          color: colorOption.textColor,
-                          border: `2px solid ${colorOption.borderColor}`,
-                          width: '24px',
-                          height: '24px',
-                          borderRadius: '4px',
-                          cursor: 'pointer',
-                          margin: '0 2px'
-                        }}
-                        onClick={() => setBulkColor(colorOption.backgroundColor)}
-                        title={colorOption.name}
-                      >
-                      </button>
-                    ))}
-                  </div>
-                  <input
-                    type="color"
-                    value={bulkColor || '#007bff'}
-                    onChange={(e) => setBulkColor(e.target.value)}
-                    className="custom-color-picker"
-                    title="Custom Color"
-                  />
-                </div>
-                
-                <select
-                  value={bulkTrainer}
-                  onChange={(e) => setBulkTrainer(e.target.value)}
-                  className="bulk-trainer-picker"
-                >
-                  <option value="">Choose Trainer</option>
-                  {trainers.map((trainer) => (
-                    <option key={trainer.id} value={trainer.id}>
-                      {trainer.name} {trainer.email && `(${trainer.email})`}
-                    </option>
-                  ))}
-                </select>
-                
-                <button
-                  onClick={handleBulkSave}
-                  className="bulk-save-btn"
-                  disabled={bulkSaving || (!bulkColor && !bulkTrainer)}
-                >
-                  {bulkSaving ? '⏳ Saving...' : '💾 Save Selected'}
-                </button>
-              </div>
-            </>
-          )}
-          
-          <button onClick={discardChanges} className="cancel-btn">
-            Cancel
-          </button>
-          <button 
-            onClick={saveChanges} 
-            className="save-btn" 
-            disabled={!hasChanges || saving}
-          >
-            {saving ? '⏳ Saving...' : '💾 Save Changes'}
-          </button>
-        </div>
+      {selectionMode && selectedEventIds.length > 0 && (
+        <Toolbar className="flex-wrap">
+          <Badge variant="primary">{selectedEventIds.length} selected</Badge>
+          <div className="flex items-center gap-1" role="group" aria-label="Colour">
+            {colorPalette.map((colorOption) => (
+              <button
+                key={colorOption.id}
+                type="button"
+                title={colorOption.name}
+                aria-label={colorOption.name}
+                aria-pressed={bulkColor === colorOption.backgroundColor}
+                onClick={() => setBulkColor(colorOption.backgroundColor)}
+                // The swatch colours come from the colour palette data
+                style={{ backgroundColor: colorOption.backgroundColor, borderColor: colorOption.borderColor }}
+                className="size-6 rounded border-2 aria-pressed:ring-2 aria-pressed:ring-ring aria-pressed:ring-offset-1"
+              />
+            ))}
+            <input type="color" value={bulkColor || '#007bff'} onChange={(event) => setBulkColor(event.target.value)} title="Custom Color" aria-label="Custom colour" className="h-6 w-8 cursor-pointer rounded border border-border bg-transparent p-0" />
+          </div>
+          <Select value={bulkTrainer || NO_TRAINER} onValueChange={(value) => setBulkTrainer(value === NO_TRAINER ? '' : value)}>
+            <SelectTrigger aria-label="Trainer" className="w-60"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value={NO_TRAINER}>Choose Trainer</SelectItem>
+              {trainers.map((trainer) => (
+                <SelectItem key={trainer.id} value={trainer.id}>{trainer.name} {trainer.email && `(${trainer.email})`}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Button variant="default" onClick={handleBulkSave} disabled={bulkSaving || (!bulkColor && !bulkTrainer)}><Save /> {bulkSaving ? 'Saving...' : 'Save Selected'}</Button>
+        </Toolbar>
+      )}
+
+      <p className="text-sm text-muted-foreground">
+        <strong className="font-medium text-foreground">Instructions:</strong> Drag sessions to reschedule them. Click and drag the edges to resize session duration. Changes are tracked automatically.
+      </p>
+
+      {hasSessions ? (
+        <ScheduleCalendar
+          key="schedule-calendar-singleton"
+          sessions={sessionsForCalendar}
+          onSessionUpdated={handleSessionUpdate}
+          criteria={schedule.criteria}
+          selectionMode={selectionMode}
+          selectedEventIds={selectedEventIds}
+          onEventSelection={handleEventSelection}
+        />
+      ) : (
+        <Card><EmptyState icon={CalendarDays} title="No Sessions Found" description="This schedule doesn't contain any sessions. Use Add Course to create some." /></Card>
+      )}
+
+      <div className="flex flex-wrap gap-6 rounded-lg border border-border bg-card px-4 py-2.5 text-sm">
+        <span><strong>Total Sessions:</strong> {stats.totalSessions}</span>
+        <span><strong>Functional Areas:</strong> {stats.functionalAreas}</span>
+        <span><strong>Unique Courses:</strong> {stats.uniqueCourses}</span>
       </div>
 
-      <div className="editor-instructions">
-        <p>
-          <strong>Instructions:</strong> Drag sessions to reschedule them. 
-          Click and drag the edges to resize session duration. 
-          Changes are tracked automatically.
-        </p>
-      </div>
-
-      <div className="editor-content">
-        {sessionsForCalendar && Object.keys(sessionsForCalendar).length > 0 ? (
-          <ScheduleCalendar
-            key="schedule-calendar-singleton"
-            sessions={sessionsForCalendar}
-            onSessionUpdated={handleSessionUpdate}
-            criteria={schedule.criteria}
-            selectionMode={selectionMode}
-            selectedEventIds={selectedEventIds}
-            onEventSelection={handleEventSelection}
-          />
-        ) : (
-          <div className="empty-schedule">
-            <h3>📅 No Sessions Found</h3>
-            <p>This schedule doesn't contain any sessions.</p>
-          </div>
-        )}
-      </div>
-
-      {/* Session Statistics */}
-      <div className="editor-footer">
-        <div className="session-stats">
-          <div className="stat-item">
-            <strong>Total Sessions:</strong> {
-              (() => {
-                try {
-                  return Object.values(sessionsForCalendar)
-                    .flatMap(trainingLocations => Object.values(trainingLocations || {}))
-                    .flatMap(classrooms => Object.values(classrooms || {}))
-                    .flatMap(sessions => sessions || []).length;
-                } catch (error) {
-                  console.warn('Error calculating session count:', error);
-                  return 0;
-                }
-              })()
-            }
-          </div>
-          <div className="stat-item">
-            <strong>Functional Areas:</strong> {Object.keys(sessionsForCalendar || {}).length}
-          </div>
-          <div className="stat-item">
-            <strong>Unique Courses:</strong> {
-              (() => {
-                try {
-                  return [...new Set(
-                    Object.values(sessionsForCalendar)
-                      .flatMap(trainingLocations => Object.values(trainingLocations || {}))
-                      .flatMap(classrooms => Object.values(classrooms || {}))
-                      .flatMap(sessions => sessions || [])
-                      .map(session => session.course?.course_name || session.course_name || 'Unknown Course')
-                      .filter(Boolean)
-                  )].length;
-                } catch (error) {
-                  console.warn('Error calculating unique courses:', error);
-                  return 0;
-                }
-              })()
-            }
-          </div>
-        </div>
-      </div>
-
-      {/* Add Course Modal */}
       <AddCourseToScheduleModal
         isOpen={showAddCourseModal}
         onClose={() => setShowAddCourseModal(false)}
@@ -1284,96 +1186,43 @@ const ScheduleEditor = ({ schedule, onSave, onBack }) => {
         onCourseAdded={handleCourseAdded}
       />
 
-      {/* Save As Modal */}
-      {showSaveAsModal && (
-        <div className="modal-overlay">
-          <div className="modal-content save-as-modal" style={{
-            background: 'white',
-            borderRadius: '8px',
-            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-            maxWidth: '500px',
-            width: '90%',
-            border: '1px solid #dee2e6'
-          }}>
-            <div className="modal-header">
-              <h2>📋 Save Schedule As...</h2>
-              <button 
-                onClick={() => setShowSaveAsModal(false)} 
-                className="close-btn"
-                disabled={saveAsLoading}
-              >
-                ×
-              </button>
+      <Dialog open={showSaveAsModal} onOpenChange={(open) => !open && !saveAsLoading && setShowSaveAsModal(false)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Save Schedule As...</DialogTitle>
+            <DialogDescription>Make a copy of this schedule, with its sessions, under a new name.</DialogDescription>
+          </DialogHeader>
+          <DialogBody className="flex flex-col gap-4">
+            <div className="rounded-md bg-muted px-3 py-2 text-sm">
+              <p><strong>Original Schedule:</strong> {schedule.name}</p>
+              <p><strong>Sessions to copy:</strong> {stats.totalSessions}</p>
             </div>
+            <FormField label="New Schedule Name *">
+              <Input value={saveAsForm.name} onChange={(event) => setSaveAsForm({ ...saveAsForm, name: event.target.value })} placeholder="Enter name for the new schedule" disabled={saveAsLoading} />
+            </FormField>
+            <FormField label="Description (Optional)">
+              <Textarea value={saveAsForm.description} onChange={(event) => setSaveAsForm({ ...saveAsForm, description: event.target.value })} placeholder="Optional description for the new schedule" disabled={saveAsLoading} rows={3} />
+            </FormField>
+          </DialogBody>
+          <DialogFooter>
+            <Button onClick={() => setShowSaveAsModal(false)} disabled={saveAsLoading}>Cancel</Button>
+            <Button variant="default" onClick={handleSaveAsSubmit} disabled={saveAsLoading || !saveAsForm.name.trim()}>{saveAsLoading ? 'Creating Copy...' : 'Create Copy'}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
-            <div className="modal-body">
-              <div className="save-as-info" style={{
-                background: '#f8f9fa',
-                padding: '16px',
-                borderRadius: '4px',
-                marginBottom: '20px',
-                border: '1px solid #dee2e6'
-              }}>
-                <p style={{ margin: '0 0 8px 0' }}><strong>Original Schedule:</strong> {schedule.name}</p>
-                <p style={{ margin: '0' }}><strong>Sessions to copy:</strong> {
-                  (() => {
-                    try {
-                      return Object.values(sessionsForCalendar)
-                        .flatMap(trainingLocations => Object.values(trainingLocations || {}))
-                        .flatMap(classrooms => Object.values(classrooms || {}))
-                        .flatMap(sessions => sessions || []).length;
-                    } catch (error) {
-                      return 0;
-                    }
-                  })()
-                }</p>
-              </div>
-
-              <div className="form-group">
-                <label htmlFor="save-as-name">New Schedule Name: *</label>
-                <input
-                  type="text"
-                  id="save-as-name"
-                  value={saveAsForm.name}
-                  onChange={(e) => setSaveAsForm({ ...saveAsForm, name: e.target.value })}
-                  placeholder="Enter name for the new schedule"
-                  disabled={saveAsLoading}
-                  required
-                />
-              </div>
-
-              <div className="form-group">
-                <label htmlFor="save-as-description">Description (Optional):</label>
-                <textarea
-                  id="save-as-description"
-                  value={saveAsForm.description}
-                  onChange={(e) => setSaveAsForm({ ...saveAsForm, description: e.target.value })}
-                  placeholder="Optional description for the new schedule"
-                  disabled={saveAsLoading}
-                  rows="3"
-                />
-              </div>
-            </div>
-
-            <div className="modal-actions">
-              <button 
-                onClick={() => setShowSaveAsModal(false)} 
-                className="cancel-btn"
-                disabled={saveAsLoading}
-              >
-                Cancel
-              </button>
-              <button 
-                onClick={handleSaveAsSubmit} 
-                className="save-btn"
-                disabled={saveAsLoading || !saveAsForm.name.trim()}
-              >
-                {saveAsLoading ? '⏳ Creating Copy...' : '📋 Create Copy'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <AlertDialog open={confirmDiscard} onOpenChange={setConfirmDiscard}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Discard unsaved changes?</AlertDialogTitle>
+            <AlertDialogDescription>You have unsaved changes. Are you sure you want to discard them?</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Keep editing</AlertDialogCancel>
+            <AlertDialogAction destructive onClick={onBack}>Discard</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

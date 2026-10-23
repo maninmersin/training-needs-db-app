@@ -2,6 +2,9 @@ import React, { useState } from 'react';
 import { supabase } from '@core/services/supabaseClient';
 import { toLocalDateTime } from '@core/utils/dateTimeUtils';
 import { ExcelService } from '@core/services/excelService';
+import { Check, Upload } from 'lucide-react';
+import { toast } from 'sonner';
+import { Badge, Button, Card, FileDrop, FormField, ImportStepper, Input } from '@/components/ui';
 
 const ExcelImportWizard = ({ onComplete, onBack }) => {
   const [currentStep, setCurrentStep] = useState(1); // 1: Upload, 2: Validate, 3: Preview, 4: Import
@@ -10,9 +13,9 @@ const ExcelImportWizard = ({ onComplete, onBack }) => {
   const [validationResults, setValidationResults] = useState([]);
   const [importType, setImportType] = useState('update'); // 'update', 'create'
   const [loading, setLoading] = useState(false);
+  const [scheduleName, setScheduleName] = useState('');
 
-  const handleFileUpload = async (event) => {
-    const uploadedFile = event.target.files[0];
+  const handleFile = async (uploadedFile) => {
     if (!uploadedFile) return;
 
     setFile(uploadedFile);
@@ -23,7 +26,7 @@ const ExcelImportWizard = ({ onComplete, onBack }) => {
       setImportData(data);
       setCurrentStep(2);
     } catch (error) {
-      alert(`Error reading file: ${error.message}`);
+      toast.error('Error reading file', { description: error.message });
     } finally {
       setLoading(false);
     }
@@ -106,18 +109,18 @@ const ExcelImportWizard = ({ onComplete, onBack }) => {
         await updateExistingSchedules();
       }
 
-      alert('✅ Import completed successfully!');
+      toast.success('Import completed');
       onComplete();
     } catch (error) {
-      alert(`Import failed: ${error.message}`);
+      toast.error('Import failed', { description: error.message });
     } finally {
       setLoading(false);
     }
   };
 
   const createNewSchedule = async () => {
-    const scheduleName = prompt('Enter a name for the new schedule:');
-    if (!scheduleName) throw new Error('Schedule name is required');
+    if (!scheduleName.trim()) throw new Error('Schedule name is required');
+
 
     const validRows = validationResults.filter(r => r.isValid);
     const sessions = validRows.map(result => {
@@ -138,7 +141,7 @@ const ExcelImportWizard = ({ onComplete, onBack }) => {
     });
 
     const { error } = await supabase.from('training_schedules').insert([{
-      name: scheduleName,
+      name: scheduleName.trim(),
       criteria: {},
       status: 'active',
       functional_areas: [...new Set(sessions.map(s => s.functional_area))],
@@ -162,155 +165,107 @@ const ExcelImportWizard = ({ onComplete, onBack }) => {
     return validationResults.filter(r => !r.isValid).length;
   };
 
+  const stepLabels = ['Upload', 'Validate', 'Preview', 'Import'];
+
   return (
-    <div className="excel-import-wizard">
-      <div className="wizard-header">
-        <h2>📥 Import Schedule from Excel</h2>
-        <div className="wizard-steps">
-          <div className={`step ${currentStep >= 1 ? 'active' : ''}`}>1. Upload</div>
-          <div className={`step ${currentStep >= 2 ? 'active' : ''}`}>2. Validate</div>
-          <div className={`step ${currentStep >= 3 ? 'active' : ''}`}>3. Preview</div>
-          <div className={`step ${currentStep >= 4 ? 'active' : ''}`}>4. Import</div>
-        </div>
+    <Card className="mx-auto max-w-3xl">
+      <div className="flex flex-col gap-3 border-b border-border px-4 py-3">
+        <h2 className="text-base font-semibold">Import Schedule from Excel</h2>
+        <ImportStepper steps={stepLabels} current={currentStep - 1} />
       </div>
 
-      <div className="wizard-content">
+      <div className="flex flex-col gap-4 p-4">
         {currentStep === 1 && (
-          <div className="upload-step">
-            <h3>Step 1: Upload Excel File</h3>
-            <p>Select an Excel file containing schedule data. The file should include columns for:</p>
-            <ul>
-              <li>Session Title</li>
-              <li>Course Name</li>
-              <li>Start Date, Start Time</li>
-              <li>End Date, End Time</li>
-              <li>Duration (hrs)</li>
-              <li>Location</li>
-              <li>Group Name</li>
-              <li>Functional Area</li>
-            </ul>
-
-            <div className="import-type-selection">
-              <label>Import Type:</label>
-              <div className="radio-group">
-                <label>
-                  <input
-                    type="radio"
-                    value="create"
-                    checked={importType === 'create'}
-                    onChange={(e) => setImportType(e.target.value)}
-                  />
-                  Create new schedule
-                </label>
-                <label>
-                  <input
-                    type="radio"
-                    value="update"
-                    checked={importType === 'update'}
-                    onChange={(e) => setImportType(e.target.value)}
-                    disabled
-                  />
-                  Update existing schedule (Coming soon)
-                </label>
-              </div>
+          <>
+            <div>
+              <h3 className="text-sm font-semibold">Step 1: Upload Excel File</h3>
+              <p className="mt-1 text-sm text-muted-foreground">Select an Excel file containing schedule data. The file should include columns for:</p>
+              <ul className="mt-1 list-disc pl-5 text-sm text-muted-foreground">
+                <li>Session Title</li>
+                <li>Course Name</li>
+                <li>Start Date, Start Time</li>
+                <li>End Date, End Time</li>
+                <li>Duration (hrs)</li>
+                <li>Location</li>
+                <li>Group Name</li>
+                <li>Functional Area</li>
+              </ul>
             </div>
 
-            <div className="file-upload">
-              <input
-                type="file"
-                accept=".xlsx,.xls,.csv"
-                onChange={handleFileUpload}
-                disabled={loading}
-              />
-              {loading && <div>📄 Reading file...</div>}
-            </div>
-          </div>
+            <fieldset className="flex flex-col gap-2">
+              <legend className="mb-1 text-sm font-medium">Import Type</legend>
+              <label className="flex cursor-pointer items-center gap-2 text-sm">
+                <input type="radio" value="create" checked={importType === 'create'} onChange={(event) => setImportType(event.target.value)} className="size-4 accent-primary" />
+                Create new schedule
+              </label>
+              <label className="flex items-center gap-2 text-sm text-muted-foreground">
+                <input type="radio" value="update" checked={importType === 'update'} onChange={(event) => setImportType(event.target.value)} disabled className="size-4" />
+                Update existing schedule (Coming soon)
+              </label>
+            </fieldset>
+
+            <FileDrop onFile={handleFile} disabled={loading} label="Choose an Excel or CSV file" />
+            {loading && <p className="text-sm text-muted-foreground" role="status">Reading file...</p>}
+          </>
         )}
 
         {currentStep === 2 && (
-          <div className="validate-step">
-            <h3>Step 2: Validate Data</h3>
-            <p>Found {importData.length} rows in the uploaded file.</p>
-            
-            <button onClick={validateData} disabled={loading} className="validate-btn">
-              {loading ? '⏳ Validating...' : '✅ Validate Data'}
-            </button>
-          </div>
+          <>
+            <div>
+              <h3 className="text-sm font-semibold">Step 2: Validate Data</h3>
+              <p className="mt-1 text-sm text-muted-foreground">Found {importData.length} rows in the uploaded file.</p>
+            </div>
+            <div><Button variant="default" onClick={validateData} disabled={loading}><Check /> {loading ? 'Validating...' : 'Validate Data'}</Button></div>
+          </>
         )}
 
         {currentStep === 3 && (
-          <div className="preview-step">
-            <h3>Step 3: Preview & Review</h3>
-            
-            <div className="validation-summary">
-              <div className="summary-stats">
-                <div className="stat valid">✅ Valid: {getValidRowCount()}</div>
-                <div className="stat errors">❌ Errors: {getErrorRowCount()}</div>
-                <div className="stat total">📊 Total: {validationResults.length}</div>
-              </div>
+          <>
+            <h3 className="text-sm font-semibold">Step 3: Preview &amp; Review</h3>
+            <div className="flex flex-wrap gap-2">
+              <Badge variant="success">Valid: {getValidRowCount()}</Badge>
+              <Badge variant="danger">Errors: {getErrorRowCount()}</Badge>
+              <Badge>Total: {validationResults.length}</Badge>
             </div>
 
-            <div className="validation-results">
-              {validationResults.slice(0, 10).map(result => (
-                <div key={result.rowIndex} className={`result-row ${result.isValid ? 'valid' : 'invalid'}`}>
-                  <div className="row-header">
-                    Row {result.rowIndex}: {result.data['Session Title'] || 'Unnamed Session'}
-                  </div>
-                  {result.errors.length > 0 && (
-                    <div className="errors">
-                      {result.errors.map((error, i) => (
-                        <div key={i} className="error">❌ {error}</div>
-                      ))}
-                    </div>
-                  )}
-                  {result.warnings.length > 0 && (
-                    <div className="warnings">
-                      {result.warnings.map((warning, i) => (
-                        <div key={i} className="warning">⚠️ {warning}</div>
-                      ))}
-                    </div>
-                  )}
-                </div>
+            <ul className="flex flex-col gap-1.5">
+              {validationResults.slice(0, 10).map((result) => (
+                <li key={result.rowIndex} className={`rounded-md border px-3 py-2 text-sm ${result.isValid ? 'border-border' : 'border-destructive/40 bg-destructive-soft'}`}>
+                  <p className="font-medium">Row {result.rowIndex}: {result.data['Session Title'] || 'Unnamed Session'}</p>
+                  {result.errors.map((message) => <p key={message} className="text-destructive">{message}</p>)}
+                  {result.warnings.map((message) => <p key={message} className="text-warning">{message}</p>)}
+                </li>
               ))}
-              
-              {validationResults.length > 10 && (
-                <div className="more-results">
-                  ... and {validationResults.length - 10} more rows
-                </div>
-              )}
-            </div>
+            </ul>
+            {validationResults.length > 10 && <p className="text-sm text-muted-foreground">... and {validationResults.length - 10} more rows</p>}
 
             {getValidRowCount() > 0 && (
-              <button onClick={() => setCurrentStep(4)} className="proceed-btn">
-                Proceed with {getValidRowCount()} valid sessions
-              </button>
+              <div><Button variant="default" onClick={() => setCurrentStep(4)}>Proceed with {getValidRowCount()} valid sessions</Button></div>
             )}
-          </div>
+          </>
         )}
 
         {currentStep === 4 && (
-          <div className="import-step">
-            <h3>Step 4: Import Data</h3>
-            <p>Ready to import {getValidRowCount()} valid sessions.</p>
-            
-            <button onClick={performImport} disabled={loading} className="import-btn">
-              {loading ? '⏳ Importing...' : '📥 Import Sessions'}
-            </button>
-          </div>
+          <>
+            <div>
+              <h3 className="text-sm font-semibold">Step 4: Import Data</h3>
+              <p className="mt-1 text-sm text-muted-foreground">Ready to import {getValidRowCount()} valid sessions.</p>
+            </div>
+            {importType === 'create' && (
+              <FormField label="Name for the new schedule *" className="max-w-md">
+                <Input value={scheduleName} onChange={(event) => setScheduleName(event.target.value)} placeholder="Enter a name for the new schedule" />
+              </FormField>
+            )}
+            <div><Button variant="default" onClick={performImport} disabled={loading}><Upload /> {loading ? 'Importing...' : 'Import Sessions'}</Button></div>
+          </>
         )}
       </div>
 
-      <div className="wizard-actions">
-        <button onClick={onBack} disabled={loading}>
-          Cancel
-        </button>
-        {currentStep > 1 && (
-          <button onClick={() => setCurrentStep(currentStep - 1)} disabled={loading}>
-            Back
-          </button>
-        )}
+      <div className="flex justify-end gap-2 border-t border-border px-4 py-3">
+        <Button onClick={onBack} disabled={loading}>Cancel</Button>
+        {currentStep > 1 && <Button onClick={() => setCurrentStep(currentStep - 1)} disabled={loading}>Back</Button>}
       </div>
-    </div>
+    </Card>
   );
 };
 

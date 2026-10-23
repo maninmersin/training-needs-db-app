@@ -1,4 +1,4 @@
-import { deleteSummary, filterSchedules, groupSessionsForEditor, sessionCountOf } from '../scheduleManagerLogic';
+import { deleteSummary, editorStats, multiDayNote, filterSchedules, flattenSessions, groupSessionsForEditor, sessionCountOf } from '../scheduleManagerLogic';
 
 describe('sessionCountOf', () => {
   test('uses the count from the list query, else the loaded sessions, else 0', () => {
@@ -53,5 +53,40 @@ describe('groupSessionsForEditor', () => {
 
   test('no sessions gives an empty structure', () => {
     expect(groupSessionsForEditor(null)).toEqual({});
+  });
+});
+
+describe('editorStats', () => {
+  const s = (name, course) => (course ? { course: { course_name: course } } : { course_name: name });
+  const structure = {
+    Finance: { Dubai: { 'Classroom 1': [s('A'), s(null, 'A')], 'Classroom 2': [s('B')] } },
+    HR: { Leeds: { 'Classroom 1': [{}] } }
+  };
+
+  test('counts sessions, areas and different courses', () => {
+    expect(editorStats(structure)).toEqual({ totalSessions: 4, functionalAreas: 2, uniqueCourses: 3 });
+  });
+
+  test('copes with empty or odd structures', () => {
+    expect(editorStats({})).toEqual({ totalSessions: 0, functionalAreas: 0, uniqueCourses: 0 });
+    expect(editorStats(null)).toEqual({ totalSessions: 0, functionalAreas: 0, uniqueCourses: 0 });
+    expect(flattenSessions({ A: { B: null } })).toEqual([]);
+  });
+});
+
+describe('multiDayNote', () => {
+  test('no note for a course that fits one block (3 hours by default)', () => {
+    expect(multiDayNote(2, {})).toBeNull();
+    expect(multiDayNote(3, undefined)).toBeNull();
+  });
+
+  test('AM + PM on one day, then several days', () => {
+    expect(multiDayNote(5, {})).toBe('This course will be split into 2 parts (AM + PM same day)');
+    expect(multiDayNote(7, {})).toBe('This course will be split into 4 parts across 2 days');
+  });
+
+  test('reads the block times from the saved criteria, also as JSON text', () => {
+    const criteria = { am_start_hour: 9, am_start_min: 0, am_end_hour: 13, am_end_min: 0 };
+    expect(multiDayNote(4, JSON.stringify(criteria))).toBeNull();
   });
 });
