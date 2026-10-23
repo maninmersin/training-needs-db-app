@@ -1,177 +1,124 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Download, Loader2, Search, UsersRound } from 'lucide-react';
 import { supabase } from '@core/services/supabaseClient';
 import { useProject } from '@core/contexts/ProjectContext';
-import { saveAs } from 'file-saver';
+import { Badge, Button, DataTable, DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, EmptyState, Input, PageHeader, Toolbar, toast } from '@/components/ui';
+import { filterRows } from './listFilters';
+import { downloadTable } from '../import/exportFiles';
+import { loadUserCourseEntries } from './userCourses/userCourseService';
+import { EXPORT_COLUMNS, SOURCE, toExportRow } from './userCourses/userCourseRows';
+
+const label = (name) => name.replace(/_/g, ' ');
 
 const ExportAllData = () => {
   const { currentProject } = useProject();
-  const [data, setData] = useState([]);
+  const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [search, setSearch] = useState('');
 
   useEffect(() => {
     const fetchData = async () => {
       if (!currentProject) {
-        setData([]);
+        setRows([]);
         setLoading(false);
         return;
       }
-
       try {
-        console.log('🔍 ExportAllData: Fetching courses for end users in project:', currentProject.name);
-        
-        // Fetch the data using separate queries and join manually
-        console.log('🔍 Fetching end users...');
-        const { data: endUsers, error: usersError } = await supabase
-          .from('end_users')
-          .select('*')
-          .eq('project_id', currentProject.id)
-          .order('name');
-
-        if (usersError) throw usersError;
-
-        console.log('🔍 Fetching project roles...');
-        const { data: projectRoles, error: rolesError } = await supabase
-          .from('project_roles')
-          .select('*')
-          .eq('project_id', currentProject.id);
-
-        if (rolesError) throw rolesError;
-
-        console.log('🔍 Fetching role course mappings...');
-        const { data: roleMappings, error: mappingsError } = await supabase
-          .from('role_course_mappings')
-          .select('*')
-          .eq('project_id', currentProject.id);
-
-        if (mappingsError) throw mappingsError;
-
-        console.log('🔍 Fetching courses...');
-        const { data: courses, error: coursesError } = await supabase
-          .from('courses')
-          .select('*')
-          .eq('project_id', currentProject.id);
-
-        if (coursesError) throw coursesError;
-
-        // Create lookup maps for efficient joining
-        const roleMap = new Map(projectRoles.map(role => [role.project_role_name, role]));
-        const courseMap = new Map(courses.map(course => [course.course_id, course]));
-
-        // Build the flattened data by joining manually
-        const flattenedData = [];
-        endUsers.forEach(user => {
-          // Find role mappings for this user's project role
-          const userRoleMappings = roleMappings.filter(mapping => 
-            mapping.project_role_name === user.project_role
-          );
-
-          userRoleMappings.forEach(mapping => {
-            const course = courseMap.get(mapping.course_id);
-            if (course) {
-              flattenedData.push({
-                user_id: user.id,
-                user_name: user.name,
-                user_email: user.email,
-                job_title: user.job_title,
-                country: user.country,
-                division: user.division,
-                sub_division: user.sub_division,
-                location_name: user.location_name,
-                training_location: user.training_location,
-                project_role: user.project_role,
-                course_id: course.course_id,
-                course_name: course.course_name,
-                functional_area: course.functional_area,
-                duration_hrs: course.duration_hrs
-              });
-            }
-          });
-        });
-
-        console.log('✅ ExportAllData: Built', flattenedData.length, 'user-course assignments from', {
-          users: endUsers.length,
-          roles: projectRoles.length,
-          mappings: roleMappings.length,
-          courses: courses.length
-        });
-        
-        setData(flattenedData);
-      } catch (error) {
-        setError(error.message);
-        console.error('❌ ExportAllData: Error fetching data:', error);
+        setLoading(true);
+        setError(null);
+        const entries = await loadUserCourseEntries(supabase, currentProject.id);
+        setRows(entries.map(toExportRow));
+      } catch (loadError) {
+        setError(loadError.message);
+        console.error('❌ ExportAllData: Error fetching data:', loadError);
       } finally {
         setLoading(false);
       }
     };
-
     fetchData();
   }, [currentProject]);
 
-  const convertToCSV = (objArray) => {
-    const array = typeof objArray !== 'object' ? JSON.parse(objArray) : objArray;
-    let str = `${Object.keys(array[0])
-      .map((value) => `"${value}"`)
-      .join(',')}\r\n`;
+  const shown = useMemo(() => filterRows(rows, EXPORT_COLUMNS, search, {}), [rows, search]);
 
-    return (
-      str +
-      array
-        .map((obj) => {
-          return Object.values(obj)
-            .map((value) => `"${value}"`)
-            .join(',');
-        })
-        .join('\r\n')
-    );
-  };
+  const columns = useMemo(
+    () =>
+      EXPORT_COLUMNS.map((name) => ({
+        id: name,
+        header: label(name),
+        accessorFn: (row) => row[name] ?? '',
+        meta: { align: name === 'duration_hrs' ? 'right' : undefined, className: name === 'user_name' ? 'font-medium' : name === 'duration_hrs' || name === 'user_id' ? 'tabular-nums' : undefined },
+        ...(name === 'course_source' ? { cell: ({ getValue }) => <Badge variant={getValue() === SOURCE.INDIVIDUAL ? 'primary' : 'neutral'}>{getValue()}</Badge> } : {})
+      })),
+    []
+  );
 
-  const exportCSV = () => {
-    if (data.length === 0) {
-      alert('No data to export');
+  const exportData = (format) => {
+    if (shown.length === 0) {
+      toast.info('No data to export');
       return;
     }
-    
-    const csv = convertToCSV(data);
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const filename = `${currentProject?.name || 'project'}_user_course_assignments_${new Date().toISOString().split('T')[0]}.csv`;
-    saveAs(blob, filename);
+    const filename = `${currentProject?.name || 'project'}_user_course_assignments_${new Date().toISOString().split('T')[0]}`;
+    downloadTable(filename, EXPORT_COLUMNS, shown.map((row) => EXPORT_COLUMNS.map((name) => row[name])), format);
+    toast.success(`${shown.length} ${shown.length === 1 ? 'assignment' : 'assignments'} exported`);
   };
 
+  if (!currentProject) {
+    return (
+      <div className="mx-auto max-w-6xl rounded-lg border border-border bg-card">
+        <EmptyState icon={UsersRound} title="No Project Selected" description="Please select a project from the Projects page to export user course assignments." />
+      </div>
+    );
+  }
+
   return (
-    <div>
-      <h1>Export User Course Assignments - {currentProject?.name || 'No Project Selected'}</h1>
-      <button 
-        onClick={exportCSV}
-        disabled={!currentProject || data.length === 0}
-      >
-        Export to CSV ({data.length} assignments)
-      </button>
-      {loading ? (
-        <p>Loading...</p>
-      ) : error ? (
-        <p>Error: {error}</p>
-      ) : (
-        <div style={{ overflowX: 'auto', maxWidth: '100%' }}>
-          <table>
-            <thead>
-              <tr>
-                {data.length > 0 && Object.keys(data[0]).map((key) => (
-                  <th key={key}>{key}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {data.map((item, index) => (
-                <tr key={index}>
-                  {Object.keys(item).map((key) => (
-                    <td key={key}>{item[key]}</td>
-                  ))}
-                </tr>
-              ))}
-            </tbody>
-          </table>
+    <div className="mx-auto flex max-w-[1400px] flex-col gap-4">
+      <PageHeader
+        title="Export User Course Assignments"
+        count={loading ? undefined : shown.length === rows.length ? rows.length : `${shown.length} of ${rows.length}`}
+        description={`Every person with the courses they need, from their role and from individual assignments. Project: ${currentProject.title}. Exporting saves what is shown below.`}
+        actions={
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="default" disabled={loading || shown.length === 0}><Download /> Export ({shown.length} assignments)</Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onSelect={() => exportData('xlsx')}>Excel (.xlsx)</DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => exportData('csv')}>CSV</DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        }
+      />
+
+      {error && <div role="alert" className="rounded-md bg-destructive-soft px-3 py-2 text-sm text-destructive">Error: {error}</div>}
+
+      <Toolbar>
+        <div className="relative w-80 max-w-full">
+          <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-subtle-foreground" aria-hidden="true" />
+          <Input type="search" aria-label="Search assignments" placeholder="Search by person, course, location..." value={search} onChange={(event) => setSearch(event.target.value)} className="pl-8" />
         </div>
+      </Toolbar>
+
+      {loading ? (
+        <div role="status" className="flex items-center justify-center gap-2 rounded-lg border border-border bg-card py-16 text-sm text-muted-foreground">
+          <Loader2 className="size-4 animate-spin" aria-hidden="true" /> Loading...
+        </div>
+      ) : (
+        <DataTable
+          caption="User course assignments"
+          columns={columns}
+          data={shown}
+          getRowId={(row, index) => `${row.user_id}-${row.course_id}-${index}`}
+          pageSize={50}
+          pageSizes={[25, 50, 100, 200]}
+          emptyState={
+            <EmptyState
+              icon={UsersRound}
+              title={rows.length === 0 ? 'No assignments yet' : 'Nothing matches'}
+              description={rows.length === 0 ? 'Add people, give their roles courses (Role-Course Mappings), or assign courses to individuals.' : 'Try a different search.'}
+            />
+          }
+        />
       )}
     </div>
   );

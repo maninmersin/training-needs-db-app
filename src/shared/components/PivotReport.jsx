@@ -1,8 +1,12 @@
 import React, { useEffect, useState } from 'react';
+import { Loader2, Table2 } from 'lucide-react';
 import { supabase } from '@core/services/supabaseClient';
 import { useProject } from '@core/contexts/ProjectContext';
 import PivotTableUI from 'react-pivottable/PivotTableUI';
 import 'react-pivottable/pivottable.css';
+import { Card, EmptyState, PageHeader } from '@/components/ui';
+import { loadUserCourseEntries } from './userCourses/userCourseService';
+import { PIVOT_HIDDEN_ATTRIBUTES, toPivotRow } from './userCourses/userCourseRows';
 import './PivotReport.css';
 
 const PivotReport = () => {
@@ -14,182 +18,68 @@ const PivotReport = () => {
 
   useEffect(() => {
     const fetchData = async () => {
+      if (!currentProject) {
+        setData([]);
+        setLoading(false);
+        return;
+      }
       try {
-        if (!currentProject) {
-          setData([]);
-          setLoading(false);
-          return;
-        }
-
         setLoading(true);
         setError(null);
-
-        // Fetch all required data filtered by project
-        const { data: users } = await supabase
-          .from('end_users')
-          .select('*')
-          .eq('project_id', currentProject.id);
-
-        const { data: roles } = await supabase
-          .from('project_roles')
-          .select('*')
-          .eq('project_id', currentProject.id);
-
-        const { data: mappings } = await supabase
-          .from('role_course_mappings')
-          .select('*')
-          .eq('project_id', currentProject.id);
-
-        const { data: courses } = await supabase
-          .from('courses')
-          .select('*')
-          .eq('project_id', currentProject.id);
-
-        console.log('Fetched data:', {
-          users: users?.length,
-          roles: roles?.length,
-          mappings: mappings?.length,
-          courses: courses?.length
-        });
-
-        // Combine data using role_course_mappings as join table
-        const combinedData = users.map(user => {
-          const userRole = roles.find(r => r.project_role_name === user.project_role);
-          const roleMappings = mappings.filter(m => m.project_role_name === user.project_role);
-
-          const userCourses = roleMappings.map(mapping => {
-            const course = courses.find(c => c.course_id === mapping.course_id);
-            const cleanedData = {
-              ...Object.fromEntries(
-                Object.entries(user).map(([key, value]) => 
-                  [key, typeof value === 'string' ? value.trim() : value]
-                )
-              ),
-              ...Object.fromEntries(
-                Object.entries(course).map(([key, value]) => 
-                  [key, typeof value === 'string' ? value.trim() : value]
-                )
-              ),
-              mapping_status: mapping.status,
-              unique_key: `${user.id}-${mapping.course_id}`
-            };
-            return cleanedData;
-          });
-
-          return userCourses;
-        }).flat();
-
-        const uniqueData = combinedData.filter((value, index, self) =>
-          index === self.findIndex((t) => (
-            t.unique_key === value.unique_key
-          ))
-        );
-
-        console.log('Unique data:', uniqueData.length);
-        console.log('Sample data:', uniqueData.slice(0, 3));
-        console.log('Available columns:', Object.keys(uniqueData[0] || {}));
-        setData(uniqueData);
-      } catch (error) {
-        console.error('Error fetching data:', error);
-        setError(error.message);
+        const entries = await loadUserCourseEntries(supabase, currentProject.id);
+        setData(entries.map(toPivotRow));
+      } catch (loadError) {
+        console.error('Error fetching data:', loadError);
+        setError(loadError.message);
       } finally {
         setLoading(false);
       }
     };
-
     fetchData();
   }, [currentProject]);
 
   if (!currentProject) {
     return (
-      <div className="pivot-container">
-        <div className="no-project-state">
-          <h3>No Project Selected</h3>
-          <p>Please select a project from the Projects page to view pivot reports.</p>
-          <p>Each project has its own isolated training data for analysis.</p>
+      <div className="mx-auto max-w-6xl rounded-lg border border-border bg-card">
+        <EmptyState icon={Table2} title="No Project Selected" description="Please select a project from the Projects page to view pivot reports. Each project has its own isolated training data for analysis." />
+      </div>
+    );
+  }
+
+  const groupingFields = [...(pivotState.rows || []), ...(pivotState.cols || [])];
+
+  return (
+    <div className="mx-auto flex max-w-[1400px] flex-col gap-4">
+      <PageHeader
+        title="Training Needs Pivot Report"
+        count={loading ? undefined : data.length}
+        description={`Drag fields into rows and columns to analyse who needs which courses. Courses come from each person's role and from individual assignments (see the course_source field). Project: ${currentProject.title}.`}
+      />
+
+      {error && <div role="alert" className="rounded-md bg-destructive-soft px-3 py-2 text-sm text-destructive"><b>Error Loading Report</b>: {error}</div>}
+
+      {loading ? (
+        <div role="status" className="flex items-center justify-center gap-2 rounded-lg border border-border bg-card py-16 text-sm text-muted-foreground">
+          <Loader2 className="size-4 animate-spin" aria-hidden="true" /> Loading Training Data...
         </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="pivot-container error-container">
-        <h2>Error Loading Report</h2>
-        <p>{error}</p>
-      </div>
-    );
-  }
-
-  if (loading) {
-    return (
-      <div className="pivot-container loading-container">
-        <h2>Loading Training Data...</h2>
-        <div className="loader"></div>
-      </div>
-    );
-  }
-
-  if (!data || data.length === 0) {
-    return (
-      <div className="pivot-container">
-        <h2>No Training Data Available</h2>
-      </div>
-    );
-  }
-
-  const isValidData = data.every(item => 
-    typeof item === 'object' && 
-    item !== null && 
-    !Array.isArray(item)
+      ) : data.length === 0 && !error ? (
+        <div className="rounded-lg border border-border bg-card">
+          <EmptyState icon={Table2} title="No Training Data Available" description="Add people and give their roles courses (Role-Course Mappings), or assign courses to individuals, then come back." />
+        </div>
+      ) : (
+        data.length > 0 && (
+          <>
+            <Card className="p-3">
+              <div className="pivot-table-wrapper">
+                <PivotTableUI data={data} onChange={(state) => setPivotState(state)} {...pivotState} aggregatorName="Count" vals={['id']} hiddenAttributes={PIVOT_HIDDEN_ATTRIBUTES} />
+              </div>
+            </Card>
+            <p className="text-sm text-muted-foreground"><b className="text-foreground">Grouping By:</b> {groupingFields.join(' → ') || 'None'}</p>
+          </>
+        )
+      )}
+    </div>
   );
-
-  if (!isValidData) {
-    return (
-      <div className="pivot-container error-container">
-        <h2>Data Format Error</h2>
-        <p>The data structure is invalid. Please check the console for details.</p>
-      </div>
-    );
-  }
-
-  const groupingFields = [
-    ...(pivotState.rows || []),
-    ...(pivotState.cols || [])
-  ];
-
-  console.log("🧩 Grouping fields selected in Pivot:", groupingFields);
-
-  try {
-    return (
-      <div className="pivot-container">
-        <h2>Training Needs Pivot Report</h2>
-        <div className="project-indicator">
-          <strong>Project:</strong> {currentProject.title}
-        </div>
-        <div className="pivot-table-wrapper">
-          <PivotTableUI
-            data={data}
-            onChange={s => setPivotState(s)}
-            {...pivotState}
-            aggregatorName="Count"
-            vals={["id"]}
-          />
-        </div>
-        <div className="grouping-preview">
-          <strong>Grouping By:</strong> {groupingFields.join(" → ") || 'None'}
-        </div>
-      </div>
-    );
-  } catch (error) {
-    console.error('Pivot table rendering error:', error);
-    return (
-      <div className="pivot-container error-container">
-        <h2>Rendering Error</h2>
-        <p>{error.message}</p>
-      </div>
-    );
-  }
 };
 
 export default PivotReport;
