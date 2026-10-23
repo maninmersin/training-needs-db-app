@@ -37,7 +37,6 @@ const UserManagementDashboard = lazy(() => import('@auth/components/UserManageme
 const RolePermissionsEditor = lazy(() => import('@auth/components/RolePermissionsEditor'));
 
 // Module Dashboards
-const TrainingDashboard = lazy(() => import('@modules/training/components/TrainingDashboard'));
 const AdminDashboard = lazy(() => import('@auth/components/AdminDashboard'));
 
 // Project Management Components
@@ -91,11 +90,11 @@ function App() {
             } />
             
             <Route element={<ProtectedRoute />}>
-              <Route path="/" element={<TrainingDashboard />} />
+              <Route path="/" element={<Navigate to="/projects" replace />} />
               <Route path="/projects" element={<ProjectSelectionDashboard />} />
               
               {/* Module Routes */}
-              <Route path="/training" element={<TrainingDashboard />} />
+              <Route path="/training" element={<Navigate to="/projects" replace />} />
               <Route path="/admin" element={<AdminDashboard />} />
 
               {/* Legacy routes maintained for backward compatibility */}

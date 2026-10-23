@@ -1,6 +1,6 @@
 import {
   BookOpen, CalendarCheck, CalendarCog, CalendarPlus, Calculator, ClipboardCheck, Database,
-  FolderKanban, GraduationCap, LayoutDashboard, Link2, Table2, ShieldCheck, UserCog, Users, BarChart3,
+  FolderKanban, GraduationCap, Link2, Table2, ShieldCheck, UserCog, Users, BarChart3,
   Download
 } from 'lucide-react';
 
@@ -21,12 +21,6 @@ export function getNavSections({ usesAccessData = true } = {}) {
       ];
 
   return [
-    {
-      id: 'overview',
-      module: 'TNA',
-      label: null,
-      items: [{ to: '/training', label: 'Overview', icon: LayoutDashboard }]
-    },
     {
       id: 'setup',
       module: 'TNA',
