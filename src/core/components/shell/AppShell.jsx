@@ -1,12 +1,12 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { useLocation } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { Menu } from 'lucide-react';
 import { useProject } from '@core/contexts/ProjectContext';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { TooltipProvider } from '@/components/ui/overlays';
 import AppSidebar from './AppSidebar';
-import { getBreadcrumbTrail, getNavSections } from './navigation';
+import { getBreadcrumbTrail, getModuleHomePath, getNavSections } from './navigation';
 
 const COLLAPSED_KEY = 'sidebarOpen'; // same key as the old sidebar, so a saved choice carries over
 const CHROMELESS_PATHS = ['/login', '/unauthorized'];
@@ -83,9 +83,13 @@ export default function AppShell({ children, onLogout }) {
                 {trail.map((crumb, index) => (
                   <li key={`${crumb}-${index}`} className="flex items-center gap-1.5">
                     {index > 0 && <span aria-hidden="true">/</span>}
-                    <span className={index === trail.length - 1 ? 'font-medium text-muted-foreground' : undefined} aria-current={index === trail.length - 1 ? 'page' : undefined}>
-                      {crumb}
-                    </span>
+                    {index === 0 && trail.length > 1 && getModuleHomePath(crumb, sections) ? (
+                      <Link to={getModuleHomePath(crumb, sections)} className="rounded hover:text-foreground hover:underline focus-visible:outline-2 focus-visible:outline-ring">{crumb}</Link>
+                    ) : (
+                      <span className={index === trail.length - 1 ? 'font-medium text-muted-foreground' : undefined} aria-current={index === trail.length - 1 ? 'page' : undefined}>
+                        {crumb}
+                      </span>
+                    )}
                   </li>
                 ))}
               </ol>

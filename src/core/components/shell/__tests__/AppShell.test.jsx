@@ -7,7 +7,7 @@ import { MemoryRouter } from 'react-router-dom';
 import AppShell from '../AppShell';
 import { ThemeProvider } from '@/components/theme/ThemeProvider';
 import { useProject } from '@core/contexts/ProjectContext';
-import { getBreadcrumbTrail, getNavSections } from '../navigation';
+import { getBreadcrumbTrail, getModuleHomePath, getNavSections } from '../navigation';
 
 jest.mock('@core/contexts/ProjectContext', () => ({ useProject: jest.fn() }));
 jest.mock('@core/services/supabaseClient', () => {
@@ -71,6 +71,13 @@ describe('navigation data', () => {
     expect(access).toEqual(expect.arrayContaining(['Trainers', 'Schedule Creator', 'User Assignments', 'Attendance Tracker', 'Projects']));
   });
 
+  test('the first breadcrumb leads somewhere: Administration to its overview, TNA to its first menu item', () => {
+    const sections = getNavSections({ usesAccessData: false });
+    expect(getModuleHomePath('Administration', sections)).toBe('/admin');
+    expect(getModuleHomePath('TNA', sections)).toBe(sections.find((section) => section.module === 'TNA').items[0].to);
+    expect(getModuleHomePath('Nothing', sections)).toBeNull();
+  });
+
   test('breadcrumbs name the module, section and page', () => {
     const sections = getNavSections({ usesAccessData: false });
     expect(getBreadcrumbTrail('/dynamic-users', sections)).toEqual(['TNA', 'Setup (in-app data)', 'End Users']);
@@ -88,6 +95,7 @@ describe('AppShell', () => {
     expect(within(nav).getByRole('link', { name: 'Schedule Manager' })).toHaveAttribute('href', '/schedule-manager?restart=true');
     expect(screen.getByRole('button', { name: /Project: ACME Corp Training Test/ })).toBeInTheDocument();
     expect(within(screen.getByRole('navigation', { name: 'Breadcrumb' })).getByText('End Users')).toHaveAttribute('aria-current', 'page');
+    expect(within(screen.getByRole('navigation', { name: 'Breadcrumb' })).getByRole('link', { name: 'TNA' })).toHaveAttribute('href', '/reference-data');
     expect(screen.getByText('Page content')).toBeInTheDocument();
     expect(await screen.findByText('stuart@example.com')).toBeInTheDocument();
   });

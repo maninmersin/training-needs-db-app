@@ -77,3 +77,9 @@ export function getBreadcrumbTrail(pathname, sections) {
   return ['TNA'];
 }
 
+/** Where the first breadcrumb ("TNA", "Administration") leads: Administration has an overview page; TNA opens its first menu item. */
+export function getModuleHomePath(module, sections) {
+  if (module === 'Administration') return '/admin';
+  const first = sections.find((section) => section.module === module);
+  return first?.items[0]?.to || null;
+}

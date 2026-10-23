@@ -55,6 +55,8 @@ describe('ScheduleSelector', () => {
         select: () => query,
         eq: () => query,
         not: () => query,
+        order: () => query,
+        range: () => query,
         then: (resolve) => resolve({
           data: table === 'training_sessions'
             ? [{ course_id: 'c1', course_name: 'Budgeting', training_location: 'Dubai', functional_area: 'Finance' }, { course_id: 'c2', course_name: 'Ledger', training_location: 'Dubai', functional_area: 'Finance' }]

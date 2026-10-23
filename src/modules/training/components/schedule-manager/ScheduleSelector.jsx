@@ -2,6 +2,7 @@ import React, { useContext, useMemo, useRef, useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import { CalendarDays, RefreshCw, Users } from 'lucide-react';
 import { supabase } from '@core/services/supabaseClient';
+import { fetchAllRows } from '@core/utils/fetchAllRows';
 import { Badge, Button, DataTable, EmptyState, Input, Toolbar } from '@/components/ui';
 import { filterSchedules } from './scheduleManagerLogic';
 import { progressState, scheduleStatsFrom } from './scheduleSelectorLogic';
@@ -82,13 +83,18 @@ const ScheduleSelector = ({ schedules, onScheduleSelect, onRefresh }) => {
               return [schedule.id, scheduleStatsFrom([], [])];
             }
 
-            const { data: assignments, error: assignmentError } = await supabase
-              .from('user_assignments')
-              .select('session_identifier')
-              .eq('schedule_id', schedule.id)
-              .eq('assignment_level', 'session')
-              .not('session_identifier', 'is', null);
-            if (assignmentError) console.error('Error fetching assignments for schedule:', schedule.id, assignmentError);
+            // Every assignment row (a plain select would stop at 1000, which understates the progress)
+            let assignments = [];
+            try {
+              assignments = await fetchAllRows(() => supabase
+                .from('user_assignments')
+                .select('id, session_identifier')
+                .eq('schedule_id', schedule.id)
+                .eq('assignment_level', 'session')
+                .not('session_identifier', 'is', null));
+            } catch (assignmentError) {
+              console.error('Error fetching assignments for schedule:', schedule.id, assignmentError);
+            }
 
             return [schedule.id, scheduleStatsFrom(sessions, assignments)];
           })
