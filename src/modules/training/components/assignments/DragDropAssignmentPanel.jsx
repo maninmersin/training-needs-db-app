@@ -90,7 +90,7 @@ const getSessionIdentifiers = (session) => {
 const debugLog = () => {};
 const debugWarn = () => {};
 const debugError = () => {};
-import { BarChart3, CalendarDays, ClipboardList, Download, FileDown, FileUp, Loader2, MapPin, Target, Trash2, X } from 'lucide-react';
+import { BarChart3, CalendarDays, ClipboardList, Download, FileDown, FileUp, Loader2, MapPin, Send, Target, Trash2, X } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader,
@@ -98,6 +98,7 @@ import {
 } from '@/components/ui';
 import { applyNames, idsMissingNames } from './assignmentNames';
 import { fetchUserDirectory } from '../../services/userDirectoryService';
+import InviteChangesDialog from './InviteChangesDialog';
 import './assignmentPanel.css';
 
 const DragDropAssignmentPanel = ({
@@ -145,6 +146,7 @@ const DragDropAssignmentPanel = ({
   });
   const [showStatsModal, setShowStatsModal] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
+  const [showInviteDialog, setShowInviteDialog] = useState(false);
   const [removeAllOpen, setRemoveAllOpen] = useState(false);
   const [removeAllText, setRemoveAllText] = useState('');
 
@@ -3708,6 +3710,11 @@ const DragDropAssignmentPanel = ({
             >
               {generatingCalendar ? <><Loader2 className="animate-spin" /> Generating...</> : <><CalendarDays /> Generate Training Calendar</>}
             </Button>
+            {!isStakeholder && (
+              <Button onClick={() => setShowInviteDialog(true)} disabled={loading || !schedule?.id} title="Create Outlook invitation files (.ics) for the people assigned, with a test mode to try it first">
+                <Send /> Calendar Invites
+              </Button>
+            )}
             <Button onClick={handleShowExportDialog} disabled={loading || !schedule?.id} title="Export assignment data with advanced filtering options">
               <Download /> Export Assignment Data
             </Button>
@@ -3841,6 +3848,14 @@ const DragDropAssignmentPanel = ({
           projectId={currentProject?.id}
           filters={importFilters}
           onApplied={handleReviewImported}
+        />
+
+        {/* Calendar invites (.ics files for Outlook) */}
+        <InviteChangesDialog
+          isOpen={showInviteDialog}
+          onClose={() => setShowInviteDialog(false)}
+          schedule={schedule}
+          projectId={currentProject?.id}
         />
 
         {/* Assignment Export Dialog */}
